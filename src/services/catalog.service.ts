@@ -26,6 +26,7 @@ export const catalogService = {
   },
 
   async getProducts(branchId: string, itemOptions: { brandId?: string, categoryId?: string, allBranches?: boolean } = {}) {
+    // The backend still requires header info, even if allBranches is true.
     const headers: Record<string, string> = {
       'x-branch-id': branchId
     };
@@ -51,6 +52,7 @@ export const catalogService = {
 
   async getBrandMenu(brandId: string) {
     const response = await api.get<ApiResponse<Menu>>(`/brands/${brandId}/menu`);
+    // Assuming backend returns { data: { categories: [], products: [] } }
     return response.data.data;
   },
 

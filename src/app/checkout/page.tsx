@@ -1,10 +1,7 @@
-import { Suspense } from 'react';
-import CheckoutView from './CheckoutView';
+'use client';
 
-export default function CheckoutPage() {
-    return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading checkout...</div>}>
-            <CheckoutView />
-        </Suspense>
-    );
+import { CheckoutPage } from '@/components/features/CheckoutPage';
+
+export default function CheckoutRoutePage() {
+    return <CheckoutPage />;
 }

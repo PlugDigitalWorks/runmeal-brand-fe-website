@@ -10,6 +10,10 @@ export interface Address {
   latitude: number;
   longitude: number;
   isActive: boolean;
+  locationGeog?: {
+    type: string;
+    coordinates: number[];
+  };
   createdAt?: string;
   updatedAt?: string;
 }

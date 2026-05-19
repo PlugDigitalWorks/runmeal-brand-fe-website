@@ -1,5 +1,5 @@
 import { api } from '@/lib/axios';
-import { ApiResponse } from '@/types/auth';
+import { ApiResponse } from '@/types/auth'; // Reusing ApiResponse wrapper
 import { Cart, AddItemDto, SetQtyDto } from '@/types/cart';
 
 export const cartService = {

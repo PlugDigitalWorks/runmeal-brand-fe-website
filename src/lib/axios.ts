@@ -1,9 +1,11 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
-const API_URL = 
-  typeof window === 'undefined' 
-    ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000') 
+import { DEFAULT_BRAND_ID } from './constants';
+
+const API_URL =
+  typeof window === 'undefined'
+    ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000')
     : '/api';
 
 export const api = axios.create({
@@ -11,11 +13,19 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'x-auth-mode': 'body', // Request tokens in body
+    'x-brand-id': DEFAULT_BRAND_ID,
   },
 });
 
+
+
 api.interceptors.request.use(async (config) => {
   let token: string | undefined;
+
+  // Don't intercept auth requests to avoid loops
+  if (config.url?.includes('/auth/refresh') || config.url?.includes('/auth/login') || config.url?.includes('/auth/logout')) {
+    return config;
+  }
 
   if (typeof window === 'undefined') {
     const { cookies } = await import('next/headers');
@@ -24,6 +34,8 @@ api.interceptors.request.use(async (config) => {
   } else {
     token = Cookies.get('accessToken');
   }
+
+
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -56,6 +68,73 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+// Shared promise for ongoing refresh to avoid race conditions
+let refreshPromise: Promise<string> | null = null;
+
+const refreshAccessToken = async (): Promise<string> => {
+  if (refreshPromise) return refreshPromise;
+
+  isRefreshing = true;
+
+  refreshPromise = (async () => {
+    try {
+      let refreshToken: string | undefined;
+      let sid: string | undefined;
+
+      if (typeof window === 'undefined') {
+        const { cookies } = await import('next/headers');
+        const cookieStore = await cookies();
+        refreshToken = cookieStore.get('refreshToken')?.value;
+        sid = cookieStore.get('sid')?.value;
+      } else {
+        refreshToken = Cookies.get('refreshToken');
+        sid = Cookies.get('sid');
+      }
+
+      if (!refreshToken || !sid) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await axios.post(`${API_URL}/auth/refresh`, {
+        refreshToken,
+        sid
+      }, {
+        headers: {
+          'x-auth-mode': 'body'
+        }
+      });
+
+      const data = response.data.data || response.data;
+      const { accessToken, refreshToken: newRefresh, sid: newSid } = data;
+
+      Cookies.set('accessToken', accessToken);
+      if (newRefresh) Cookies.set('refreshToken', newRefresh);
+      if (newSid) Cookies.set('sid', newSid);
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+
+      // Process queue for 401 retries
+      processQueue(null, accessToken);
+
+      return accessToken;
+    } catch (error) {
+      processQueue(error, null);
+      // Clear tokens
+      Cookies.remove('accessToken');
+      Cookies.remove('refreshToken');
+      Cookies.remove('sid');
+      Cookies.remove('user');
+      // Throw to caller
+      throw error;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -74,63 +153,16 @@ api.interceptors.response.use(
       }
 
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
-      let refreshToken: string | undefined;
-      let sid: string | undefined;
-
-      if (typeof window === 'undefined') {
-          const { cookies } = await import('next/headers');
-          const cookieStore = await cookies();
-          refreshToken = cookieStore.get('refreshToken')?.value;
-          sid = cookieStore.get('sid')?.value;
-      } else {
-          refreshToken = Cookies.get('refreshToken');
-          sid = Cookies.get('sid');
-      }
-
-        if (!refreshToken || !sid) {
-           throw new Error('No refresh token available');
-        }
-
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
-            refreshToken,
-            sid
-        }, {
-             headers: {
-                'x-auth-mode': 'body'
-            }
-        });
-
-        const data = response.data.data || response.data;
-        const { accessToken, refreshToken: newRefresh, sid: newSid } = data;
-
-        Cookies.set('accessToken', accessToken);
-        if (newRefresh) Cookies.set('refreshToken', newRefresh);
-        if (newSid) Cookies.set('sid', newSid);
-
-        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`; // update existing request
-
-        processQueue(null, accessToken);
-        
+        const accessToken = await refreshAccessToken();
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
-        // Clear tokens and redirect to login
-        Cookies.remove('accessToken');
-        Cookies.remove('refreshToken');
-        Cookies.remove('sid');
-        Cookies.remove('user');
-        
         if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-            window.location.href = '/login';
+          // Optional: redirect to login
         }
-        
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 

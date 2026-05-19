@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { cartService } from '@/services/cart.service';
 import { userService } from '@/services/user.service';
 import { Cart, CartItem, CartItemOptionGroup } from '@/types/cart';
+import { useAuth } from './AuthContext';
 import { useBranch } from './BranchContext';
 import { useUser } from './UserContext';
 import { toast } from 'sonner';
@@ -15,60 +16,45 @@ interface GuestCartItem {
   options?: CartItemOptionGroup[];
   addons?: { id: string; name?: string; price?: number }[];
   notes?: string;
+  // We might need more product details for UI if we don't fetch fresh prod data every time
+  // For now storing minimal info
   productName?: string;
   price?: number;
   branchId?: string;
 }
 
 interface CartContextType {
-  // New API
-  cart: Cart | null;
-  guestCartItems: GuestCartItem[];
+  cart: Cart | null; // For User
+  guestCartItems: GuestCartItem[]; // For Guest
   isLoading: boolean;
   addToCart: (
     productId: string,
     quantity: number,
-    options?: { groupId?: string; optionId?: string; optionIds?: string[]; valueId?: string; name?: string; valueName?: string; price?: number }[],
+    options?: { optionId: string; valueId: string; name?: string; valueName?: string; price?: number }[],
     addons?: { id: string; name?: string; price?: number }[],
     notes?: string,
     productDetails?: any
   ) => Promise<void>;
-  removeFromCart: (itemId: string) => Promise<void>;
+  removeFromCart: (itemId: string) => Promise<void>; // ItemId for user, ProductId for guest
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   applyCoupon: (couponCode: string) => Promise<void>;
   removeCoupon: () => Promise<void>;
   cartTotal: number;
   availablePromotions: any[];
   checkAvailablePromotions: () => Promise<void>;
-  refreshCart: () => Promise<void>;
-  isCartOpen: boolean;
-  openCart: (cartId?: string) => void;
-  closeCart: () => void;
-
-  // Legacy API for CartDrawer compatibility
-  carts: Cart[];
-  refreshCarts: () => Promise<void>;
-  clearCart: (cartId: string) => Promise<void>;
-  selectedCartId: string | undefined;
-  updateQty: (itemId: string, qty: number) => Promise<void>;
-  removeItem: (itemId: string) => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { user, refreshAddresses } = useUser();
+  const { user, isAuthenticated } = useAuth();
   const { selectedBranch } = useBranch();
+  const { refreshAddresses } = useUser();
   const [cart, setCart] = useState<Cart | null>(null);
-  const [carts, setCarts] = useState<Cart[]>([]);
   const [guestCartItems, setGuestCartItems] = useState<GuestCartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [selectedCartId, setSelectedCartId] = useState<string | undefined>(undefined);
   const [availablePromotions, setAvailablePromotions] = useState<any[]>([]);
-  const hasSyncedRef = useRef(false);
-
-  const isAuthenticated = !!user;
+  const hasSyncedRef = useRef(false); // Track if cart has been synced to prevent duplicate syncs
 
   // Load Guest Cart
   useEffect(() => {
@@ -84,78 +70,62 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated]);
 
-  // Load User Carts (multi-cart) with full details including items
-  const refreshCarts = useCallback(async () => {
-    if (isAuthenticated) {
-      setIsLoading(true);
-      try {
-        const allCarts = await cartService.getAllCarts();
+  // Load User Cart
+  useEffect(() => {
+    const loadUserCart = async () => {
+      if (isAuthenticated) {
+        setIsLoading(true);
+        try {
+          const carts = await cartService.getAllCarts();
+          console.log('CartContext: loadUserCart carts result:', carts);
 
-        // Fetch full details for each cart to get items
-        const fullCarts: Cart[] = [];
-        for (const c of (allCarts || [])) {
-          const cartId = c.id || c.cartId;
-          if (cartId) {
-            try {
+          if (carts && carts.length > 0) {
+            const cartId = carts[0].id || carts[0].cartId;
+            if (cartId) {
               const fullCart = await cartService.getCart(cartId);
-              // Merge: keep isActive and other fields from basic cart, add items from full cart
-              fullCarts.push({
-                ...c,           // Basic cart info (has isActive)
-                ...fullCart,    // Full cart details (has items, totalCartPrice)
-                isActive: c.isActive ?? fullCart.isActive ?? true, // Ensure isActive is preserved
-              });
-            } catch (e) {
-              console.error(`Failed to fetch cart details for ${cartId}`, e);
-              fullCarts.push(c); // Use basic info as fallback
+              console.log('CartContext: loadUserCart fullCart result:', fullCart);
+              setCart(fullCart);
             }
+          } else {
+            console.log('CartContext: loadUserCart - No carts found or empty array');
           }
+        } catch (err) {
+          console.error("Failed to load user cart", err);
+        } finally {
+          setIsLoading(false);
         }
-
-        setCarts(fullCarts);
-
-        // Also set the first active cart as the main cart
-        const activeCart = fullCarts.find(c => c.isActive);
-        setCart(activeCart || null);
-      } catch (err) {
-        console.error("Failed to load user carts", err);
-        setCarts([]);
-      } finally {
-        setIsLoading(false);
+      } else {
+        setCart(null);
       }
-    } else {
-      setCarts([]);
-      setCart(null);
-    }
+    };
+    loadUserCart();
   }, [isAuthenticated]);
 
-  // Alias for refreshCarts
-  const refreshCart = refreshCarts;
-
-  // Load carts when user changes (authentication state changes)
-  useEffect(() => {
-    if (user) {
-      refreshCarts();
-    }
-  }, [user, refreshCarts]);
-
   // SYNC Logic: Guest -> User
+  // Triggered when user becomes authenticated and has guest items
+  // SYNC Logic: Guest -> User
+  // Triggered when user becomes authenticated and has guest items
   useEffect(() => {
     const syncCart = async () => {
-      if (hasSyncedRef.current || !isAuthenticated || guestCartItems.length === 0) {
+      // Sync if authenticated, has items, AND has a selected branch (target for sync)
+      if (!isAuthenticated || guestCartItems.length === 0 || !selectedBranch?.id) {
         return;
       }
 
-      hasSyncedRef.current = true;
       console.log("Syncing guest cart to user...");
       setIsLoading(true);
       let syncFailed = false;
 
       try {
-        // Sync guest address to user account
+        // Step 1: Sync guest address to user account BEFORE syncing cart items
+        // This ensures the branch delivery validation passes
         const guestAddressStr = localStorage.getItem('guest_address');
         if (guestAddressStr) {
           try {
             const guestAddress = JSON.parse(guestAddressStr);
+            console.log("Syncing guest address to user account...", guestAddress);
+
+            // Parse address from formatted string (e.g., "Street, District, Province")
             const addressParts = guestAddress.formattedAddress.split(',').map((p: string) => p.trim());
 
             await userService.createAddress({
@@ -168,32 +138,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               apartmentNumber: '-',
               latitude: guestAddress.latitude,
               longitude: guestAddress.longitude,
-              isActive: true
+              isActive: true // This will make it the active address
             });
 
+            // Refresh addresses so BranchContext can use the new active address
             await refreshAddresses();
             localStorage.removeItem('guest_address');
+            console.log("Guest address synced successfully");
           } catch (addrError) {
-            console.error("Failed to sync guest address", addrError);
+            console.error("Failed to sync guest address, continuing with cart sync...", addrError);
+            // Don't fail the whole sync if address creation fails
           }
         }
-
         for (const item of guestCartItems) {
           try {
+            // Map nested guest options back to flat structure for backend API
             const options: { groupId: string; optionId?: string; optionIds?: string[] }[] = [];
             item.options?.forEach(group => {
               if (group.type === 'MULTI') {
                 const ids = group.selections.map(s => s.optionId);
                 if (ids.length > 0) {
-                  options.push({ groupId: group.groupId, optionIds: ids });
+                  options.push({
+                    groupId: group.groupId,
+                    optionIds: ids
+                  });
                 }
               } else {
                 group.selections.forEach(sel => {
-                  options.push({ groupId: group.groupId, optionId: sel.optionId });
+                  options.push({
+                    groupId: group.groupId,
+                    optionId: sel.optionId
+                  });
                 });
               }
             });
 
+            // Fallback: Retrieve guest_branch manually if context is not ready
             const storedGuestBranch = localStorage.getItem('guest_branch');
             let fallbackBranchId: string | undefined;
             if (storedGuestBranch) {
@@ -215,21 +195,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           setGuestCartItems([]);
           localStorage.removeItem('guest_cart');
           localStorage.removeItem('guest_branch');
+          console.log("Guest cart synced and cleared.");
         } else {
-          hasSyncedRef.current = false;
+          console.warn("Some items failed to sync. Guest cart retained.");
         }
 
-        await refreshCarts();
+        // Refresh user cart regardless
+        const carts = await cartService.getAllCarts();
+        if (carts.length > 0) {
+          const cartId = carts[0].id || carts[0].cartId;
+          if (cartId) {
+            const fullCart = await cartService.getCart(cartId);
+            setCart(fullCart);
+          }
+        }
+
       } catch (err) {
-        console.error("Failed to sync cart", err);
-        hasSyncedRef.current = false;
+        console.error("Failed to sync cart process", err);
       } finally {
         setIsLoading(false);
       }
     };
 
     syncCart();
-  }, [isAuthenticated, guestCartItems, selectedBranch, refreshCarts, refreshAddresses]);
+  }, [isAuthenticated, guestCartItems, selectedBranch]);
+
 
   const addToCart = async (
     productId: string,
@@ -239,19 +229,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     notes?: string,
     productDetails?: any
   ) => {
-    if (isAuthenticated) {
-      if (!selectedBranch?.id) {
-        toast.error('Please select a branch before adding items to cart.');
-        return;
-      }
+    // ONLY use backend if authenticated AND a branch is selected (address is valid)
+    if (isAuthenticated && selectedBranch?.id) {
 
       setIsLoading(true);
       try {
         let optionsDto: any[] | undefined;
 
         if (options && options.length > 0 && 'groupId' in options[0]) {
+          // New format: { groupId, optionId, optionIds }
+          // Pass strict passthrough for backend
           optionsDto = options;
         } else {
+          // Legacy mapping
           optionsDto = options?.map(o => ({
             groupId: o.optionId,
             optionId: o.valueId
@@ -265,7 +255,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }, selectedBranch.id);
 
         toast.success('Item added to cart');
-        await refreshCarts();
+
+        // Refresh cart
+        const carts = await cartService.getAllCarts();
+        if (carts.length > 0) {
+          const cartId = carts[0].id || carts[0].cartId;
+          if (cartId) {
+            const fullCart = await cartService.getCart(cartId);
+            setCart(fullCart);
+          }
+        }
       } catch (e: any) {
         console.error("Add to cart failed", e);
         toast.error(e.response?.data?.message || 'Failed to add item to cart');
@@ -273,7 +272,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     } else {
-      // Guest Logic
+      // Guest Logic OR Logged-in-but-no-address Logic
+      // Stores in local storage until address/branch is available
       const nestedOptions: CartItemOptionGroup[] = [];
 
       if (options) {
@@ -282,7 +282,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         options.forEach(opt => {
           let groupId: string, groupName: string, optionName: string, priceDelta: number;
 
-          if ('groupId' in opt && opt.groupId) {
+          if ('groupId' in opt) {
             groupId = opt.groupId as string;
             groupName = opt.name || 'Option Group';
             optionName = opt.valueName || 'Option Value';
@@ -298,15 +298,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (opt.optionIds && Array.isArray(opt.optionIds)) {
+              // Handle Multi
               opt.optionIds.forEach(id => {
                 groups[groupId].selections.push({
                   action: 'SELECT',
                   optionId: id,
-                  optionName: optionName,
-                  priceDelta: priceDelta
+                  optionName: optionName, // Warning: Shared name
+                  priceDelta: priceDelta // Warning: Shared price or 0?
                 });
               });
             } else if (opt.optionId) {
+              // Handle Single
               groups[groupId].selections.push({
                 action: 'SELECT',
                 optionId: opt.optionId,
@@ -314,7 +316,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 priceDelta: priceDelta
               });
             }
+
           } else {
+            // Legacy Format
             const legacyOpt = opt as any;
             groupId = legacyOpt.optionId;
             const singleOptionId = legacyOpt.valueId;
@@ -343,6 +347,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
 
       const updated = [...guestCartItems];
+      // Check for existing item with SAME options
       const existing = updated.findIndex(i =>
         i.productId === productId &&
         JSON.stringify(i.options) === JSON.stringify(nestedOptions) &&
@@ -351,6 +356,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       if (existing >= 0) {
         updated[existing].quantity += quantity;
+        // Update branchId if missing (self-healing)
         if (!updated[existing].branchId && selectedBranch) {
           updated[existing].branchId = selectedBranch.id;
         }
@@ -368,6 +374,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setGuestCartItems(updated);
       localStorage.setItem('guest_cart', JSON.stringify(updated));
 
+      // Persist related branch for restoration (Redundant but keeps context-level restoration easy)
       if (selectedBranch) {
         localStorage.setItem('guest_branch', JSON.stringify(selectedBranch));
       }
@@ -381,36 +388,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       try {
         await cartService.removeItem(itemId, selectedBranch?.id);
-        await refreshCarts();
+        // Refresh
+        const carts = await cartService.getAllCarts();
+        if (carts.length > 0) {
+          const fullCart = await cartService.getCart(carts[0].id!);
+          setCart(fullCart);
+        } else {
+          setCart(null);
+        }
       } catch (e) {
         console.error("Remove failed", e);
-        toast.error('Failed to remove item');
       } finally {
         setIsLoading(false);
       }
     } else {
+      // itemId is productId for guest
       const updated = guestCartItems.filter(i => i.productId !== itemId);
       setGuestCartItems(updated);
       localStorage.setItem('guest_cart', JSON.stringify(updated));
     }
   };
 
-  // Alias for removeFromCart
-  const removeItem = removeFromCart;
-
   const updateQuantity = async (itemId: string, quantity: number) => {
     if (isAuthenticated) {
       setIsLoading(true);
       try {
         await cartService.setQty({ itemId, qty: quantity }, selectedBranch?.id);
-        await refreshCarts();
+        // Refresh
+        const carts = await cartService.getAllCarts();
+        if (carts.length > 0) {
+          const fullCart = await cartService.getCart(carts[0].id!);
+          setCart(fullCart);
+        }
       } catch (e) {
         console.error("Update qty failed", e);
-        toast.error('Failed to update quantity');
       } finally {
         setIsLoading(false);
       }
     } else {
+      // itemId is productId
       if (quantity <= 0) {
         await removeFromCart(itemId);
         return;
@@ -425,28 +441,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Alias for updateQuantity
-  const updateQty = updateQuantity;
-
-  const clearCart = async (cartId: string) => {
-    if (isAuthenticated) {
-      setIsLoading(true);
-      try {
-        await cartService.clearCart(cartId);
-        await refreshCarts();
-        toast.success('Cart cleared');
-      } catch (e) {
-        console.error("Clear cart failed", e);
-        toast.error('Failed to clear cart');
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setGuestCartItems([]);
-      localStorage.removeItem('guest_cart');
-    }
-  };
-
   const applyCoupon = async (couponCode: string) => {
     const cartId = cart?.id || cart?.cartId;
     if (!isAuthenticated || !cartId || !selectedBranch?.id) return;
@@ -457,14 +451,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         couponCode,
         selectedBranch.id,
         cart!.totalCartPrice || 0,
-        'DELIVERY'
+        'DELIVERY' // Defaulting to DELIVERY as per prompt/context, might need adjustment if pickup is an option
       );
       toast.success('Coupon applied successfully');
-      await refreshCarts();
+      // Refresh cart
+      const updatedCart = await cartService.getCart(cartId);
+      setCart(updatedCart);
     } catch (e: any) {
       console.error("Apply coupon failed", e);
       toast.error(e.response?.data?.message || 'Failed to apply coupon');
-      throw e;
+      throw e; // Re-throw to let component handle specific UI states if needed
     } finally {
       setIsLoading(false);
     }
@@ -477,7 +473,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       await cartService.removePromotion(cartId);
       toast.success('Coupon removed');
-      await refreshCarts();
+      // Refresh cart
+      const updatedCart = await cartService.getCart(cartId);
+      setCart(updatedCart);
     } catch (e: any) {
       console.error("Remove coupon failed", e);
       toast.error(e.response?.data?.message || 'Failed to remove coupon');
@@ -486,14 +484,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+
+
   const checkAvailablePromotions = async () => {
     const cartId = cart?.id || cart?.cartId;
     if (!isAuthenticated || !cartId) return;
     try {
+      // Defaulting to DELIVERY as per current flow
       const promos = await cartService.getAvailablePromotions(cartId, 'DELIVERY');
       setAvailablePromotions(promos || []);
     } catch (e) {
       console.error("Failed to fetch available promotions", e);
+      // We don't block the UI for this, just log it
     }
   };
 
@@ -501,38 +503,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     ? (cart?.totalCartPrice || 0)
     : guestCartItems.reduce((acc, item) => acc + ((item.price || 0) * item.quantity), 0);
 
-  const openCart = (cartId?: string) => {
-    setSelectedCartId(cartId);
-    setIsCartOpen(true);
-  };
-
-  const closeCart = () => setIsCartOpen(false);
-
   return (
     <CartContext.Provider value={{
-      // New API
       cart,
       guestCartItems,
       isLoading,
       addToCart,
       removeFromCart,
       updateQuantity,
+      cartTotal,
       applyCoupon,
       removeCoupon,
-      cartTotal,
       availablePromotions,
-      checkAvailablePromotions,
-      refreshCart,
-      isCartOpen,
-      openCart,
-      closeCart,
-      // Legacy API
-      carts,
-      refreshCarts,
-      clearCart,
-      selectedCartId,
-      updateQty,
-      removeItem
+      checkAvailablePromotions
     }}>
       {children}
     </CartContext.Provider>

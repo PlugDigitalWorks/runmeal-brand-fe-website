@@ -41,6 +41,7 @@ export interface RegisterDto {
   firstName: string;
   lastName: string;
   password: string;
+  phoneNumber?: string;
   latitude?: string;
   longitude?: string;
 }

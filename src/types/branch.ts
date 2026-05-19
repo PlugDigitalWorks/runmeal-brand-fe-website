@@ -20,8 +20,44 @@ export interface Branch {
   buildingNumber: string | null;
   apartmentNumber: string | null;
   postalCode: string | null;
-  isActive: boolean;
   logoUrl?: string | null;
   bannerUrls?: string[];
-  parameters?: Record<string, unknown> | null;
+  phoneNumber?: string;
+  minBasketPrice?: number;
+
+  // New flattened structure
+  business_hour?: Record<string, {
+    isOpen: boolean;
+    timeSlots: { openTime: string; closeTime: string }[];
+  }>;
+  payment_settings?: {
+    isActive: boolean;
+    onlineMethods?: {
+      card?: { isActive: boolean; provider?: string };
+    };
+    offlineMethods?: {
+      cash?: { isActive: boolean };
+      cardOnDelivery?: { isActive: boolean };
+    };
+  };
+  order_type_settings?: {
+    delivery?: { isActive: boolean };
+    pickup?: { isActive: boolean };
+    scheduledDelivery?: { isActive: boolean };
+  };
+  adisyo_settings?: {
+    paymentMethodMapping?: {
+      CASH: number;
+      ONLINE_CARD: number;
+      CARD_ON_DELIVERY: number;
+    }
+  };
+}
+
+export interface BranchDetails {
+  workingHours: string;
+  minimumDeliveryAmount: number;
+  paymentMethods: string[];
+  deliveryOptions: string[];
+  phoneNumber: string;
 }
