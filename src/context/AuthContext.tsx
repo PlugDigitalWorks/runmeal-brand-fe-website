@@ -9,6 +9,8 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     login: (data: LoginDto) => Promise<void>;
+    loginWithGoogle: () => Promise<void>;
+    completeGoogleLogin: () => Promise<User>;
     register: (data: RegisterDto) => Promise<void>;
     logout: () => Promise<void>;
     // Modal Control
@@ -49,6 +51,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const loginWithGoogle = async () => {
+        setIsLoading(true);
+        try {
+            const response = await authService.startGoogleLogin();
+            window.location.assign(response.redirectUrl);
+        } catch (error) {
+            setIsLoading(false);
+            throw error;
+        }
+    };
+
+    const completeGoogleLogin = async () => {
+        setIsLoading(true);
+        try {
+            const currentUser = await authService.completeGoogleLogin();
+            setUser(currentUser);
+            setIsAuthenticated(true);
+            return currentUser;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const register = async (data: RegisterDto) => {
         setIsLoading(true);
         try {
@@ -79,6 +104,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isAuthenticated,
             isLoading,
             login,
+            loginWithGoogle,
+            completeGoogleLogin,
             register,
             logout,
             isAuthModalOpen,

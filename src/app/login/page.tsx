@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, User, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
+import { executeRecaptcha } from '@/lib/recaptcha';
 
 const loginSchema = z.object({
     email: z.string().email('Please enter a valid email address'),
@@ -18,10 +20,11 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-    const { login } = useAuth();
+    const { login, completeGoogleLogin } = useAuth();
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const handledGoogleCallbackRef = useRef(false);
 
     const {
         register,
@@ -34,7 +37,8 @@ export default function LoginPage() {
     const onSubmit = async (data: LoginFormValues) => {
         setIsLoading(true);
         try {
-            await login(data);
+            const recaptchaToken = await executeRecaptcha('login');
+            await login({ ...data, recaptchaToken });
             toast.success('Login successful!');
             router.push('/');
         } catch (error) {
@@ -44,6 +48,35 @@ export default function LoginPage() {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (handledGoogleCallbackRef.current) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const authStatus = params.get('auth');
+        if (!authStatus) return;
+
+        handledGoogleCallbackRef.current = true;
+        const reason = params.get('reason');
+        window.history.replaceState(null, '', '/login');
+
+        if (authStatus === 'success') {
+            setIsLoading(true);
+            completeGoogleLogin()
+                .then(() => {
+                    toast.success('Google login successful!');
+                    router.push('/');
+                })
+                .catch((error) => {
+                    console.error(error);
+                    toast.error('Google login completed, but the session could not be restored.');
+                })
+                .finally(() => setIsLoading(false));
+            return;
+        }
+
+        toast.error(reason || 'Google login failed. Please try again.');
+    }, [completeGoogleLogin, router]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-white px-4">
@@ -63,6 +96,19 @@ export default function LoginPage() {
 
                 {/* Form Section */}
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    <GoogleAuthButton />
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-zinc-200" />
+                        </div>
+                        <div className="relative flex justify-center text-sm">
+                            <span className="px-2 bg-white text-zinc-500">
+                                Or log in with email
+                            </span>
+                        </div>
+                    </div>
+
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-zinc-700" htmlFor="email">
@@ -141,7 +187,7 @@ export default function LoginPage() {
                         </div>
                         <div className="relative flex justify-center text-sm">
                             <span className="px-2 bg-white text-zinc-500">
-                                Don't have an account?
+                                Don&apos;t have an account?
                             </span>
                         </div>
                     </div>

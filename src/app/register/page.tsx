@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
 
 const registerSchema = z.object({
     firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -65,6 +66,19 @@ export default function RegisterPage() {
 
                 {/* Form Section */}
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    <GoogleAuthButton label="Sign up with Google" />
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-zinc-200" />
+                        </div>
+                        <div className="relative flex justify-center text-sm">
+                            <span className="px-2 bg-white text-zinc-500">
+                                Or create with email
+                            </span>
+                        </div>
+                    </div>
+
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">

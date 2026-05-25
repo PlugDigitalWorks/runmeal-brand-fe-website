@@ -10,6 +10,7 @@ const API_URL =
 
 export const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'x-auth-mode': 'body', // Request tokens in body
@@ -23,7 +24,7 @@ api.interceptors.request.use(async (config) => {
   let token: string | undefined;
 
   // Don't intercept auth requests to avoid loops
-  if (config.url?.includes('/auth/refresh') || config.url?.includes('/auth/login') || config.url?.includes('/auth/logout')) {
+  if (config.url?.includes('/auth/refresh') || config.url?.includes('/auth/login')) {
     return config;
   }
 
@@ -91,14 +92,10 @@ const refreshAccessToken = async (): Promise<string> => {
         sid = Cookies.get('sid');
       }
 
-      if (!refreshToken || !sid) {
-        throw new Error('No refresh token available');
-      }
-
       const response = await axios.post(`${API_URL}/auth/refresh`, {
-        refreshToken,
-        sid
+        ...(refreshToken && sid ? { refreshToken, sid } : {}),
       }, {
+        withCredentials: true,
         headers: {
           'x-auth-mode': 'body'
         }
@@ -142,7 +139,10 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
 
-      if (originalRequest.url?.includes('/auth/login')) {
+      if (
+        originalRequest.url?.includes('/auth/login') ||
+        originalRequest.url?.includes('/auth/refresh')
+      ) {
         return Promise.reject(error);
       }
 
