@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { Loader2, User, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
-import { executeRecaptcha } from '@/lib/recaptcha';
+import { RecaptchaWidget } from '@/components/features/RecaptchaWidget';
 
 const loginSchema = z.object({
     email: z.string().email('Please enter a valid email address'),
@@ -24,6 +24,9 @@ export default function LoginPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+    const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
+    const isRecaptchaEnabled = Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
     const handledGoogleCallbackRef = useRef(false);
 
     const {
@@ -34,16 +37,30 @@ export default function LoginPage() {
         resolver: zodResolver(loginSchema),
     });
 
+    const getErrorMessage = (error: unknown) => {
+        if (typeof error === 'object' && error !== null && 'response' in error) {
+            const response = (error as { response?: { data?: { message?: string } } }).response;
+            return response?.data?.message;
+        }
+        return undefined;
+    };
+
     const onSubmit = async (data: LoginFormValues) => {
+        if (isRecaptchaEnabled && !recaptchaToken) {
+            toast.error('Please complete the security check.');
+            return;
+        }
+
         setIsLoading(true);
         try {
-            const recaptchaToken = await executeRecaptcha('login');
-            await login({ ...data, recaptchaToken });
+            await login({ ...data, recaptchaToken: recaptchaToken ?? undefined });
             toast.success('Login successful!');
             router.push('/');
         } catch (error) {
             console.error(error);
-            toast.error('An error occurred during login. Please check your credentials.');
+            setRecaptchaToken(null);
+            setRecaptchaResetKey((key) => key + 1);
+            toast.error(getErrorMessage(error) || 'An error occurred during login. Please check your credentials.');
         } finally {
             setIsLoading(false);
         }
@@ -166,9 +183,14 @@ export default function LoginPage() {
                         </div>
                     </div>
 
+                    <RecaptchaWidget
+                        onTokenChange={setRecaptchaToken}
+                        resetKey={recaptchaResetKey}
+                    />
+
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || (isRecaptchaEnabled && !recaptchaToken)}
                         className="w-full flex items-center justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                         {isLoading ? (

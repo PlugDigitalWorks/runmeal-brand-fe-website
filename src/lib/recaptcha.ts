@@ -1,6 +1,14 @@
+type RecaptchaRenderOptions = {
+  sitekey: string;
+  callback?: (token: string) => void;
+  'expired-callback'?: () => void;
+  'error-callback'?: () => void;
+};
+
 type Grecaptcha = {
-  ready: (callback: () => void) => void;
-  execute: (siteKey: string, options: { action: string }) => Promise<string>;
+  render: (container: HTMLElement, options: RecaptchaRenderOptions) => number;
+  reset: (widgetId?: number) => void;
+  ready?: (callback: () => void) => void;
 };
 
 declare global {
@@ -9,16 +17,43 @@ declare global {
   }
 }
 
+const RECAPTCHA_SCRIPT_ID = 'runmeal-recaptcha-script';
+const RECAPTCHA_SCRIPT_SOURCES = [
+  'https://www.google.com/recaptcha/api.js?render=explicit',
+  'https://www.recaptcha.net/recaptcha/api.js?render=explicit',
+];
+
 let recaptchaScriptPromise: Promise<void> | null = null;
 
-const getRecaptchaSiteKey = () => process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+export const getRecaptchaSiteKey = () => process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
-const loadRecaptchaScript = (siteKey: string) => {
+const waitForRecaptcha = () =>
+  new Promise<void>((resolve, reject) => {
+    const startedAt = Date.now();
+
+    const check = () => {
+      if (window.grecaptcha?.render) {
+        resolve();
+        return;
+      }
+
+      if (Date.now() - startedAt > 10000) {
+        reject(new Error('reCAPTCHA is not available.'));
+        return;
+      }
+
+      window.setTimeout(check, 80);
+    };
+
+    check();
+  });
+
+export const loadRecaptchaScript = () => {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('reCAPTCHA can only run in the browser.'));
   }
 
-  if (window.grecaptcha) {
+  if (window.grecaptcha?.render) {
     return Promise.resolve();
   }
 
@@ -27,49 +62,34 @@ const loadRecaptchaScript = (siteKey: string) => {
   }
 
   recaptchaScriptPromise = new Promise<void>((resolve, reject) => {
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      'script[data-recaptcha-script="true"]',
-    );
+    const loadSource = (sourceIndex: number) => {
+      const existingScript = document.getElementById(RECAPTCHA_SCRIPT_ID);
+      existingScript?.remove();
 
-    if (existingScript) {
-      existingScript.addEventListener('load', () => resolve(), { once: true });
-      existingScript.addEventListener(
-        'error',
-        () => reject(new Error('reCAPTCHA script failed to load.')),
-        { once: true },
-      );
-      return;
-    }
+      const script = document.createElement('script');
+      script.id = RECAPTCHA_SCRIPT_ID;
+      script.src = RECAPTCHA_SCRIPT_SOURCES[sourceIndex];
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        waitForRecaptcha().then(resolve).catch(reject);
+      };
+      script.onerror = () => {
+        const nextSourceIndex = sourceIndex + 1;
+        if (nextSourceIndex < RECAPTCHA_SCRIPT_SOURCES.length) {
+          loadSource(nextSourceIndex);
+          return;
+        }
 
-    const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
-    script.async = true;
-    script.defer = true;
-    script.dataset.recaptchaScript = 'true';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('reCAPTCHA script failed to load.'));
-    document.head.appendChild(script);
+        script.remove();
+        recaptchaScriptPromise = null;
+        reject(new Error('reCAPTCHA script failed to load.'));
+      };
+      document.head.appendChild(script);
+    };
+
+    loadSource(0);
   });
 
   return recaptchaScriptPromise;
-};
-
-export const executeRecaptcha = async (action: string) => {
-  const siteKey = getRecaptchaSiteKey();
-  if (!siteKey) return undefined;
-
-  await loadRecaptchaScript(siteKey);
-
-  if (!window.grecaptcha) {
-    throw new Error('reCAPTCHA is not available.');
-  }
-
-  return new Promise<string>((resolve, reject) => {
-    window.grecaptcha?.ready(() => {
-      window.grecaptcha
-        ?.execute(siteKey, { action })
-        .then(resolve)
-        .catch(reject);
-    });
-  });
 };

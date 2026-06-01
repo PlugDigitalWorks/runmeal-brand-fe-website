@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
+import { RecaptchaWidget } from './RecaptchaWidget';
 
 type Tab = 'LOGIN' | 'REGISTER';
 
@@ -11,6 +12,9 @@ export function AuthModal() {
     const { isAuthModalOpen, closeAuthModal, login, register } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>('LOGIN');
     const [isLoading, setIsLoading] = useState(false);
+    const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+    const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
+    const isRecaptchaEnabled = Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
 
     // Form States
     const [email, setEmail] = useState('');
@@ -23,6 +27,22 @@ export function AuthModal() {
         setPassword('');
         setName('');
         setPhone('');
+        setRecaptchaToken(null);
+        setRecaptchaResetKey((key) => key + 1);
+    };
+
+    const getErrorMessage = (error: unknown) => {
+        if (typeof error === 'object' && error !== null && 'response' in error) {
+            const response = (error as { response?: { data?: { message?: string } } }).response;
+            return response?.data?.message;
+        }
+        return undefined;
+    };
+
+    const changeTab = (tab: Tab) => {
+        setActiveTab(tab);
+        setRecaptchaToken(null);
+        setRecaptchaResetKey((key) => key + 1);
     };
 
     const handleClose = () => {
@@ -36,11 +56,17 @@ export function AuthModal() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (activeTab === 'LOGIN' && isRecaptchaEnabled && !recaptchaToken) {
+            toast.error('Please complete the security check.');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
             if (activeTab === 'LOGIN') {
-                await login({ email, password });
+                await login({ email, password, recaptchaToken: recaptchaToken ?? undefined });
                 toast.success('Welcome back!');
                 handleClose();
             } else {
@@ -52,12 +78,16 @@ export function AuthModal() {
                     phoneNumber: phone
                 });
                 toast.success('Registration successful! Please login.');
-                setActiveTab('LOGIN');
+                changeTab('LOGIN');
                 // Don't close, let them login or auto-login if logic changes
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            toast.error(error.response?.data?.message || 'Authentication failed');
+            if (activeTab === 'LOGIN') {
+                setRecaptchaToken(null);
+                setRecaptchaResetKey((key) => key + 1);
+            }
+            toast.error(getErrorMessage(error) || 'Authentication failed');
         } finally {
             setIsLoading(false);
         }
@@ -80,13 +110,13 @@ export function AuthModal() {
                 {/* Tabs */}
                 <div className="flex border-b border-zinc-100">
                     <button
-                        onClick={() => setActiveTab('LOGIN')}
+                        onClick={() => changeTab('LOGIN')}
                         className={`flex-1 py-4 text-sm font-semibold transition-colors ${activeTab === 'LOGIN' ? 'text-primary border-b-2 border-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
                     >
                         Login
                     </button>
                     <button
-                        onClick={() => setActiveTab('REGISTER')}
+                        onClick={() => changeTab('REGISTER')}
                         className={`flex-1 py-4 text-sm font-semibold transition-colors ${activeTab === 'REGISTER' ? 'text-primary border-b-2 border-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
                     >
                         Register
@@ -157,9 +187,16 @@ export function AuthModal() {
                             />
                         </div>
 
+                        {activeTab === 'LOGIN' && (
+                            <RecaptchaWidget
+                                onTokenChange={setRecaptchaToken}
+                                resetKey={recaptchaResetKey}
+                            />
+                        )}
+
                         <button
                             type="submit"
-                            disabled={isLoading}
+                            disabled={isLoading || (activeTab === 'LOGIN' && isRecaptchaEnabled && !recaptchaToken)}
                             className="w-full bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                         >
                             {isLoading ? 'Processing...' : (activeTab === 'LOGIN' ? 'Login' : 'Sign Up')}
