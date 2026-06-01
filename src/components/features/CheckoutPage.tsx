@@ -303,6 +303,9 @@ export function CheckoutPage() {
                                         {activeAddress.postalCode && activeAddress.postalCode !== '00000' && (
                                             <p className="text-sm text-zinc-500">{activeAddress.postalCode}</p>
                                         )}
+                                        {activeAddress.phoneE164 && (
+                                            <p className="text-sm text-zinc-500">{activeAddress.phoneE164}</p>
+                                        )}
                                     </div>
                                 </div>
                             ) : (

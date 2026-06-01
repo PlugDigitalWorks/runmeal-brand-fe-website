@@ -24,6 +24,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
         apartmentNumber: address?.apartmentNumber || '',
         district: address?.district || '',
         province: address?.province || '',
+        phoneE164: address?.phoneE164 || '',
         postalCode: address?.postalCode || '',
         latitude: address?.latitude || 41.0082, // Default to Istanbul if missing
         longitude: address?.longitude || 28.9784,
@@ -83,6 +84,16 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!formData.phoneE164.trim()) {
+            toast.error('Phone is required');
+            return;
+        }
+
+        if (!/^\+[1-9]\d{7,14}$/.test(formData.phoneE164.trim())) {
+            toast.error('Use E.164 format, e.g. +905551112233');
+            return;
+        }
 
         setIsLoading(true);
         try {
@@ -171,14 +182,15 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                             <label className="block text-sm font-medium text-zinc-700 mb-1">
                                 Apartment No
                             </label>
-                            <input
-                                type="text"
-                                name="apartmentNumber"
-                                value={formData.apartmentNumber}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-zinc-900 placeholder:text-zinc-400"
-                            />
-                        </div>
+                        <input
+                            type="text"
+                            name="apartmentNumber"
+                            value={formData.apartmentNumber}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-zinc-900 placeholder:text-zinc-400"
+                            placeholder="Optional"
+                        />
+                    </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -208,6 +220,21 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                                 required
                             />
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-zinc-700 mb-1">
+                            Phone
+                        </label>
+                        <input
+                            type="tel"
+                            name="phoneE164"
+                            value={formData.phoneE164}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-zinc-900 placeholder:text-zinc-400"
+                            placeholder="+905551112233"
+                            required
+                        />
                     </div>
 
                     <div>

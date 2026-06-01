@@ -291,7 +291,7 @@ function ProfileContent() {
                                     </div>
                                     <div className="p-6">
                                         <AddressForm
-                                            initialValues={editingAddress}
+                                            initialValues={editingAddress ? { ...editingAddress, phoneE164: editingAddress.phoneE164 ?? '' } : undefined}
                                             addressId={editingId}
                                             onCancel={onCancelEdit}
                                             onSuccess={handleSuccess}
@@ -322,6 +322,7 @@ function ProfileContent() {
                                                 <p className="text-sm text-zinc-600 mt-1 leading-relaxed">
                                                     {addr.buildingNumber}/{addr.apartmentNumber}<br />
                                                     {addr.postalCode} {addr.district}, {addr.province}<br />
+                                                    {addr.phoneE164 ? <>{addr.phoneE164}<br /></> : null}
                                                     {addr.countryCode}
                                                 </p>
                                             </div>

@@ -23,10 +23,14 @@ export const addressSchema = z.object({
     countryCode: z.string().min(1, 'Country is required'),
     district: z.string().min(1, 'District/City is required'),
     province: z.string().min(1, 'Province/State is required'),
+    phoneE164: z.string()
+        .trim()
+        .min(1, 'Phone is required')
+        .refine((value) => /^\+[1-9]\d{7,14}$/.test(value), 'Use E.164 format, e.g. +905551112233'),
     postalCode: z.string().min(1, 'Postal Code is required'),
     street: z.string().min(1, 'Street is required'),
     buildingNumber: z.string().min(1, 'Building is required'),
-    apartmentNumber: z.string().min(1, 'Apartment is required'),
+    apartmentNumber: z.string().optional(),
     latitude: z.any().transform(val => Number(val)),
     longitude: z.any().transform(val => Number(val)),
 });
@@ -81,6 +85,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         countryCode: 'TR',
         district: 'Fatih',
         province: 'İstanbul',
+        phoneE164: '',
         postalCode: '',
         street: '',
         buildingNumber: '',
@@ -260,6 +265,13 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                 <Input label="Province" {...register('province')} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                    label="Phone"
+                    type="tel"
+                    placeholder="+905551112233"
+                    {...register('phoneE164')}
+                    error={errors.phoneE164?.message}
+                />
                 <Input label="Postal Code" placeholder="34000" {...register('postalCode')} error={errors.postalCode?.message} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -267,7 +279,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                 <Input label="Building No" {...register('buildingNumber')} error={errors.buildingNumber?.message} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="Apartment" {...register('apartmentNumber')} error={errors.apartmentNumber?.message} />
+                <Input label="Apartment" placeholder="Optional" {...register('apartmentNumber')} error={errors.apartmentNumber?.message} />
             </div>
 
             <div className="flex justify-end pt-2 gap-2">
