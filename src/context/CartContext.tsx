@@ -443,13 +443,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const applyCoupon = async (couponCode: string) => {
     const cartId = cart?.id || cart?.cartId;
-    if (!isAuthenticated || !cartId || !selectedBranch?.id) return;
+    const branchId = selectedBranch?.id || cart?.branchId;
+    if (!isAuthenticated || !cartId || !branchId) {
+      toast.error('Branch information is missing for this cart');
+      return;
+    }
     setIsLoading(true);
     try {
       await cartService.applyPromotion(
         cartId,
         couponCode,
-        selectedBranch.id,
+        branchId,
         cart!.totalCartPrice || 0,
         'DELIVERY' // Defaulting to DELIVERY as per prompt/context, might need adjustment if pickup is an option
       );

@@ -332,21 +332,45 @@ export function CheckoutPage() {
                             </div>
                             <div className="p-5">
                                 {cart?.appliedPromotion ? (
-                                    <div className="flex items-center justify-between bg-green-50 text-green-700 p-3 rounded-lg border border-green-200">
-                                        <div className="flex items-center gap-2">
-                                            <Ticket size={16} />
-                                            <div>
-                                                <p className="font-bold text-sm">{cart.appliedPromotion.name}</p>
-                                                <p className="text-xs">{cart.appliedPromotion.description}</p>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between bg-green-50 text-green-700 p-3 rounded-lg border border-green-200">
+                                            <div className="flex items-center gap-2">
+                                                <Ticket size={16} />
+                                                <div>
+                                                    <p className="font-bold text-sm">{cart.appliedPromotion.name}</p>
+                                                    <p className="text-xs">{cart.appliedPromotion.description}</p>
+                                                </div>
                                             </div>
+                                            <button
+                                                onClick={handleRemoveCoupon}
+                                                disabled={isCouponLoading}
+                                                className="text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors"
+                                            >
+                                                <X size={14} />
+                                            </button>
                                         </div>
                                         <button
-                                            onClick={handleRemoveCoupon}
-                                            disabled={isCouponLoading}
-                                            className="text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors"
+                                            onClick={() => setShowCouponModal(true)}
+                                            className="w-full text-center text-primary text-sm hover:underline"
                                         >
-                                            <X size={14} />
+                                            View Available Coupons
                                         </button>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={couponCode}
+                                                onChange={(e) => setCouponCode(e.target.value)}
+                                                placeholder="Enter coupon code"
+                                                className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase placeholder:normal-case"
+                                            />
+                                            <button
+                                                onClick={handleApplyCoupon}
+                                                disabled={!couponCode.trim() || isCouponLoading}
+                                                className="bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                Apply
+                                            </button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
@@ -586,14 +610,20 @@ function CouponListModal({ onClose, onApply }: { onClose: () => void; onApply: (
                                         <h4 className="font-bold text-zinc-800">{item.promotion.name}</h4>
                                         {item.applicable && (
                                             <button
-                                                onClick={() => onApply(item.promotion.couponCode)}
-                                                className="text-xs bg-green-600 text-white px-3 py-1 rounded-full hover:bg-green-700"
+                                                onClick={() => item.promotion.couponCode && onApply(item.promotion.couponCode)}
+                                                disabled={!item.promotion.couponCode}
+                                                className="text-xs bg-green-600 text-white px-3 py-1 rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 Apply
                                             </button>
                                         )}
                                     </div>
                                     <p className="text-sm text-zinc-600 mb-2">{item.promotion.description}</p>
+                                    {item.applicable && !item.promotion.couponCode && (
+                                        <p className="text-xs text-amber-600">
+                                            This promotion has no coupon code configured.
+                                        </p>
+                                    )}
                                     {!item.applicable && (
                                         <p className="text-xs text-red-500">
                                             {item.unapplicableReason === 'ALREADY_USED'
