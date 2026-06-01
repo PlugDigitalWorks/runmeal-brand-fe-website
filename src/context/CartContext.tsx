@@ -56,6 +56,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [availablePromotions, setAvailablePromotions] = useState<any[]>([]);
   const hasSyncedRef = useRef(false); // Track if cart has been synced to prevent duplicate syncs
 
+  const getPreferredCartId = useCallback(
+    (carts: Cart[], branchId?: string | null) => {
+      const preferredCart = branchId
+        ? carts.find((candidate) => candidate.branchId === branchId)
+        : carts[0];
+      return preferredCart?.id || preferredCart?.cartId || null;
+    },
+    [],
+  );
+
+  const refreshUserCart = useCallback(
+    async (preferredBranchId?: string | null) => {
+      const carts = await cartService.getAllCarts();
+      if (!carts || carts.length === 0) {
+        setCart(null);
+        return null;
+      }
+
+      const cartId = getPreferredCartId(carts, preferredBranchId || selectedBranch?.id);
+      if (!cartId) {
+        setCart(null);
+        return null;
+      }
+
+      const fullCart = await cartService.getCart(cartId);
+      setCart(fullCart);
+      return fullCart;
+    },
+    [getPreferredCartId, selectedBranch?.id],
+  );
+
   // Load Guest Cart
   useEffect(() => {
     if (!isAuthenticated) {
@@ -76,19 +107,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (isAuthenticated) {
         setIsLoading(true);
         try {
-          const carts = await cartService.getAllCarts();
-          console.log('CartContext: loadUserCart carts result:', carts);
-
-          if (carts && carts.length > 0) {
-            const cartId = carts[0].id || carts[0].cartId;
-            if (cartId) {
-              const fullCart = await cartService.getCart(cartId);
-              console.log('CartContext: loadUserCart fullCart result:', fullCart);
-              setCart(fullCart);
-            }
-          } else {
-            console.log('CartContext: loadUserCart - No carts found or empty array');
-          }
+          const fullCart = await refreshUserCart(selectedBranch?.id);
+          console.log('CartContext: loadUserCart fullCart result:', fullCart);
         } catch (err) {
           console.error("Failed to load user cart", err);
         } finally {
@@ -99,7 +119,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     };
     loadUserCart();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshUserCart, selectedBranch?.id]);
 
   // SYNC Logic: Guest -> User
   // Triggered when user becomes authenticated and has guest items
@@ -201,14 +221,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Refresh user cart regardless
-        const carts = await cartService.getAllCarts();
-        if (carts.length > 0) {
-          const cartId = carts[0].id || carts[0].cartId;
-          if (cartId) {
-            const fullCart = await cartService.getCart(cartId);
-            setCart(fullCart);
-          }
-        }
+        await refreshUserCart(selectedBranch?.id);
 
       } catch (err) {
         console.error("Failed to sync cart process", err);
@@ -257,14 +270,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         toast.success('Item added to cart');
 
         // Refresh cart
-        const carts = await cartService.getAllCarts();
-        if (carts.length > 0) {
-          const cartId = carts[0].id || carts[0].cartId;
-          if (cartId) {
-            const fullCart = await cartService.getCart(cartId);
-            setCart(fullCart);
-          }
-        }
+        await refreshUserCart(selectedBranch.id);
       } catch (e: any) {
         console.error("Add to cart failed", e);
         toast.error(e.response?.data?.message || 'Failed to add item to cart');
@@ -388,14 +394,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       try {
         await cartService.removeItem(itemId, selectedBranch?.id);
-        // Refresh
-        const carts = await cartService.getAllCarts();
-        if (carts.length > 0) {
-          const fullCart = await cartService.getCart(carts[0].id!);
-          setCart(fullCart);
-        } else {
-          setCart(null);
-        }
+        await refreshUserCart(selectedBranch?.id || cart?.branchId);
       } catch (e) {
         console.error("Remove failed", e);
       } finally {
@@ -414,12 +413,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       try {
         await cartService.setQty({ itemId, qty: quantity }, selectedBranch?.id);
-        // Refresh
-        const carts = await cartService.getAllCarts();
-        if (carts.length > 0) {
-          const fullCart = await cartService.getCart(carts[0].id!);
-          setCart(fullCart);
-        }
+        await refreshUserCart(selectedBranch?.id || cart?.branchId);
       } catch (e) {
         console.error("Update qty failed", e);
       } finally {

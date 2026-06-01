@@ -15,17 +15,25 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
     const placesLib = useMapsLibrary('places');
     const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
     const requestIdRef = useRef(0);
+    const lastSyncedInitialValueRef = useRef(initialValue || '');
     const [predictions, setPredictions] = useState<google.maps.places.PlacePrediction[]>([]);
     const [isOpen, setIsOpen] = useState(false);
 
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (initialValue) {
+        const nextInitialValue = initialValue || '';
+        const lastSyncedInitialValue = lastSyncedInitialValueRef.current;
+
+        if (
+            nextInitialValue &&
+            (inputValue === '' || inputValue === lastSyncedInitialValue)
+        ) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
-            setInputValue(initialValue);
+            setInputValue(nextInitialValue);
         }
-    }, [initialValue]);
+        lastSyncedInitialValueRef.current = nextInitialValue;
+    }, [initialValue, inputValue]);
 
     useEffect(() => {
         if (!placesLib) return;
