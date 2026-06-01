@@ -7,7 +7,7 @@ import { useUser } from '@/context/UserContext';
 import { useCart } from '@/context/CartContext';
 import { useBranch } from '@/context/BranchContext';
 import { paymentService } from '@/services/payment.service';
-import { User, MapPin, ShoppingBag, CreditCard, Edit2, Phone, Mail, ChevronLeft } from 'lucide-react';
+import { User, MapPin, ShoppingBag, CreditCard, Edit2, Phone, Mail, ChevronLeft, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
 import { walletService, WalletBalance } from '@/services/wallet.service';
@@ -22,6 +22,7 @@ export function CheckoutPage() {
 
     const [isProcessing, setIsProcessing] = useState(false);
     const [showAddressModal, setShowAddressModal] = useState(false);
+    const [addressModalMode, setAddressModalMode] = useState<'new' | 'edit'>('edit');
     const [checkoutFormHtml, setCheckoutFormHtml] = useState<string | null>(null);
     const [hasInitialized, setHasInitialized] = useState(false);
 
@@ -181,6 +182,16 @@ export function CheckoutPage() {
         toast.success('Address updated successfully');
     };
 
+    const openNewAddressModal = () => {
+        setAddressModalMode('new');
+        setShowAddressModal(true);
+    };
+
+    const openEditAddressModal = () => {
+        setAddressModalMode('edit');
+        setShowAddressModal(true);
+    };
+
     // Show loading state while data is loading
     if (!hasInitialized || isCartLoading || isUserLoading) {
         return (
@@ -258,40 +269,47 @@ export function CheckoutPage() {
 
                     {/* Address Card */}
                     <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
-                        <div className="bg-primary p-4 flex items-center justify-between text-white">
-                            <div className="flex items-center gap-3">
-                                <MapPin size={20} />
-                                <h2 className="font-bold text-lg">Delivery Address</h2>
-                            </div>
-                            {activeAddress && (
-                                <button
-                                    onClick={() => setShowAddressModal(true)}
-                                    className="flex items-center gap-1 text-sm bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded transition-colors"
-                                >
-                                    <Edit2 size={14} />
-                                    Edit
-                                </button>
-                            )}
+                        <div className="bg-primary p-4 flex items-center gap-3 text-white">
+                            <MapPin size={20} />
+                            <h2 className="font-bold text-lg">Delivery Address</h2>
                         </div>
                         <div className="p-5">
                             {activeAddress ? (
-                                <div className="space-y-2">
-                                    <p className="font-medium text-zinc-800">
-                                        {activeAddress.street}, {activeAddress.buildingNumber}
-                                        {activeAddress.apartmentNumber !== '-' && ` / ${activeAddress.apartmentNumber}`}
-                                    </p>
-                                    <p className="text-sm text-zinc-600">
-                                        {activeAddress.district}, {activeAddress.province}
-                                    </p>
-                                    {activeAddress.postalCode && activeAddress.postalCode !== '00000' && (
-                                        <p className="text-sm text-zinc-500">{activeAddress.postalCode}</p>
-                                    )}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-end gap-2">
+                                        <button
+                                            onClick={openNewAddressModal}
+                                            className="flex items-center gap-1 text-sm border border-zinc-200 bg-white hover:bg-zinc-50 px-3 py-1.5 rounded transition-colors text-zinc-700"
+                                        >
+                                            <Plus size={14} />
+                                            New Address
+                                        </button>
+                                        <button
+                                            onClick={openEditAddressModal}
+                                            className="flex items-center gap-1 text-sm bg-primary/10 hover:bg-primary/15 text-primary px-3 py-1.5 rounded transition-colors"
+                                        >
+                                            <Edit2 size={14} />
+                                            Edit
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="font-medium text-zinc-800">
+                                            {activeAddress.street}, {activeAddress.buildingNumber}
+                                            {activeAddress.apartmentNumber !== '-' && ` / ${activeAddress.apartmentNumber}`}
+                                        </p>
+                                        <p className="text-sm text-zinc-600">
+                                            {activeAddress.district}, {activeAddress.province}
+                                        </p>
+                                        {activeAddress.postalCode && activeAddress.postalCode !== '00000' && (
+                                            <p className="text-sm text-zinc-500">{activeAddress.postalCode}</p>
+                                        )}
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="text-center py-4">
                                     <p className="text-zinc-500 mb-3">No delivery address found</p>
                                     <button
-                                        onClick={() => setShowAddressModal(true)}
+                                        onClick={openNewAddressModal}
                                         className="text-primary font-medium hover:underline"
                                     >
                                         + Add Address
@@ -521,7 +539,7 @@ export function CheckoutPage() {
             {/* Address Edit Modal */}
             {showAddressModal && (
                 <AddressEditModal
-                    address={activeAddress}
+                    address={addressModalMode === 'edit' ? activeAddress : undefined}
                     onClose={() => setShowAddressModal(false)}
                     onSave={handleAddressUpdate}
                 />
