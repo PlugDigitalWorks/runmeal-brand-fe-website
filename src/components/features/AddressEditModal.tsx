@@ -2,10 +2,13 @@
 
 import React, { useState, useCallback } from 'react';
 import { X } from 'lucide-react';
+import { AxiosError } from 'axios';
 import { Address, UpdateAddressDto } from '@/types/address';
+import { ApiResponse } from '@/types/auth';
 import { userService } from '@/services/user.service';
 import { toast } from 'sonner';
-import { LocationPicker, GeocodedAddress, AddressComponent, Location } from '@/components/features/address/LocationPicker';
+import { LocationPicker, GeocodedAddress, Location } from '@/components/features/address/LocationPicker';
+import { extractStreetAndBuilding, getAddressComponent } from '@/lib/address-parsing';
 
 interface AddressEditModalProps {
     address?: Address;
@@ -43,15 +46,14 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
 
     const handleAddressSelect = useCallback((geocodedAddress: GeocodedAddress) => {
         const components = geocodedAddress.address_components;
-        const getComponent = (type: string) => components.find((c: AddressComponent) => c.types.includes(type))?.long_name || '';
+        const getComponent = (type: string) => getAddressComponent(components, type);
 
         const administrativeAreaLevel1 = getComponent('administrative_area_level_1'); // Province/City usually
         const administrativeAreaLevel2 = getComponent('administrative_area_level_2');
         const locality = getComponent('locality'); // District usually
         const sublocality = getComponent('sublocality');
         const postalCode = getComponent('postal_code');
-        const route = getComponent('route');
-        const streetNumber = getComponent('street_number');
+        const { street, building } = extractStreetAndBuilding(geocodedAddress);
 
         // Logic to map Google Maps components to our fields
         // This maps roughly to what typical Turkish addresses expect + generic fallback
@@ -71,8 +73,8 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
 
         setFormData(prev => ({
             ...prev,
-            street: route || prev.street,
-            buildingNumber: streetNumber || prev.buildingNumber,
+            street: street || prev.street,
+            buildingNumber: building || prev.buildingNumber,
             postalCode: postalCode || prev.postalCode,
             district: district || prev.district,
             province: province || prev.province,
@@ -101,9 +103,10 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
             }
 
             onSave();
-        } catch (error: any) {
+        } catch (error) {
+            const axiosError = error as AxiosError<ApiResponse<unknown>>;
             console.error('Save address error:', error);
-            toast.error(error.response?.data?.message || 'Failed to save address');
+            toast.error(axiosError.response?.data?.message || 'Failed to save address');
         } finally {
             setIsLoading(false);
         }

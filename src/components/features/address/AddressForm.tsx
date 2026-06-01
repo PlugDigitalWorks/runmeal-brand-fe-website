@@ -7,61 +7,15 @@ import { ApiResponse } from '@/types/auth';
 import { userService } from '@/services/user.service';
 import { AxiosError } from 'axios';
 import { Save, Loader2 } from 'lucide-react'; // Added Loader2 for loading state
-import { LocationPicker, GeocodedAddress, AddressComponent, Location } from './LocationPicker';
+import { LocationPicker, GeocodedAddress, Location } from './LocationPicker';
 import { AddressSelects } from './AddressSelects';
 import { Country, State, City } from 'country-state-city';
 import { useCallback, useRef, useEffect, useState } from 'react';
+import { extractStreetAndBuilding, getAddressComponent, normalizeLocationName } from '@/lib/address-parsing';
 
 // Helper to normalize strings for comparison
 const normalizeName = (name: string) => {
-    return name.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/ı/g, 'i')
-        .replace(/i/g, 'i')
-        .trim();
-};
-
-const looksLikeStreetSegment = (segment: string) =>
-    /(cad|caddesi|sok|sokak|sk\.|mah|mahalle|bulvar|blv|street|st\.|avenue|ave|road|rd\.|no[:.\s]*\d)/i.test(segment);
-
-const extractStreetAndBuilding = (address: GeocodedAddress) => {
-    const components = address.address_components;
-    const getComponent = (type: string) => components.find((c: AddressComponent) => c.types.includes(type))?.long_name || '';
-
-    const route = getComponent('route');
-    const streetNumber = getComponent('street_number');
-    const neighborhood = getComponent('neighborhood');
-    const sublocality = getComponent('sublocality');
-    const administrativeAreaLevel2 = getComponent('administrative_area_level_2');
-    const locality = getComponent('locality');
-    const premise = getComponent('premise');
-
-    const segments = address.formatted_address
-        .split(',')
-        .map((segment) => segment.trim())
-        .filter(Boolean);
-
-    const streetSegment =
-        route ||
-        segments.find(looksLikeStreetSegment) ||
-        neighborhood ||
-        sublocality ||
-        premise ||
-        administrativeAreaLevel2 ||
-        locality ||
-        '';
-
-    const street = route || streetSegment;
-    const building =
-        streetNumber ||
-        streetSegment.match(/\bNo[:.\s-]*([0-9A-Za-z/-]+)/i)?.[1] ||
-        streetSegment.match(/\b([0-9A-Za-z/-]+)\b$/)?.[1] ||
-        '';
-
-    return {
-        street: street.replace(/\s*\bNo[:.\s-]*[0-9A-Za-z/-]+\b/i, '').trim(),
-        building,
-    };
+    return normalizeLocationName(name)
 };
 
 // Schema for Address
@@ -174,7 +128,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         ignoreSearchRef.current = true;
 
         const components = address.address_components;
-        const getComponent = (type: string) => components.find((c: AddressComponent) => c.types.includes(type))?.long_name || '';
+        const getComponent = (type: string) => getAddressComponent(components, type);
 
         const countryRaw = getComponent('country');
         const administrativeAreaLevel1 = getComponent('administrative_area_level_1');

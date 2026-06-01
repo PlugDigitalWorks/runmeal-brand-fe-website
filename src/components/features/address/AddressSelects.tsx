@@ -2,6 +2,7 @@
 
 import { Country, State, City } from 'country-state-city';
 import { Control, Controller, UseFormSetValue, FieldValues, FieldErrors, Path, PathValue } from 'react-hook-form';
+import { normalizeLocationName } from '@/lib/address-parsing';
 
 export interface AddressLocationFields {
     countryCode: string;
@@ -25,7 +26,7 @@ export function AddressSelects<T extends FieldValues & AddressLocationFields>({ 
     const selectedCountryCode = currentCountry;
     const states = selectedCountryCode ? State.getStatesOfCountry(selectedCountryCode) : [];
 
-    const selectedStateCode = states.find(s => s.name === currentState)?.isoCode;
+    const selectedStateCode = states.find((state) => normalizeLocationName(state.name) === normalizeLocationName(currentState || ''))?.isoCode;
 
     const cities = (selectedCountryCode && selectedStateCode)
         ? City.getCitiesOfState(selectedCountryCode, selectedStateCode)
@@ -103,7 +104,7 @@ export function AddressSelects<T extends FieldValues & AddressLocationFields>({ 
                                     field.onChange(e);
                                     setValue("district" as Path<T>, '' as PathValue<T, Path<T>>);
 
-                                    const s = states.find(x => x.name === e.target.value);
+                                    const s = states.find(x => normalizeLocationName(x.name) === normalizeLocationName(e.target.value));
                                     if (s && s.latitude && s.longitude && onLocationChange) {
                                         onLocationChange(Number(s.latitude), Number(s.longitude));
                                     }
@@ -155,7 +156,7 @@ export function AddressSelects<T extends FieldValues & AddressLocationFields>({ 
                                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                                 onChange={(e) => {
                                     field.onChange(e);
-                                    const c = cities.find(x => x.name === e.target.value);
+                                    const c = cities.find(x => normalizeLocationName(x.name) === normalizeLocationName(e.target.value));
                                     if (c && c.latitude && c.longitude && onLocationChange) {
                                         onLocationChange(Number(c.latitude), Number(c.longitude));
                                     }
