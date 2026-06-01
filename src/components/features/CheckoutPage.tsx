@@ -7,7 +7,7 @@ import { useUser } from '@/context/UserContext';
 import { useCart } from '@/context/CartContext';
 import { useBranch } from '@/context/BranchContext';
 import { paymentService } from '@/services/payment.service';
-import { User, MapPin, ShoppingBag, CreditCard, Edit2, Phone, Mail, ChevronLeft, Plus } from 'lucide-react';
+import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
 import { walletService, WalletBalance } from '@/services/wallet.service';
@@ -254,44 +254,39 @@ export function CheckoutPage() {
                                         <p className="font-medium text-zinc-800">{user?.email}</p>
                                     </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-zinc-500 mb-1">Phone Number</p>
-                                    <div className="flex items-center gap-2">
-                                        <Phone size={14} className="text-zinc-400" />
-                                        <p className="font-medium text-zinc-800">
-                                            {user?.phoneNumber || <span className="text-zinc-400 italic">Not provided</span>}
-                                        </p>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Address Card */}
                     <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
-                        <div className="bg-primary p-4 flex items-center gap-3 text-white">
-                            <MapPin size={20} />
-                            <h2 className="font-bold text-lg">Delivery Address</h2>
+                        <div className="bg-primary p-4 flex items-center justify-between text-white">
+                            <div className="flex items-center gap-3">
+                                <MapPin size={20} />
+                                <h2 className="font-bold text-lg">Delivery Address</h2>
+                            </div>
+                            {activeAddress && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={openNewAddressModal}
+                                        className="flex items-center gap-1.5 text-sm font-medium border border-white/25 bg-white/12 text-white hover:bg-white/18 px-3 py-1.5 rounded-md transition-colors"
+                                    >
+                                        <Plus size={14} />
+                                        New Address
+                                    </button>
+                                    <button
+                                        onClick={openEditAddressModal}
+                                        className="flex items-center gap-1.5 text-sm font-medium border border-white/30 bg-white text-primary hover:bg-orange-50 px-3 py-1.5 rounded-md transition-colors"
+                                    >
+                                        <Edit2 size={14} />
+                                        Edit
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <div className="p-5">
                             {activeAddress ? (
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <button
-                                            onClick={openNewAddressModal}
-                                            className="flex items-center gap-1 text-sm border border-zinc-200 bg-white hover:bg-zinc-50 px-3 py-1.5 rounded transition-colors text-zinc-700"
-                                        >
-                                            <Plus size={14} />
-                                            New Address
-                                        </button>
-                                        <button
-                                            onClick={openEditAddressModal}
-                                            className="flex items-center gap-1 text-sm bg-primary/10 hover:bg-primary/15 text-primary px-3 py-1.5 rounded transition-colors"
-                                        >
-                                            <Edit2 size={14} />
-                                            Edit
-                                        </button>
-                                    </div>
+                                <div className="space-y-2">
                                     <div className="space-y-2">
                                         <p className="font-medium text-zinc-800">
                                             {activeAddress.street}, {activeAddress.buildingNumber}
