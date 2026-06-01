@@ -15,25 +15,18 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
     const placesLib = useMapsLibrary('places');
     const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
     const requestIdRef = useRef(0);
-    const lastSyncedInitialValueRef = useRef(initialValue || '');
+    const hasManualValueRef = useRef(false);
     const [predictions, setPredictions] = useState<google.maps.places.PlacePrediction[]>([]);
     const [isOpen, setIsOpen] = useState(false);
 
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const nextInitialValue = initialValue || '';
-        const lastSyncedInitialValue = lastSyncedInitialValueRef.current;
-
-        if (
-            nextInitialValue &&
-            (inputValue === '' || inputValue === lastSyncedInitialValue)
-        ) {
+        if (!hasManualValueRef.current && initialValue) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
-            setInputValue(nextInitialValue);
+            setInputValue(initialValue);
         }
-        lastSyncedInitialValueRef.current = nextInitialValue;
-    }, [initialValue, inputValue]);
+    }, [initialValue]);
 
     useEffect(() => {
         if (!placesLib) return;
@@ -53,6 +46,7 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
 
     const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
+        hasManualValueRef.current = true;
         setInputValue(value);
 
         if (!value.trim()) {
@@ -108,6 +102,7 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
                 place.formattedAddress ||
                 prediction.text.toString();
 
+            hasManualValueRef.current = true;
             setInputValue(formattedAddress);
             setPredictions([]);
             setIsOpen(false);
