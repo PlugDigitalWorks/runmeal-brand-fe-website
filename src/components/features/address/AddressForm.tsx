@@ -21,6 +21,49 @@ const normalizeName = (name: string) => {
         .trim();
 };
 
+const looksLikeStreetSegment = (segment: string) =>
+    /(cad|caddesi|sok|sokak|sk\.|mah|mahalle|bulvar|blv|street|st\.|avenue|ave|road|rd\.|no[:.\s]*\d)/i.test(segment);
+
+const extractStreetAndBuilding = (address: GeocodedAddress) => {
+    const components = address.address_components;
+    const getComponent = (type: string) => components.find((c: AddressComponent) => c.types.includes(type))?.long_name || '';
+
+    const route = getComponent('route');
+    const streetNumber = getComponent('street_number');
+    const neighborhood = getComponent('neighborhood');
+    const sublocality = getComponent('sublocality');
+    const administrativeAreaLevel2 = getComponent('administrative_area_level_2');
+    const locality = getComponent('locality');
+    const premise = getComponent('premise');
+
+    const segments = address.formatted_address
+        .split(',')
+        .map((segment) => segment.trim())
+        .filter(Boolean);
+
+    const streetSegment =
+        route ||
+        segments.find(looksLikeStreetSegment) ||
+        neighborhood ||
+        sublocality ||
+        premise ||
+        administrativeAreaLevel2 ||
+        locality ||
+        '';
+
+    const street = route || streetSegment;
+    const building =
+        streetNumber ||
+        streetSegment.match(/\bNo[:.\s-]*([0-9A-Za-z/-]+)/i)?.[1] ||
+        streetSegment.match(/\b([0-9A-Za-z/-]+)\b$/)?.[1] ||
+        '';
+
+    return {
+        street: street.replace(/\s*\bNo[:.\s-]*[0-9A-Za-z/-]+\b/i, '').trim(),
+        building,
+    };
+};
+
 // Schema for Address
 export const addressSchema = z.object({
     countryCode: z.string().min(1, 'Country is required'),
@@ -139,8 +182,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         const locality = getComponent('locality');
         const sublocality = getComponent('sublocality');
         const postalCode = getComponent('postal_code');
-        const route = getComponent('route');
-        const streetNumber = getComponent('street_number');
+        const { street, building } = extractStreetAndBuilding(address);
 
         // 1. Match Country
         const allCountries = Country.getAllCountries();
@@ -190,10 +232,6 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         // Fallback
         if (!finalCity && possibleCities.length > 0) finalCity = possibleCities[0];
         if (!finalState && administrativeAreaLevel1) finalState = administrativeAreaLevel1;
-
-        // Address Line
-        const street = route ? `${route}` : '';
-        const building = streetNumber;
 
         setValue('countryCode', countryCode);
         setValue('province', finalState);
