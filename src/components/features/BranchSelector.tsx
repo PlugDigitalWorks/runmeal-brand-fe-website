@@ -5,7 +5,7 @@ import { useBranch } from '@/context/BranchContext';
 import { useUser } from '@/context/UserContext';
 import { ChevronDown } from 'lucide-react';
 import { AddressSearch } from '@/components/features/AddressSearch';
-import { Branch, BranchDetails } from '@/types/branch';
+import type { Branch } from '@/types/branch';
 
 // Helper to get day name
 const getDayName = () => {
@@ -14,7 +14,7 @@ const getDayName = () => {
 };
 
 export function BranchSelector() {
-    const { selectedBranch, branches, selectBranch, isLoading, searchBranches } = useBranch();
+    const { selectedBranch, branches, selectBranch, isLoading, searchedAddress, searchBranches } = useBranch();
     const { addresses } = useUser(); // Get addresses from UserContext
     const [nearbyBranches, setNearbyBranches] = React.useState<Branch[]>([]);
     const [isSearching, setIsSearching] = React.useState(false);
@@ -27,7 +27,6 @@ export function BranchSelector() {
 
         // Parse Working Hours
         const today = getDayName();
-        // @ts-ignore
         const todayHours = selectedBranch.business_hour?.[today];
         let workingHours = 'Closed Today';
 
@@ -63,6 +62,7 @@ export function BranchSelector() {
     const activeAddressString = activeAddress
         ? `${activeAddress.street}, ${activeAddress.district}, ${activeAddress.province}`
         : undefined;
+    const searchInputValue = searchedAddress?.formattedAddress || activeAddressString;
 
     // Click outside handler to close dropdown
     React.useEffect(() => {
@@ -80,10 +80,10 @@ export function BranchSelector() {
         setNearbyBranches(branches);
     }, [branches]);
 
-    const handleAddressSelect = async (lat: number, lng: number, address: string) => {
+    const handleAddressSelect = async (address: Parameters<typeof searchBranches>[0]) => {
         setIsSearching(true);
         try {
-            await searchBranches(lat, lng, address);
+            await searchBranches(address);
             // Context updates branches, which triggers effect above to update nearbyBranches
         } catch (error) {
             console.error("Failed to fetch branches for address", error);
@@ -91,8 +91,6 @@ export function BranchSelector() {
             setIsSearching(false);
         }
     };
-
-    if (isLoading) return <div className="animate-pulse h-10 w-48 bg-zinc-100 rounded"></div>;
 
     return (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-zinc-100 mb-6">
@@ -105,13 +103,13 @@ export function BranchSelector() {
                         <AddressSearch
                             onAddressSelect={handleAddressSelect}
                             className="w-full max-w-md"
-                            initialValue={activeAddressString}
+                            initialValue={searchInputValue}
                         />
                     </div>
 
                     <div className="mb-4">
                         <h2 className="text-2xl font-bold text-zinc-800 mb-1">
-                            {selectedBranch ? selectedBranch.name : 'Branches available for order'}
+                            {selectedBranch ? selectedBranch.name : isLoading ? 'Loading branches...' : 'Branches available for order'}
                         </h2>
                         {/* Branch Selection Dropdown */}
                         <div className="relative inline-block" ref={dropdownRef}>

@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
 import { Search, MapPin } from 'lucide-react';
+import type { AddressComponentLike, DeliveryAddressSelection } from '@/lib/address-parsing';
 
 interface AddressSearchProps {
     className?: string;
-    onAddressSelect?: (lat: number, lng: number, address: string) => void;
+    onAddressSelect?: (address: DeliveryAddressSelection) => void;
     initialValue?: string;
 }
 
@@ -92,7 +93,7 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
     const handleSelectPrediction = async (prediction: google.maps.places.PlacePrediction) => {
         try {
             const place = prediction.toPlace();
-            await place.fetchFields({ fields: ['location', 'formattedAddress', 'displayName'] });
+            await place.fetchFields({ fields: ['location', 'formattedAddress', 'displayName', 'addressComponents'] });
 
             if (!place.location) return;
 
@@ -101,6 +102,11 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
             const formattedAddress =
                 place.formattedAddress ||
                 prediction.text.toString();
+            const addressComponents: AddressComponentLike[] | undefined = place.addressComponents?.map((component) => ({
+                long_name: component.longText || '',
+                short_name: component.shortText || '',
+                types: component.types,
+            }));
 
             hasManualValueRef.current = true;
             setInputValue(formattedAddress);
@@ -108,7 +114,12 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
             setIsOpen(false);
             sessionTokenRef.current = placesLib ? new placesLib.AutocompleteSessionToken() : null;
 
-            onAddressSelect?.(lat, lng, formattedAddress);
+            onAddressSelect?.({
+                latitude: lat,
+                longitude: lng,
+                formattedAddress,
+                addressComponents,
+            });
         } catch (error) {
             console.warn('Place details fetch failed', error);
         }
@@ -123,7 +134,7 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
                     className="w-full h-11 pl-10 pr-4 bg-white border border-zinc-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg text-sm text-zinc-900 placeholder:text-zinc-400 shadow-sm"
                     value={inputValue}
                     onChange={handleInputChange}
-                    onFocus={() => inputValue && setIsOpen(true)}
+                    onFocus={() => predictions.length > 0 && setIsOpen(true)}
                 />
             </div>
 

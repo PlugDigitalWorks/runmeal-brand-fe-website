@@ -32,6 +32,11 @@ export const userService = {
     return response.data.data;
   },
 
+  async setActiveAddress(id: string) {
+    const response = await api.patch<ApiResponse<{ message: string }>>(`/addresses/${id}/set-active`);
+    return response.data.data;
+  },
+
   async deleteAddress(id: string) {
     const response = await api.delete<void>(`/addresses/${id}`);
     return response.data;

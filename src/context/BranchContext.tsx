@@ -2,33 +2,34 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { branchService } from '@/services/branch.service';
-// import { userService } from '@/services/user.service'; // Removed unused
-import { Branch } from '@/types/branch';
+import { userService } from '@/services/user.service';
+import {
+    buildAddressDtoFromSelection,
+    isSameDeliveryLocation,
+} from '@/lib/address-parsing';
+import type { DeliveryAddressSelection } from '@/lib/address-parsing';
+import type { Branch } from '@/types/branch';
 import { useAuth } from './AuthContext';
 import { useUser } from './UserContext';
-
-interface GuestAddress {
-    latitude: number;
-    longitude: number;
-    formattedAddress: string;
-}
 
 interface BranchContextType {
     selectedBranch: Branch | null;
     branches: Branch[];
     isLoading: boolean;
+    searchedAddress: DeliveryAddressSelection | null;
     selectBranch: (branch: Branch) => void;
-    searchBranches: (lat: number, lng: number, addressString?: string) => Promise<void>;
+    searchBranches: (address: DeliveryAddressSelection) => Promise<void>;
 }
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
     const { isAuthenticated } = useAuth();
-    const { addresses, isLoading: isUserLoading } = useUser();
+    const { addresses, isLoading: isUserLoading, refreshAddresses } = useUser();
     const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
     const [branches, setBranches] = useState<Branch[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [searchedAddress, setSearchedAddress] = useState<DeliveryAddressSelection | null>(null);
 
     useEffect(() => {
         const initBranch = async () => {
@@ -46,6 +47,10 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
                                 const branch = JSON.parse(guestBranch);
                                 setSelectedBranch(branch);
                                 setBranches([branch]);
+                                const guestAddress = localStorage.getItem('guest_address');
+                                if (guestAddress) {
+                                    setSearchedAddress(JSON.parse(guestAddress));
+                                }
                                 return;
                             }
 
@@ -76,10 +81,19 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
                     const activeAddress = addresses.find(a => a.isActive);
                     if (activeAddress) {
                         const data = await branchService.getNearbyBranches(activeAddress.latitude, activeAddress.longitude);
-                        setBranches(data || []);
-                        if (data && data.length > 0) {
-                            setSelectedBranch(data[0]);
-                        }
+                        const nextBranches = data || [];
+                        setBranches(nextBranches);
+                        setSelectedBranch((currentBranch) => {
+                            if (nextBranches.length === 0) return null;
+                            return nextBranches.find((branch) => branch.id === currentBranch?.id) || nextBranches[0];
+                        });
+                        setSearchedAddress((currentAddress) =>
+                            currentAddress || {
+                                latitude: activeAddress.latitude,
+                                longitude: activeAddress.longitude,
+                                formattedAddress: [activeAddress.street, activeAddress.district, activeAddress.province].filter(Boolean).join(', '),
+                            },
+                        );
                     }
                 } catch (err) {
                     console.error("Failed to init user branch", err);
@@ -101,38 +115,55 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const searchBranches = async (lat: number, lng: number, addressString?: string) => {
-        setIsLoading(true);
+    const syncSearchAddress = async (address: DeliveryAddressSelection) => {
+        if (!isAuthenticated) {
+            localStorage.setItem('guest_address', JSON.stringify(address));
+            return;
+        }
+
+        const matchingAddress = addresses.find((savedAddress) =>
+            isSameDeliveryLocation(savedAddress, address),
+        );
+
+        if (matchingAddress) {
+            if (!matchingAddress.isActive) {
+                await userService.setActiveAddress(matchingAddress.id);
+            }
+        } else {
+            await userService.createAddress(buildAddressDtoFromSelection(address));
+        }
+
+        await refreshAddresses();
+    };
+
+    const searchBranches = async (address: DeliveryAddressSelection) => {
+        setSearchedAddress(address);
         try {
-            const data = await branchService.getNearbyBranches(lat, lng);
+            const data = await branchService.getNearbyBranches(address.latitude, address.longitude);
             setBranches(data || []);
             // Optional: Auto select first?
             // Usually search implies we want to see options, but auto-selecting the nearest is often good UX.
             if (data && data.length > 0) {
                 setSelectedBranch(data[0]);
             } else {
-                setSelectedBranch(null as any);
-            }
-
-            // Save guest address for sync on login
-            if (!isAuthenticated && addressString) {
-                const guestAddress: GuestAddress = {
-                    latitude: lat,
-                    longitude: lng,
-                    formattedAddress: addressString
-                };
-                localStorage.setItem('guest_address', JSON.stringify(guestAddress));
+                setSelectedBranch(null);
             }
         } catch (err) {
             console.error("Manual search failed", err);
             setBranches([]);
-        } finally {
-            setIsLoading(false);
+            setSelectedBranch(null);
+            return;
+        }
+
+        try {
+            await syncSearchAddress(address);
+        } catch (err) {
+            console.error("Failed to sync searched address", err);
         }
     };
 
     return (
-        <BranchContext.Provider value={{ selectedBranch, branches, isLoading, selectBranch, searchBranches }}>
+        <BranchContext.Provider value={{ selectedBranch, branches, isLoading, searchedAddress, selectBranch, searchBranches }}>
             {children}
         </BranchContext.Provider>
     );

@@ -3,6 +3,7 @@ export interface Address {
   countryCode: string;
   province: string;
   district: string;
+  neighborhood?: string;
   phoneE164?: string | null;
   postalCode: string;
   street: string;
@@ -23,6 +24,7 @@ export interface CreateAddressDto {
   countryCode: string;
   province: string;
   district: string;
+  neighborhood?: string;
   phoneE164?: string;
   postalCode: string;
   street: string;
@@ -31,6 +33,7 @@ export interface CreateAddressDto {
   latitude: number;
   longitude: number;
   isActive?: boolean;
+  title?: string;
 }
 
 export interface UpdateAddressDto extends Partial<CreateAddressDto> {

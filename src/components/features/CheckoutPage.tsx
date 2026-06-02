@@ -7,11 +7,37 @@ import { useUser } from '@/context/UserContext';
 import { useCart } from '@/context/CartContext';
 import { useBranch } from '@/context/BranchContext';
 import { paymentService } from '@/services/payment.service';
-import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus } from 'lucide-react';
+import { branchService } from '@/services/branch.service';
+import { userService } from '@/services/user.service';
+import type { Address } from '@/types/address';
+import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
 import { walletService, WalletBalance } from '@/services/wallet.service';
 import { Wallet, Ticket, X } from 'lucide-react';
+
+interface ApiErrorLike {
+    response?: {
+        data?: {
+            message?: string;
+        };
+    };
+}
+
+interface AvailablePromotionItem {
+    applicable: boolean;
+    unapplicableReason?: string | null;
+    promotion: {
+        name: string;
+        description?: string | null;
+        couponCode?: string | null;
+    };
+}
+
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || fallback;
+};
 
 export function CheckoutPage() {
     const router = useRouter();
@@ -33,9 +59,20 @@ export function CheckoutPage() {
     const [walletAppliedAmount, setWalletAppliedAmount] = useState(0);
     const [isCouponLoading, setIsCouponLoading] = useState(false);
     const [showCouponModal, setShowCouponModal] = useState(false);
+    const [deliverableAddressIds, setDeliverableAddressIds] = useState<Set<string>>(new Set());
+    const [isCheckingAddresses, setIsCheckingAddresses] = useState(true);
+    const [isChangingAddress, setIsChangingAddress] = useState(false);
 
     const activeAddress = addresses.find(a => a.isActive);
     const cartItems = cart?.items || [];
+    const targetBranchId = cart?.branchId || selectedBranch?.id;
+    const deliverableAddresses = React.useMemo(
+        () => addresses.filter((address) => deliverableAddressIds.has(address.id)),
+        [addresses, deliverableAddressIds],
+    );
+    const isActiveAddressDeliverable = activeAddress
+        ? deliverableAddressIds.has(activeAddress.id)
+        : false;
 
     // Redirect if not authenticated
     React.useEffect(() => {
@@ -67,13 +104,60 @@ export function CheckoutPage() {
         }
     }, [isAuthenticated]);
 
+    React.useEffect(() => {
+        let isCurrent = true;
+
+        const checkDeliverableAddresses = async () => {
+            if (!targetBranchId || addresses.length === 0) {
+                setDeliverableAddressIds(new Set());
+                setIsCheckingAddresses(false);
+                return;
+            }
+
+            setIsCheckingAddresses(true);
+            try {
+                const results = await Promise.all(
+                    addresses.map(async (address) => {
+                        if (!Number.isFinite(address.latitude) || !Number.isFinite(address.longitude)) {
+                            return [address.id, false] as const;
+                        }
+
+                        try {
+                            const nearbyBranches = await branchService.getNearbyBranches(address.latitude, address.longitude);
+                            return [address.id, nearbyBranches.some((branch) => branch.id === targetBranchId)] as const;
+                        } catch (error) {
+                            console.error(`Failed to check delivery coverage for address ${address.id}`, error);
+                            return [address.id, false] as const;
+                        }
+                    }),
+                );
+
+                if (!isCurrent) return;
+
+                setDeliverableAddressIds(
+                    new Set(results.filter(([, isDeliverable]) => isDeliverable).map(([addressId]) => addressId)),
+                );
+            } finally {
+                if (isCurrent) {
+                    setIsCheckingAddresses(false);
+                }
+            }
+        };
+
+        checkDeliverableAddresses();
+
+        return () => {
+            isCurrent = false;
+        };
+    }, [addresses, targetBranchId]);
+
     const handleApplyCoupon = async () => {
         if (!couponCode.trim()) return;
         setIsCouponLoading(true);
         try {
             await applyCoupon(couponCode);
             setCouponCode('');
-        } catch (error) {
+        } catch {
             // Error handled in context
         } finally {
             setIsCouponLoading(false);
@@ -85,7 +169,7 @@ export function CheckoutPage() {
         try {
             await applyCoupon(code);
             setShowCouponModal(false);
-        } catch (error) {
+        } catch {
             // Error handled in context
         } finally {
             setIsCouponLoading(false);
@@ -150,8 +234,8 @@ export function CheckoutPage() {
             return;
         }
 
-        if (!activeAddress) {
-            toast.error('Please add a delivery address');
+        if (!activeAddress || !isActiveAddressDeliverable) {
+            toast.error('Please select a delivery address served by this branch');
             return;
         }
 
@@ -168,9 +252,9 @@ export function CheckoutPage() {
             } else {
                 toast.error('Payment initialization failed');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Checkout error:', error);
-            toast.error(error.response?.data?.message || 'Failed to initialize payment');
+            toast.error(getApiErrorMessage(error, 'Failed to initialize payment'));
         } finally {
             setIsProcessing(false);
         }
@@ -190,6 +274,22 @@ export function CheckoutPage() {
     const openEditAddressModal = () => {
         setAddressModalMode('edit');
         setShowAddressModal(true);
+    };
+
+    const handleSelectAddress = async (address: Address) => {
+        if (address.id === activeAddress?.id || isChangingAddress) return;
+
+        setIsChangingAddress(true);
+        try {
+            await userService.setActiveAddress(address.id);
+            await refreshAddresses();
+            toast.success('Delivery address selected');
+        } catch (error: unknown) {
+            console.error('Failed to select delivery address', error);
+            toast.error(getApiErrorMessage(error, 'Failed to select delivery address'));
+        } finally {
+            setIsChangingAddress(false);
+        }
     };
 
     // Show loading state while data is loading
@@ -260,20 +360,20 @@ export function CheckoutPage() {
 
                     {/* Address Card */}
                     <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
-                        <div className="bg-primary p-4 flex items-center justify-between text-white">
+                        <div className="bg-primary p-4 flex flex-col gap-3 text-white sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-3">
                                 <MapPin size={20} />
                                 <h2 className="font-bold text-lg">Delivery Address</h2>
                             </div>
-                            {activeAddress && (
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={openNewAddressModal}
-                                        className="flex items-center gap-1.5 text-sm font-medium border border-white/25 bg-white/12 text-white hover:bg-white/18 px-3 py-1.5 rounded-md transition-colors"
-                                    >
-                                        <Plus size={14} />
-                                        New Address
-                                    </button>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={openNewAddressModal}
+                                    className="flex items-center gap-1.5 text-sm font-medium border border-white/25 bg-white/12 text-white hover:bg-white/18 px-3 py-1.5 rounded-md transition-colors"
+                                >
+                                    <Plus size={14} />
+                                    New Address
+                                </button>
+                                {activeAddress && (
                                     <button
                                         onClick={openEditAddressModal}
                                         className="flex items-center gap-1.5 text-sm font-medium border border-white/30 bg-white text-primary hover:bg-orange-50 px-3 py-1.5 rounded-md transition-colors"
@@ -281,31 +381,63 @@ export function CheckoutPage() {
                                         <Edit2 size={14} />
                                         Edit
                                     </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                         <div className="p-5">
-                            {activeAddress ? (
-                                <div className="space-y-2">
-                                    <div className="space-y-2">
-                                        <p className="font-medium text-zinc-800">
-                                            {activeAddress.street}, {activeAddress.buildingNumber}
-                                            {activeAddress.apartmentNumber !== '-' && ` / ${activeAddress.apartmentNumber}`}
-                                        </p>
-                                        <p className="text-sm text-zinc-600">
-                                            {activeAddress.district}, {activeAddress.province}
-                                        </p>
-                                        {activeAddress.postalCode && activeAddress.postalCode !== '00000' && (
-                                            <p className="text-sm text-zinc-500">{activeAddress.postalCode}</p>
-                                        )}
-                                        {activeAddress.phoneE164 && (
-                                            <p className="text-sm text-zinc-500">{activeAddress.phoneE164}</p>
-                                        )}
-                                    </div>
+                            {isCheckingAddresses ? (
+                                <div className="py-4 text-sm text-zinc-500">Checking delivery addresses...</div>
+                            ) : deliverableAddresses.length > 0 ? (
+                                <div className="space-y-3">
+                                    {deliverableAddresses.map((address) => {
+                                        const isSelected = address.id === activeAddress?.id;
+
+                                        return (
+                                            <button
+                                                key={address.id}
+                                                type="button"
+                                                aria-pressed={isSelected}
+                                                disabled={isChangingAddress}
+                                                onClick={() => handleSelectAddress(address)}
+                                                className={`w-full text-left rounded-lg border p-4 transition-colors ${isSelected
+                                                    ? 'border-primary bg-orange-50/60'
+                                                    : 'border-zinc-200 bg-white hover:border-primary/50 hover:bg-orange-50/30'
+                                                    } ${isChangingAddress ? 'opacity-70 cursor-wait' : ''}`}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${isSelected ? 'bg-primary text-white' : 'bg-orange-50 text-primary'}`}>
+                                                        <MapPin size={18} />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1 space-y-1">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <p className="font-medium text-zinc-800 break-words">
+                                                                {address.street}, {address.buildingNumber}
+                                                                {address.apartmentNumber !== '-' && ` / ${address.apartmentNumber}`}
+                                                            </p>
+                                                            {isSelected && <CheckCircle size={18} className="shrink-0 text-primary" />}
+                                                        </div>
+                                                        <p className="text-sm text-zinc-600">
+                                                            {address.district}, {address.province}
+                                                        </p>
+                                                        {address.postalCode && address.postalCode !== '00000' && (
+                                                            <p className="text-sm text-zinc-500">{address.postalCode}</p>
+                                                        )}
+                                                        {address.phoneE164 && (
+                                                            <p className="text-sm text-zinc-500">{address.phoneE164}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="text-center py-4">
-                                    <p className="text-zinc-500 mb-3">No delivery address found</p>
+                                    <p className="text-zinc-500 mb-3">
+                                        {addresses.length > 0
+                                            ? 'No saved address is served by this branch.'
+                                            : 'No delivery address found'}
+                                    </p>
                                     <button
                                         onClick={openNewAddressModal}
                                         className="text-primary font-medium hover:underline"
@@ -472,26 +604,26 @@ export function CheckoutPage() {
 
                             {/* Cart Items */}
                             <div className="space-y-3 mb-4">
-                                {cartItems.map((item: any) => (
+                                {cartItems.map((item) => (
                                     <div key={item.id} className="flex justify-between items-start">
                                         <div className="flex-1">
                                             <p className="font-medium text-zinc-800 text-sm">
-                                                {item.qty || item.quantity}x {item.productName || item.name}
+                                                {item.qty}x {item.productName}
                                             </p>
                                             {/* Options */}
-                                            {item.options && item.options.length > 0 && (
+                                            {(item.options ?? []).length > 0 && (
                                                 <div className="text-xs text-zinc-500 mt-0.5">
-                                                    {item.options.map((group: any, idx: number) => (
+                                                    {(item.options ?? []).map((group, idx: number) => (
                                                         <span key={idx}>
-                                                            {group.selections?.map((sel: any) => sel.optionName).join(', ')}
-                                                            {idx < item.options.length - 1 && ' • '}
+                                                            {group.selections?.map((sel) => sel.optionName).join(', ')}
+                                                            {idx < (item.options?.length ?? 0) - 1 && ' • '}
                                                         </span>
                                                     ))}
                                                 </div>
                                             )}
                                         </div>
                                         <p className="font-medium text-zinc-800 text-sm">
-                                            {((item.price || 0) * (item.qty || item.quantity)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL
+                                            {((item.price || 0) * item.qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL
                                         </p>
                                     </div>
                                 ))}
@@ -540,7 +672,7 @@ export function CheckoutPage() {
                     {/* Checkout Button */}
                     <button
                         onClick={handleCheckout}
-                        disabled={isProcessing || !activeAddress}
+                        disabled={isProcessing || isCheckingAddresses || !activeAddress || !isActiveAddressDeliverable}
                         className="w-full bg-primary text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isProcessing ? (
@@ -580,9 +712,11 @@ export function CheckoutPage() {
 
 function CouponListModal({ onClose, onApply }: { onClose: () => void; onApply: (code: string) => void }) {
     const { availablePromotions, checkAvailablePromotions } = useCart();
+    const promotionItems = availablePromotions as AvailablePromotionItem[];
 
     React.useEffect(() => {
         checkAvailablePromotions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -595,11 +729,11 @@ function CouponListModal({ onClose, onApply }: { onClose: () => void; onApply: (
                     </button>
                 </div>
                 <div className="p-4 overflow-y-auto">
-                    {availablePromotions.length === 0 ? (
+                    {promotionItems.length === 0 ? (
                         <p className="text-center text-zinc-500 py-4">No available coupons found.</p>
                     ) : (
                         <div className="space-y-3">
-                            {availablePromotions.map((item: any, idx: number) => (
+                            {promotionItems.map((item, idx: number) => (
                                 <div key={idx} className={`p-4 rounded-lg border ${item.applicable ? 'border-green-200 bg-green-50' : 'border-zinc-200 bg-zinc-50 opacity-70'}`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <h4 className="font-bold text-zinc-800">{item.promotion.name}</h4>
