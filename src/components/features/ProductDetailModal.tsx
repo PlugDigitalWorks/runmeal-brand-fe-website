@@ -246,7 +246,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                         <h2 className="text-2xl font-bold text-zinc-800">{product.name}</h2>
                         <div className="flex items-center gap-2 mt-1">
                             <span className="text-xl font-bold text-primary">{Number(product.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</span>
-                            {product.discountedPrice && <span className="text-sm text-zinc-400 line-through">{Number(product.price).toLocaleString('tr-TR')} TL</span>}
+                            {product.discountedPrice && <span className="text-sm text-zinc-400 line-through">{Number(product.discountedPrice).toLocaleString('tr-TR')} TL</span>}
                         </div>
                         <p className="mt-2 text-zinc-600 text-sm leading-relaxed">{product.description}</p>
                     </div>

@@ -95,6 +95,11 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
             return;
         }
 
+        if (!formData.apartmentNumber.trim()) {
+            toast.error('Apartment No is required');
+            return;
+        }
+
         setIsLoading(true);
         try {
             if (address?.id) {
@@ -182,15 +187,16 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                             <label className="block text-sm font-medium text-zinc-700 mb-1">
                                 Apartment No
                             </label>
-                        <input
-                            type="text"
-                            name="apartmentNumber"
-                            value={formData.apartmentNumber}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-zinc-900 placeholder:text-zinc-400"
-                            placeholder="Optional"
-                        />
-                    </div>
+                            <input
+                                type="text"
+                                name="apartmentNumber"
+                                value={formData.apartmentNumber}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-zinc-900 placeholder:text-zinc-400"
+                                placeholder="Apartment No"
+                                required
+                            />
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

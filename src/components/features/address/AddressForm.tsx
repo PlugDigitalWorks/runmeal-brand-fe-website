@@ -30,7 +30,7 @@ export const addressSchema = z.object({
     postalCode: z.string().min(1, 'Postal Code is required'),
     street: z.string().min(1, 'Street is required'),
     buildingNumber: z.string().min(1, 'Building is required'),
-    apartmentNumber: z.string().optional(),
+    apartmentNumber: z.string().trim().min(1, 'Apartment No is required'),
     latitude: z.any().transform(val => Number(val)),
     longitude: z.any().transform(val => Number(val)),
 });
@@ -279,7 +279,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                 <Input label="Building No" {...register('buildingNumber')} error={errors.buildingNumber?.message} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="Apartment" placeholder="Optional" {...register('apartmentNumber')} error={errors.apartmentNumber?.message} />
+                <Input label="Apartment No" placeholder="Apartment No" {...register('apartmentNumber')} error={errors.apartmentNumber?.message} />
             </div>
 
             <div className="flex justify-end pt-2 gap-2">

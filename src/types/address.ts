@@ -29,7 +29,7 @@ export interface CreateAddressDto {
   postalCode: string;
   street: string;
   buildingNumber: string;
-  apartmentNumber?: string;
+  apartmentNumber: string;
   latitude: number;
   longitude: number;
   isActive?: boolean;
