@@ -10,6 +10,7 @@ import { AddressForm } from '@/components/features/address/AddressForm';
 import { orderService } from '@/services/order.service';
 import { Order, OrderDetails } from '@/services/order.service';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
 
 function ProfileContent() {
     const router = useRouter();
@@ -216,7 +217,7 @@ function ProfileContent() {
                                                         </div>
                                                         <div className="text-right">
                                                             <div className="font-bold text-zinc-900">
-                                                                ₺{Number(order.totalPrice).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                                                {formatCurrency(order.totalPrice)}
                                                             </div>
                                                             <div className={`text-xs px-2.5 py-0.5 rounded-full inline-block capitalize mt-1.5 font-medium
                                                         ${order.status === 'completed' ? 'bg-green-100 text-green-700' :
@@ -244,13 +245,13 @@ function ProfileContent() {
                                                                                     <span>{item.productName}</span>
                                                                                 </div>
                                                                                 <div className="text-zinc-900 font-medium whitespace-nowrap">
-                                                                                    ₺{Number(item.totalPrice || item.price || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                                                                    {formatCurrency(item.totalPrice || item.price || 0)}
                                                                                 </div>
                                                                             </div>
                                                                         ))}
                                                                         <div className="border-t border-zinc-200 mt-3 pt-3 flex justify-between items-center">
                                                                             <span className="text-sm font-medium text-zinc-900">Total</span>
-                                                                            <span className="text-base font-bold text-primary">₺{Number(orderDetails[order.id].totalPrice).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                                                            <span className="text-base font-bold text-primary">{formatCurrency(orderDetails[order.id].totalPrice)}</span>
                                                                         </div>
                                                                     </div>
                                                                 ) : (

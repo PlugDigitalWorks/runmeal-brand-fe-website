@@ -2,17 +2,28 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Product, ProductAddon, OptionGroup, ProductOptionGroupType } from '@/types/product';
+import { Product, OptionGroup, ProductOptionGroupType } from '@/types/product';
 import { useBranch } from '@/context/BranchContext';
 import { catalogService } from '@/services/catalog.service';
 import { X, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
+
+export type SelectedProductOption =
+    | { groupId: string; optionId: string; optionIds?: never }
+    | { groupId: string; optionIds: string[]; optionId?: never };
+
+export type SelectedProductAddon = {
+    id: string;
+    name: string;
+    price: number;
+};
 
 interface ProductDetailModalProps {
     product: Product | null;
     isOpen: boolean;
     onClose: () => void;
-    onAddToCart: (product: Product, quantity: number, options: any, addons: any) => void;
+    onAddToCart: (product: Product, quantity: number, options: SelectedProductOption[], addons: SelectedProductAddon[]) => void;
 }
 
 export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: ProductDetailModalProps) {
@@ -163,7 +174,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
         // The old structure expected "Option -> Value". Our new structure is "Group -> OptionItem".
         // We can map: Group -> Option (as OptionId), Item -> Value (as ValueId).
 
-        const optionsToSend: any[] = [];
+        const optionsToSend: SelectedProductOption[] = [];
 
         for (const group of optionGroups) {
             const selectedIds = selections[group.id] || [];
@@ -245,8 +256,8 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                     <div>
                         <h2 className="text-2xl font-bold text-zinc-800">{product.name}</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xl font-bold text-primary">{Number(product.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</span>
-                            {product.discountedPrice && <span className="text-sm text-zinc-400 line-through">{Number(product.discountedPrice).toLocaleString('tr-TR')} TL</span>}
+                            <span className="text-xl font-bold text-primary">{formatCurrency(product.price)}</span>
+                            {product.discountedPrice && <span className="text-sm text-zinc-400 line-through">{formatCurrency(product.discountedPrice)}</span>}
                         </div>
                         <p className="mt-2 text-zinc-600 text-sm leading-relaxed">{product.description}</p>
                     </div>
@@ -305,7 +316,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                                                 </div>
                                                 <div className="font-medium text-sm">
                                                     {opt.priceDelta > 0 ? (
-                                                        <span className="text-zinc-600">+{opt.priceDelta} TL</span>
+                                                        <span className="text-zinc-600">+{formatCurrency(opt.priceDelta)}</span>
                                                     ) : (
                                                         <span className="text-primary font-bold">Free</span>
                                                     )}
@@ -335,7 +346,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                                             />
                                             <span className="text-zinc-700">{addon.name}</span>
                                         </div>
-                                        <span className="text-sm font-medium text-zinc-600">+{addon.price} TL</span>
+                                        <span className="text-sm font-medium text-zinc-600">+{formatCurrency(addon.price)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -363,7 +374,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                         </div>
                         <div className="text-right">
                             <div className="text-xs text-zinc-400 font-medium uppercase tracking-wide">Total Amount</div>
-                            <div className="text-2xl font-bold text-primary">{calculateTotal().toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</div>
+                            <div className="text-2xl font-bold text-primary">{formatCurrency(calculateTotal())}</div>
                         </div>
                     </div>
 

@@ -5,6 +5,7 @@ import { useBranch } from '@/context/BranchContext';
 import { useUser } from '@/context/UserContext';
 import { ChevronDown } from 'lucide-react';
 import { AddressSearch } from '@/components/features/AddressSearch';
+import { formatCurrency } from '@/lib/utils';
 import type { Branch } from '@/types/branch';
 
 // Helper to get day name
@@ -151,7 +152,7 @@ export function BranchSelector() {
 
                     {selectedBranch && branchDetails && (
                         <div className="mt-4 text-sm text-zinc-500 space-y-1">
-                            <p>Minimum Delivery Amount: {branchDetails.minimumDeliveryAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} TL</p>
+                            <p>Minimum Delivery Amount: {formatCurrency(branchDetails.minimumDeliveryAmount)}</p>
                             <p>Payment: {branchDetails.paymentMethods.join(', ')}</p>
                             <p>{branchDetails.deliveryOptions.join(', ')}</p>
                         </div>

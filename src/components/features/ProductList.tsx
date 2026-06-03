@@ -10,7 +10,8 @@ import { useCart } from '@/context/CartContext';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { DEFAULT_BRAND_ID } from '@/lib/constants';
-import { ProductDetailModal } from './ProductDetailModal';
+import { formatCurrency } from '@/lib/utils';
+import { ProductDetailModal, type SelectedProductAddon, type SelectedProductOption } from './ProductDetailModal';
 
 export function ProductList() {
     const { selectedBranch } = useBranch();
@@ -99,8 +100,20 @@ export function ProductList() {
         setIsModalOpen(true);
     };
 
-    const handleAddToCartFromModal = async (product: Product, quantity: number, options: any, addons: any) => {
-        await addToCart(product.id, quantity, options, addons, undefined, product);
+    const handleAddToCartFromModal = async (
+        product: Product,
+        quantity: number,
+        options: SelectedProductOption[],
+        addons: SelectedProductAddon[],
+    ) => {
+        await addToCart(
+            product.id,
+            quantity,
+            options as unknown as Parameters<typeof addToCart>[2],
+            addons,
+            undefined,
+            product,
+        );
         toast.success("Added to cart");
     };
 
@@ -207,7 +220,7 @@ function ProductSection({ title, products, onProductClick, isBranchSelected }: {
                             </div>
                         </div>
                         <div className="font-bold text-zinc-800 whitespace-nowrap ml-14 sm:ml-4 text-right sm:text-left">
-                            {Number(product.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL
+                            {formatCurrency(product.price)}
                         </div>
                     </div>
                 ))}

@@ -11,8 +11,61 @@ import { AuthModal } from "@/components/features/AuthModal";
 import { ThemeProvider } from "@/themes/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Food Delivery",
-  description: "Food Delivery Application",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3002"),
+  applicationName: "Runmeal",
+  title: {
+    default: "Runmeal | Online Food Ordering",
+    template: "%s | Runmeal",
+  },
+  description:
+    "Browse nearby restaurant branches, choose a delivery address, order from fresh menus, and complete secure Runmeal checkout.",
+  keywords: [
+    "Runmeal",
+    "online food ordering",
+    "restaurant delivery",
+    "menu ordering",
+  ],
+  authors: [{ name: "Runmeal" }],
+  creator: "Runmeal",
+  publisher: "Runmeal",
+  alternates: {
+    canonical: "/",
+  },
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName: "Runmeal",
+    title: "Runmeal | Online Food Ordering",
+    description:
+      "Find branches that deliver to your address, browse menus, and place secure Runmeal orders online.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Runmeal | Online Food Ordering",
+    description:
+      "Find branches that deliver to your address, browse menus, and place secure Runmeal orders online.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
+  },
 };
 
 export default function RootLayout({

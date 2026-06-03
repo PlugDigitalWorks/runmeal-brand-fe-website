@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { User, LogOut } from 'lucide-react';
+import { User } from 'lucide-react';
 import Link from 'next/link';
 
 export function Header() {
     const { user, isAuthenticated, logout } = useAuth();
-    const [isLoginOpen, setIsLoginOpen] = useState(false); // To be connected to a modal later
 
     return (
         <header className="bg-white text-zinc-900 border-b border-zinc-100 sticky top-0 z-50">
@@ -17,7 +15,7 @@ export function Header() {
                     <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                         <User className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-xl font-bold tracking-tight">Food Delivery</span>
+                    <span className="text-xl font-bold tracking-tight">Runmeal</span>
                 </Link>
 
                 {/* Right Actions */}

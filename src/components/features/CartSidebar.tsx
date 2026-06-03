@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { Gift } from 'lucide-react';
 import { CartContent } from './CartContent';
-import Link from 'next/link';
-import Image from 'next/image';
 import { walletService } from '@/services/wallet.service';
+import { formatCurrency } from '@/lib/utils';
 
 export function CartSidebar() {
     const { isAuthenticated } = useAuth();
@@ -27,7 +25,7 @@ export function CartSidebar() {
             {isAuthenticated && (
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-zinc-100 flex justify-between items-center">
                     <span className="font-medium flex gap-1 text-zinc-700">Cash Points <span className="w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-white text-xs font-bold">₺</span></span>
-                    <span className="font-bold text-zinc-800">{balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</span>
+                    <span className="font-bold text-zinc-800">{formatCurrency(balance)}</span>
                 </div>
             )}
 

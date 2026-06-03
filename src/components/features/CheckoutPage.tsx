@@ -10,6 +10,7 @@ import { paymentService } from '@/services/payment.service';
 import { branchService } from '@/services/branch.service';
 import { userService } from '@/services/user.service';
 import type { Address } from '@/types/address';
+import { formatCurrency } from '@/lib/utils';
 import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
@@ -538,13 +539,13 @@ export function CheckoutPage() {
                                 <div className="flex items-center justify-between mb-4">
                                     <span className="text-zinc-600 text-sm">Review Wallet Balance</span>
                                     <span className="font-bold text-zinc-800">
-                                        {walletBalance?.balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL
+                                        {formatCurrency(walletBalance?.balance)}
                                     </span>
                                 </div>
 
                                 {walletAppliedAmount > 0 ? (
                                     <div className="flex items-center justify-between bg-green-50 text-green-700 p-3 rounded-lg border border-green-200">
-                                        <span className="font-medium text-sm">Used: {walletAppliedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</span>
+                                        <span className="font-medium text-sm">Used: {formatCurrency(walletAppliedAmount)}</span>
                                         <button
                                             onClick={handleRemoveWallet}
                                             className="text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors"
@@ -580,7 +581,7 @@ export function CheckoutPage() {
 
                                 {walletAppliedAmount > 0 && (
                                     <p className="text-xs text-green-600 mt-2 text-right">
-                                        -{walletAppliedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL applied
+                                        {formatCurrency(-walletAppliedAmount)} applied
                                     </p>
                                 )}
                             </div>
@@ -623,7 +624,7 @@ export function CheckoutPage() {
                                             )}
                                         </div>
                                         <p className="font-medium text-zinc-800 text-sm">
-                                            {((item.price || 0) * item.qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL
+                                            {formatCurrency((item.price || 0) * item.qty)}
                                         </p>
                                     </div>
                                 ))}
@@ -633,7 +634,7 @@ export function CheckoutPage() {
                             <div className="border-t border-zinc-100 pt-4 space-y-2">
                                 <div className="flex justify-between text-sm text-zinc-600">
                                     <span>Subtotal</span>
-                                    <span>{cartTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</span>
+                                    <span>{formatCurrency(cartTotal)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm text-zinc-600">
                                     <span>Delivery Fee</span>
@@ -646,7 +647,7 @@ export function CheckoutPage() {
                                             <Ticket size={14} />
                                             <span>Discount</span>
                                         </div>
-                                        <span>-{cart.discountAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</span>
+                                        <span>{formatCurrency(-cart.discountAmount)}</span>
                                     </div>
                                 ) : null}
 
@@ -656,13 +657,13 @@ export function CheckoutPage() {
                                             <Wallet size={14} />
                                             <span>Wallet Used</span>
                                         </div>
-                                        <span>-{walletAppliedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</span>
+                                        <span>{formatCurrency(-walletAppliedAmount)}</span>
                                     </div>
                                 ) : null}
 
                                 <div className="flex justify-between text-lg font-bold text-zinc-800 pt-2 border-t border-zinc-100">
                                     <span>Total</span>
-                                    <span>{Math.max(0, (cart?.finalPrice ?? cart?.totalCartPrice ?? cartTotal) - walletAppliedAmount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</span>
+                                    <span>{formatCurrency(Math.max(0, (cart?.finalPrice ?? cart?.totalCartPrice ?? cartTotal) - walletAppliedAmount))}</span>
                                 </div>
                             </div>
 
