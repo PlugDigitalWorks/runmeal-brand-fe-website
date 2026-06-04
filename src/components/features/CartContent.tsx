@@ -12,6 +12,9 @@ type CartContentItem = {
     productName?: string | null;
     name?: string | null;
     price?: number;
+    note?: string | null;
+    notes?: string;
+    currencySymbol?: string;
     qty?: number;
     quantity?: number;
     options?: {
@@ -59,6 +62,7 @@ export function CartContent() {
                             {items.map((item) => {
                                 const itemId = item.id || item.productId;
                                 const itemQuantity = item.qty ?? item.quantity ?? 0;
+                                const itemNote = item.note ?? item.notes;
 
                                 return (
                                     <div key={itemId} className="pb-4 border-b border-zinc-100 last:border-0">
@@ -85,6 +89,11 @@ export function CartContent() {
                                                         <div key={idx}>+ {addon.name}</div>
                                                     ))}
                                                 </div>
+                                            )}
+                                            {itemNote && (
+                                                <p className="mt-1 text-xs text-zinc-500 break-words">
+                                                    <span className="font-medium">Note:</span> {itemNote}
+                                                </p>
                                             )}
                                         </div>
                                         <div className="flex justify-between items-center mt-2">
@@ -119,7 +128,7 @@ export function CartContent() {
                                                 </button>
                                             </div>
                                             <div className="font-bold text-zinc-800 text-sm">
-                                                {formatCurrency((item.price || 0) * itemQuantity)}
+                                                {formatCurrency((item.price || 0) * itemQuantity, item.currencySymbol)}
                                             </div>
                                         </div>
                                     </div>

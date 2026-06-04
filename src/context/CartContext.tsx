@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 // Simplified Cart Item for Guest (Local Storage)
 interface GuestCartItem {
+  id?: string;
   productId: string;
   quantity: number;
   options?: CartItemOptionGroup[];
@@ -20,8 +21,17 @@ interface GuestCartItem {
   // For now storing minimal info
   productName?: string;
   price?: number;
+  currency?: string;
+  currencySymbol?: string;
   branchId?: string;
 }
+
+const getGuestItemKey = (
+  productId: string,
+  options?: CartItemOptionGroup[],
+  addons?: { id: string; name?: string; price?: number }[],
+  notes?: string,
+) => `${productId}:${JSON.stringify(options ?? [])}:${JSON.stringify(addons ?? [])}:${notes?.trim() || ''}`;
 
 interface CartContextType {
   cart: Cart | null; // For User
@@ -93,7 +103,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const stored = localStorage.getItem('guest_cart');
       if (stored) {
         try {
-          setGuestCartItems(JSON.parse(stored));
+          const parsedItems = JSON.parse(stored) as GuestCartItem[];
+          const normalizedItems = parsedItems.map(item => ({
+            ...item,
+            id: item.id || getGuestItemKey(item.productId, item.options, item.addons, item.notes),
+          }));
+          setGuestCartItems(normalizedItems);
+          localStorage.setItem('guest_cart', JSON.stringify(normalizedItems));
         } catch (e) {
           console.error("Failed to parse guest cart", e);
         }
@@ -204,6 +220,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               productId: item.productId,
               qty: item.quantity,
               options,
+              note: item.notes?.trim() || undefined,
             }, item.branchId || selectedBranch?.id || fallbackBranchId);
           } catch (e) {
             console.error(`Failed to sync item ${item.productId}`, e);
@@ -264,7 +281,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         await cartService.addItem({
           productId,
           qty: quantity,
-          options: optionsDto
+          options: optionsDto,
+          note: notes?.trim() || undefined,
         }, selectedBranch.id);
 
         toast.success('Item added to cart');
@@ -353,27 +371,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
 
       const updated = [...guestCartItems];
+      const guestItemKey = getGuestItemKey(productId, nestedOptions, addons, notes);
       // Check for existing item with SAME options
       const existing = updated.findIndex(i =>
-        i.productId === productId &&
-        JSON.stringify(i.options) === JSON.stringify(nestedOptions) &&
-        JSON.stringify(i.addons) === JSON.stringify(addons)
+        (i.id || getGuestItemKey(i.productId, i.options, i.addons, i.notes)) === guestItemKey
       );
 
       if (existing >= 0) {
         updated[existing].quantity += quantity;
+        updated[existing].id = guestItemKey;
         // Update branchId if missing (self-healing)
         if (!updated[existing].branchId && selectedBranch) {
           updated[existing].branchId = selectedBranch.id;
         }
       } else {
         updated.push({
+          id: guestItemKey,
           productId,
           quantity,
           options: nestedOptions,
           addons,
+          notes: notes?.trim() || undefined,
           productName: productDetails?.name,
-          price: productDetails?.price,
+          price: Number(productDetails?.discountedPrice || productDetails?.price || 0),
+          currency: productDetails?.currency,
+          currencySymbol: productDetails?.currencySymbol,
           branchId: selectedBranch?.id
         });
       }
@@ -401,8 +423,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     } else {
-      // itemId is productId for guest
-      const updated = guestCartItems.filter(i => i.productId !== itemId);
+      // itemId is the local guest item key
+      const updated = guestCartItems.filter(i => (i.id || i.productId) !== itemId);
       setGuestCartItems(updated);
       localStorage.setItem('guest_cart', JSON.stringify(updated));
     }
@@ -420,13 +442,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     } else {
-      // itemId is productId
+      // itemId is the local guest item key
       if (quantity <= 0) {
         await removeFromCart(itemId);
         return;
       }
       const updated = [...guestCartItems];
-      const existing = updated.findIndex(i => i.productId === itemId);
+      const existing = updated.findIndex(i => (i.id || i.productId) === itemId);
       if (existing >= 0) {
         updated[existing].quantity = quantity;
         setGuestCartItems(updated);

@@ -16,13 +16,15 @@ export const paymentService = {
         cartId: string,
         paymentMethod: PaymentMethod = 'ONLINE_CARD',
         orderType: OrderType = 'DELIVERY',
-        creditUsedAmount?: number
+        creditUsedAmount?: number,
+        note?: string
     ) {
         const response = await api.post<ApiResponse<PaymentInitializationResponse>>('/payments/initialize', {
             cartId,
             paymentMethod,
             orderType,
             ...(creditUsedAmount && creditUsedAmount > 0 ? { creditUsedAmount } : {}),
+            ...(note?.trim() ? { note: note.trim() } : {}),
         });
         return response.data.data;
     }

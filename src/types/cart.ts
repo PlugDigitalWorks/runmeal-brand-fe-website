@@ -3,6 +3,7 @@ export interface CartItem {
   productId: string;
   productName: string | null;
   price: number;
+  note?: string | null;
   imgUrl: string | null;
   qty: number;
   options?: CartItemOptionGroup[];
@@ -52,6 +53,7 @@ export interface AddItemDto {
   productId: string;
   qty?: number;
   options?: { groupId: string; optionId?: string; optionIds?: string[] }[];
+  note?: string;
 }
 
 export interface SetQtyDto {

@@ -23,13 +23,14 @@ interface ProductDetailModalProps {
     product: Product | null;
     isOpen: boolean;
     onClose: () => void;
-    onAddToCart: (product: Product, quantity: number, options: SelectedProductOption[], addons: SelectedProductAddon[]) => void;
+    onAddToCart: (product: Product, quantity: number, options: SelectedProductOption[], addons: SelectedProductAddon[], note?: string) => void;
 }
 
 export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: ProductDetailModalProps) {
     const { selectedBranch } = useBranch();
     const [quantity, setQuantity] = useState(1);
     const [selectedAddons, setSelectedAddons] = useState<Record<string, boolean>>({});
+    const [productNote, setProductNote] = useState('');
 
     // New Option Groups Logic
     const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
@@ -40,6 +41,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
         if (isOpen && product) {
             setQuantity(1);
             setSelectedAddons({});
+            setProductNote('');
             setSelections({});
             setOptionGroups([]);
 
@@ -91,6 +93,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
     if (!isOpen || !product) return null;
 
     const basePrice = Number(product.discountedPrice || product.price);
+    const currencySymbol = product.currencySymbol;
 
     const calculateTotal = () => {
         let total = basePrice;
@@ -224,7 +227,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
             price: a.price
         })) || [];
 
-        onAddToCart(product, quantity, optionsToSend, addonsToSend);
+        onAddToCart(product, quantity, optionsToSend, addonsToSend, productNote.trim() || undefined);
         onClose();
     };
 
@@ -256,8 +259,8 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                     <div>
                         <h2 className="text-2xl font-bold text-zinc-800">{product.name}</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xl font-bold text-primary">{formatCurrency(product.price)}</span>
-                            {product.discountedPrice && <span className="text-sm text-zinc-400 line-through">{formatCurrency(product.discountedPrice)}</span>}
+                            <span className="text-xl font-bold text-primary">{formatCurrency(product.price, currencySymbol)}</span>
+                            {product.discountedPrice && <span className="text-sm text-zinc-400 line-through">{formatCurrency(product.discountedPrice, currencySymbol)}</span>}
                         </div>
                         <p className="mt-2 text-zinc-600 text-sm leading-relaxed">{product.description}</p>
                     </div>
@@ -316,7 +319,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                                                 </div>
                                                 <div className="font-medium text-sm">
                                                     {opt.priceDelta > 0 ? (
-                                                        <span className="text-zinc-600">+{formatCurrency(opt.priceDelta)}</span>
+                                                        <span className="text-zinc-600">+{formatCurrency(opt.priceDelta, currencySymbol)}</span>
                                                     ) : (
                                                         <span className="text-primary font-bold">Free</span>
                                                     )}
@@ -346,12 +349,27 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                                             />
                                             <span className="text-zinc-700">{addon.name}</span>
                                         </div>
-                                        <span className="text-sm font-medium text-zinc-600">+{formatCurrency(addon.price)}</span>
+                                        <span className="text-sm font-medium text-zinc-600">+{formatCurrency(addon.price, currencySymbol)}</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
                     )}
+
+                    <div className="space-y-2 pt-4 border-t border-zinc-100">
+                        <label htmlFor="product-note" className="font-bold text-zinc-800 text-lg">
+                            Product Note
+                        </label>
+                        <textarea
+                            id="product-note"
+                            value={productNote}
+                            onChange={(event) => setProductNote(event.target.value)}
+                            maxLength={1000}
+                            rows={3}
+                            placeholder="Add a note for this item"
+                            className="w-full resize-none rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 outline-none transition-colors placeholder:text-zinc-400 focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        />
+                    </div>
                 </div>
 
                 {/* Footer Actions */}
@@ -374,7 +392,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                         </div>
                         <div className="text-right">
                             <div className="text-xs text-zinc-400 font-medium uppercase tracking-wide">Total Amount</div>
-                            <div className="text-2xl font-bold text-primary">{formatCurrency(calculateTotal())}</div>
+                            <div className="text-2xl font-bold text-primary">{formatCurrency(calculateTotal(), currencySymbol)}</div>
                         </div>
                     </div>
 

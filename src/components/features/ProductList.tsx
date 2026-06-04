@@ -105,16 +105,16 @@ export function ProductList() {
         quantity: number,
         options: SelectedProductOption[],
         addons: SelectedProductAddon[],
+        note?: string,
     ) => {
         await addToCart(
             product.id,
             quantity,
             options as unknown as Parameters<typeof addToCart>[2],
             addons,
-            undefined,
+            note,
             product,
         );
-        toast.success("Added to cart");
     };
 
     if (loading) return <div className="text-center py-10">Loading...</div>;
@@ -220,7 +220,7 @@ function ProductSection({ title, products, onProductClick, isBranchSelected }: {
                             </div>
                         </div>
                         <div className="font-bold text-zinc-800 whitespace-nowrap ml-14 sm:ml-4 text-right sm:text-left">
-                            {formatCurrency(product.price)}
+                            {formatCurrency(product.price, product.currencySymbol)}
                         </div>
                     </div>
                 ))}

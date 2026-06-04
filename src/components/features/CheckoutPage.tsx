@@ -6,12 +6,12 @@ import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
 import { useCart } from '@/context/CartContext';
 import { useBranch } from '@/context/BranchContext';
-import { paymentService } from '@/services/payment.service';
+import { paymentService, type PaymentMethod } from '@/services/payment.service';
 import { branchService } from '@/services/branch.service';
 import { userService } from '@/services/user.service';
 import type { Address } from '@/types/address';
 import { formatCurrency } from '@/lib/utils';
-import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle } from 'lucide-react';
+import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
 import { walletService, WalletBalance } from '@/services/wallet.service';
@@ -52,6 +52,8 @@ export function CheckoutPage() {
     const [addressModalMode, setAddressModalMode] = useState<'new' | 'edit'>('edit');
     const [checkoutFormHtml, setCheckoutFormHtml] = useState<string | null>(null);
     const [hasInitialized, setHasInitialized] = useState(false);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('ONLINE_CARD');
+    const [orderNote, setOrderNote] = useState('');
 
     // New States
     const [couponCode, setCouponCode] = useState('');
@@ -67,6 +69,32 @@ export function CheckoutPage() {
     const activeAddress = addresses.find(a => a.isActive);
     const cartItems = cart?.items || [];
     const targetBranchId = cart?.branchId || selectedBranch?.id;
+    const paymentSettings = selectedBranch?.payment_settings;
+    const paymentOptions = React.useMemo(() => [
+        {
+            value: 'ONLINE_CARD' as PaymentMethod,
+            label: 'Online Card',
+            description: 'Pay securely online',
+            icon: CreditCard,
+            isAvailable: paymentSettings?.onlineMethods?.card?.isActive ?? true,
+        },
+        {
+            value: 'CASH' as PaymentMethod,
+            label: 'Cash',
+            description: 'Pay with cash on delivery',
+            icon: Banknote,
+            isAvailable: paymentSettings?.offlineMethods?.cash?.isActive ?? true,
+        },
+        {
+            value: 'CARD_ON_DELIVERY' as PaymentMethod,
+            label: 'Card on Delivery',
+            description: 'Pay by card at the door',
+            icon: Wallet,
+            isAvailable: paymentSettings?.offlineMethods?.cardOnDelivery?.isActive ?? true,
+        },
+    ], [paymentSettings]);
+    const selectedPaymentOption = paymentOptions.find(option => option.value === selectedPaymentMethod);
+    const isSelectedPaymentAvailable = selectedPaymentOption?.isAvailable ?? true;
     const deliverableAddresses = React.useMemo(
         () => addresses.filter((address) => deliverableAddressIds.has(address.id)),
         [addresses, deliverableAddressIds],
@@ -95,6 +123,15 @@ export function CheckoutPage() {
             router.push('/');
         }
     }, [hasInitialized, cartItems.length, router, checkoutFormHtml]);
+
+    React.useEffect(() => {
+        if (isSelectedPaymentAvailable) return;
+
+        const nextAvailablePaymentMethod = paymentOptions.find(option => option.isAvailable)?.value;
+        if (nextAvailablePaymentMethod) {
+            setSelectedPaymentMethod(nextAvailablePaymentMethod);
+        }
+    }, [isSelectedPaymentAvailable, paymentOptions]);
 
     // Fetch Wallet Balance
     React.useEffect(() => {
@@ -240,9 +277,20 @@ export function CheckoutPage() {
             return;
         }
 
+        if (!isSelectedPaymentAvailable) {
+            toast.error('Selected payment method is not available for this branch');
+            return;
+        }
+
         setIsProcessing(true);
         try {
-            const response = await paymentService.initializePayment(cartId, 'ONLINE_CARD', 'DELIVERY', walletAppliedAmount > 0 ? walletAppliedAmount : undefined);
+            const response = await paymentService.initializePayment(
+                cartId,
+                selectedPaymentMethod,
+                'DELIVERY',
+                walletAppliedAmount > 0 ? walletAppliedAmount : undefined,
+                orderNote.trim() || undefined,
+            );
 
             if (response.paymentUrl) {
                 // Redirect to payment URL
@@ -250,6 +298,15 @@ export function CheckoutPage() {
             } else if (response.checkoutFormContent) {
                 // iyzico returns HTML form to render
                 setCheckoutFormHtml(response.checkoutFormContent);
+            } else if (response.orderId || selectedPaymentMethod !== 'ONLINE_CARD') {
+                const params = new URLSearchParams({
+                    status: 'success',
+                    paymentId: response.paymentId,
+                });
+                if (response.orderId) {
+                    params.set('orderId', response.orderId);
+                }
+                router.push(`/payment/callback?${params.toString()}`);
             } else {
                 toast.error('Payment initialization failed');
             }
@@ -588,6 +645,69 @@ export function CheckoutPage() {
                         </div>
                     </div>
 
+                    {/* Payment Method & Order Note */}
+                    <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
+                        <div className="bg-primary p-4 flex items-center gap-3 text-white">
+                            <CreditCard size={20} />
+                            <h2 className="font-bold text-lg">Payment</h2>
+                        </div>
+                        <div className="p-5 space-y-5">
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                {paymentOptions.map((option) => {
+                                    const Icon = option.icon;
+                                    const isSelected = selectedPaymentMethod === option.value;
+
+                                    return (
+                                        <label
+                                            key={option.value}
+                                            className={`flex min-h-28 cursor-pointer flex-col rounded-lg border p-4 transition-colors ${isSelected
+                                                ? 'border-primary bg-orange-50/60'
+                                                : 'border-zinc-200 bg-white hover:border-primary/50 hover:bg-orange-50/30'
+                                                } ${!option.isAvailable ? 'cursor-not-allowed opacity-50' : ''}`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="paymentMethod"
+                                                value={option.value}
+                                                checked={isSelected}
+                                                disabled={!option.isAvailable}
+                                                onChange={() => setSelectedPaymentMethod(option.value)}
+                                                className="sr-only"
+                                            />
+                                            <div className="flex items-start justify-between gap-3">
+                                                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${isSelected ? 'bg-primary text-white' : 'bg-orange-50 text-primary'}`}>
+                                                    <Icon size={18} />
+                                                </span>
+                                                {isSelected && <CheckCircle size={18} className="shrink-0 text-primary" />}
+                                            </div>
+                                            <div className="mt-3">
+                                                <p className="font-semibold text-zinc-800">{option.label}</p>
+                                                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                                                    {option.isAvailable ? option.description : 'Not available for this branch'}
+                                                </p>
+                                            </div>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="order-note" className="text-sm font-semibold text-zinc-800">
+                                    Order Note
+                                </label>
+                                <textarea
+                                    id="order-note"
+                                    value={orderNote}
+                                    onChange={(event) => setOrderNote(event.target.value)}
+                                    maxLength={1000}
+                                    rows={3}
+                                    placeholder="Add a note for this order"
+                                    className="w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-800 outline-none transition-colors placeholder:text-zinc-400 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Cart Summary Card */}
                     <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
                         <div className="bg-primary p-4 flex items-center gap-3 text-white">
@@ -621,6 +741,11 @@ export function CheckoutPage() {
                                                         </span>
                                                     ))}
                                                 </div>
+                                            )}
+                                            {item.note && (
+                                                <p className="mt-0.5 text-xs text-zinc-500 break-words">
+                                                    <span className="font-medium">Note:</span> {item.note}
+                                                </p>
                                             )}
                                         </div>
                                         <p className="font-medium text-zinc-800 text-sm">
@@ -673,7 +798,7 @@ export function CheckoutPage() {
                     {/* Checkout Button */}
                     <button
                         onClick={handleCheckout}
-                        disabled={isProcessing || isCheckingAddresses || !activeAddress || !isActiveAddressDeliverable}
+                        disabled={isProcessing || isCheckingAddresses || !activeAddress || !isActiveAddressDeliverable || !isSelectedPaymentAvailable}
                         className="w-full bg-primary text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isProcessing ? (
@@ -683,8 +808,8 @@ export function CheckoutPage() {
                             </>
                         ) : (
                             <>
-                                <CreditCard size={20} />
-                                Proceed to Payment
+                                {selectedPaymentMethod === 'CASH' ? <Banknote size={20} /> : <CreditCard size={20} />}
+                                {selectedPaymentMethod === 'ONLINE_CARD' ? 'Proceed to Payment' : 'Place Order'}
                             </>
                         )}
                     </button>
