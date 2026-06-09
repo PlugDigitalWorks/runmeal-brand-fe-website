@@ -7,14 +7,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { KeyRound, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { authService } from '@/services/auth.service';
 
-const forgotPasswordSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-});
-
-type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+type ForgotPasswordFormValues = {
+  email: string;
+};
 
 const getErrorMessage = (error: unknown) => {
   if (typeof error === 'object' && error !== null && 'response' in error) {
@@ -25,6 +24,10 @@ const getErrorMessage = (error: unknown) => {
 };
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
+  const forgotPasswordSchema = z.object({
+    email: z.string().email(t('auth.validation.emailInvalid')),
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState('');
@@ -44,11 +47,11 @@ export default function ForgotPasswordPage() {
       const response = await authService.forgotPassword(data.email);
       setSubmittedEmail(data.email);
       setIsSubmitted(true);
-      toast.success(response.message || 'Password reset email sent.');
+      toast.success(response.message || t('auth.forgot.sent'));
     } catch (error) {
       console.error(error);
       toast.error(
-        getErrorMessage(error) || 'An error occurred while sending the reset email.',
+        getErrorMessage(error) || t('auth.forgot.error'),
       );
     } finally {
       setIsLoading(false);
@@ -63,37 +66,36 @@ export default function ForgotPasswordPage() {
             <KeyRound className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-            Reset Password
+            {t('auth.forgot.title')}
           </h1>
           <p className="text-zinc-500">
-            Enter your email and we&apos;ll send you a reset link.
+            {t('auth.forgot.subtitle')}
           </p>
         </div>
 
         {isSubmitted ? (
           <div className="space-y-6 rounded-lg border border-zinc-200 bg-white p-6 text-center shadow-sm">
             <p className="text-sm leading-6 text-zinc-600">
-              If an account exists for <span className="font-medium text-zinc-900">{submittedEmail}</span>,
-              a password reset email has been sent.
+              {t('auth.forgot.sentTo', { email: submittedEmail })}
             </p>
             <Link
               href="/login"
               className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-opacity hover:opacity-90"
             >
-              Back to Login
+              {t('auth.forgot.backToLogin')}
             </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700" htmlFor="email">
-                Email Address
+                {t('auth.email')}
               </label>
               <input
                 {...register('email')}
                 id="email"
                 type="email"
-                placeholder="example@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 className={`w-full px-3 py-2 border rounded-md shadow-sm outline-none transition-all text-zinc-900 placeholder:text-zinc-400 ${
                   errors.email
                     ? 'border-red-500 focus:ring-2 focus:ring-red-200'
@@ -113,10 +115,10 @@ export default function ForgotPasswordPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Sending...
+                  {t('auth.forgot.submitting')}
                 </>
               ) : (
-                'Send Reset Link'
+                t('auth.forgot.submit')
               )}
             </button>
 
@@ -125,7 +127,7 @@ export default function ForgotPasswordPage() {
                 href="/login"
                 className="font-medium text-primary hover:text-primary/80 transition-colors"
               >
-                Back to Login
+                {t('auth.forgot.backToLogin')}
               </Link>
             </div>
           </form>

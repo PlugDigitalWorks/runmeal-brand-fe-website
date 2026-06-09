@@ -8,6 +8,7 @@ import { catalogService } from '@/services/catalog.service';
 import { X, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
+import { DEFAULT_PRODUCT_IMAGE } from '@/lib/constants';
 
 export type SelectedProductOption =
     | { groupId: string; optionId: string; optionIds?: never }
@@ -237,13 +238,20 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
 
                 {/* Header Image */}
                 <div className="relative h-48 sm:h-56 bg-zinc-100 shrink-0">
-                    {(product.imageUrl || product.image) && (
+                    {(product.imageUrl || product.image) ? (
                         <Image
                             src={product.imageUrl || product.image || ''}
                             alt={product.name}
                             fill
                             className="object-cover"
                             unoptimized
+                        />
+                    ) : (
+                        <Image
+                            src={DEFAULT_PRODUCT_IMAGE}
+                            alt={product.name}
+                            fill
+                            className="object-contain p-8 opacity-90"
                         />
                     )}
                     <button

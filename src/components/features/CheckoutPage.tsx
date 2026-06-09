@@ -10,7 +10,7 @@ import { paymentService, type PaymentMethod } from '@/services/payment.service';
 import { branchService } from '@/services/branch.service';
 import { userService } from '@/services/user.service';
 import type { Address } from '@/types/address';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, sanitizePositiveNumber } from '@/lib/utils';
 import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
@@ -614,8 +614,10 @@ export function CheckoutPage() {
                                     <div className="flex gap-2">
                                         <input
                                             type="number"
+                                            min={0}
+                                            inputMode="decimal"
                                             value={walletAmountInput}
-                                            onChange={(e) => setWalletAmountInput(e.target.value)}
+                                            onChange={(e) => setWalletAmountInput(sanitizePositiveNumber(e.target.value, walletAmountInput))}
                                             placeholder="Amount to use"
                                             className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />

@@ -9,7 +9,7 @@ import { Product } from '@/types/product';
 import { useCart } from '@/context/CartContext';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { DEFAULT_BRAND_ID } from '@/lib/constants';
+import { DEFAULT_BRAND_ID, DEFAULT_PRODUCT_IMAGE } from '@/lib/constants';
 import { formatCurrency } from '@/lib/utils';
 import { ProductDetailModal, type SelectedProductAddon, type SelectedProductOption } from './ProductDetailModal';
 
@@ -203,8 +203,8 @@ function ProductSection({ title, products, onProductClick, isBranchSelected }: {
                                     <Plus size={18} />
                                 </button>
                             </div>
-                            {(product.imageUrl || product.image) && (
-                                <div className="w-16 h-12 bg-zinc-100 rounded overflow-hidden relative shrink-0">
+                            <div className="w-16 h-12 bg-zinc-100 rounded overflow-hidden relative shrink-0">
+                                {(product.imageUrl || product.image) ? (
                                     <Image
                                         src={product.imageUrl || product.image || ''}
                                         alt={product.name}
@@ -212,8 +212,15 @@ function ProductSection({ title, products, onProductClick, isBranchSelected }: {
                                         className="object-cover"
                                         unoptimized
                                     />
-                                </div>
-                            )}
+                                ) : (
+                                    <Image
+                                        src={DEFAULT_PRODUCT_IMAGE}
+                                        alt={product.name}
+                                        fill
+                                        className="object-contain p-1.5 opacity-90"
+                                    />
+                                )}
+                            </div>
                             <div className="min-w-0">
                                 <h4 className="font-bold text-zinc-800 break-words">{product.name}</h4>
                                 <p className="text-xs text-zinc-500 line-clamp-2 break-words">{product.description}</p>

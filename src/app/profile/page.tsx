@@ -1,11 +1,13 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, Plus, Trash2, X, Edit2, ChevronDown, Package, User as UserIcon, Mail, Shield } from 'lucide-react';
+import { MapPin, Plus, Trash2, X, Edit2, ChevronDown, Package, User as UserIcon, Mail, Shield, Wallet } from 'lucide-react';
 import { useEffect, useState, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUser } from '@/context/UserContext';
 import { Address } from '@/types/address';
 import { userService } from '@/services/user.service';
+import { walletService } from '@/services/wallet.service';
 import { AddressForm } from '@/components/features/address/AddressForm';
 import { orderService } from '@/services/order.service';
 import { Order, OrderDetails } from '@/services/order.service';
@@ -14,8 +16,10 @@ import { formatCurrency } from '@/lib/utils';
 
 function ProfileContent() {
     const router = useRouter();
+    const { t } = useTranslation();
     const searchParams = useSearchParams();
     const { user, addresses, refreshAddresses, isLoading: isContextLoading } = useUser();
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [isAddingAddress, setIsAddingAddress] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [orders, setOrders] = useState<Order[]>([]);
@@ -27,6 +31,9 @@ function ProfileContent() {
     useEffect(() => {
         if (user) {
             orderService.getMyOrders().then(setOrders).catch(console.error);
+            walletService.getBalance()
+                .then((b) => setWalletBalance(b.balance))
+                .catch(() => setWalletBalance(null));
         }
     }, [user]);
 
@@ -157,6 +164,21 @@ function ProfileContent() {
                                 <div className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-medium capitalize">
                                     {user?.role}
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Para Puan (Wallet) Card */}
+                    <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-zinc-100 bg-zinc-50/50">
+                            <h3 className="font-semibold text-zinc-900 flex items-center gap-2">
+                                <Wallet className="w-4 h-4" /> {t('profile.loyaltyTitle')}
+                            </h3>
+                            <p className="text-sm text-zinc-500 mt-1">{t('profile.loyaltySubtitle')}</p>
+                        </div>
+                        <div className="p-6">
+                            <div className="text-2xl font-bold text-primary">
+                                {walletBalance === null ? '—' : formatCurrency(walletBalance)}
                             </div>
                         </div>
                     </div>

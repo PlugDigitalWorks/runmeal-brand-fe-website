@@ -9,20 +9,26 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
 
-const registerSchema = z.object({
-    firstName: z.string().min(2, 'First name must be at least 2 characters'),
-    lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-    email: z.string().email('Please enter a valid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type RegisterFormValues = {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+};
 
 export default function RegisterPage() {
     const { register: registerUser } = useAuth();
     const router = useRouter();
+    const { t } = useTranslation();
+    const registerSchema = z.object({
+        firstName: z.string().min(2, t('auth.validation.firstNameMin')),
+        lastName: z.string().min(2, t('auth.validation.lastNameMin')),
+        email: z.string().email(t('auth.validation.emailInvalid')),
+        password: z.string().min(6, t('auth.validation.passwordMin')),
+    });
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
@@ -38,11 +44,11 @@ export default function RegisterPage() {
         setIsLoading(true);
         try {
             await registerUser(data);
-            toast.success('Registration successful. Please log in.');
+            toast.success(t('auth.register.success'));
             router.push('/login');
         } catch (error) {
             console.error(error);
-            toast.error('An error occurred during registration. Please try again.');
+            toast.error(t('auth.register.error'));
         } finally {
             setIsLoading(false);
         }
@@ -57,16 +63,16 @@ export default function RegisterPage() {
                         <UserPlus className="w-8 h-8 text-primary" />
                     </div>
                     <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-                        Create Account
+                        {t('auth.register.title')}
                     </h1>
                     <p className="text-zinc-500">
-                        Sign up to start your flavor journey
+                        {t('auth.register.subtitle')}
                     </p>
                 </div>
 
                 {/* Form Section */}
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                    <GoogleAuthButton label="Sign up with Google" />
+                    <GoogleAuthButton label={t('auth.register.googleSignup')} />
 
                     <div className="relative">
                         <div className="absolute inset-0 flex items-center">
@@ -74,7 +80,7 @@ export default function RegisterPage() {
                         </div>
                         <div className="relative flex justify-center text-sm">
                             <span className="px-2 bg-white text-zinc-500">
-                                Or create with email
+                                {t('auth.register.orEmail')}
                             </span>
                         </div>
                     </div>
@@ -83,13 +89,13 @@ export default function RegisterPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-zinc-700" htmlFor="firstName">
-                                    First Name
+                                    {t('auth.register.firstName')}
                                 </label>
                                 <input
                                     {...register('firstName')}
                                     id="firstName"
                                     type="text"
-                                    placeholder="John"
+                                    placeholder={t('auth.register.firstNamePlaceholder')}
                                     className={`w-full px-3 py-2 border rounded-md shadow-sm outline-none transition-all text-zinc-900 placeholder:text-zinc-400 ${errors.firstName
                                         ? 'border-red-500 focus:ring-2 focus:ring-red-200'
                                         : 'border-zinc-200 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -101,13 +107,13 @@ export default function RegisterPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-zinc-700" htmlFor="lastName">
-                                    Last Name
+                                    {t('auth.register.lastName')}
                                 </label>
                                 <input
                                     {...register('lastName')}
                                     id="lastName"
                                     type="text"
-                                    placeholder="Doe"
+                                    placeholder={t('auth.register.lastNamePlaceholder')}
                                     className={`w-full px-3 py-2 border rounded-md shadow-sm outline-none transition-all text-zinc-900 placeholder:text-zinc-400 ${errors.lastName
                                         ? 'border-red-500 focus:ring-2 focus:ring-red-200'
                                         : 'border-zinc-200 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -121,13 +127,13 @@ export default function RegisterPage() {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-zinc-700" htmlFor="email">
-                                Email Address
+                                {t('auth.email')}
                             </label>
                             <input
                                 {...register('email')}
                                 id="email"
                                 type="email"
-                                placeholder="example@email.com"
+                                placeholder={t('auth.emailPlaceholder')}
                                 className={`w-full px-3 py-2 border rounded-md shadow-sm outline-none transition-all text-zinc-900 placeholder:text-zinc-400 ${errors.email
                                     ? 'border-red-500 focus:ring-2 focus:ring-red-200'
                                     : 'border-zinc-200 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -140,7 +146,7 @@ export default function RegisterPage() {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-zinc-700" htmlFor="password">
-                                Password
+                                {t('auth.password')}
                             </label>
                             <div className="relative">
                                 <input
@@ -175,10 +181,10 @@ export default function RegisterPage() {
                         {isLoading ? (
                             <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Creating Account...
+                                {t('auth.register.submitting')}
                             </>
                         ) : (
-                            'Register'
+                            t('auth.register.submit')
                         )}
                     </button>
 
@@ -188,7 +194,7 @@ export default function RegisterPage() {
                         </div>
                         <div className="relative flex justify-center text-sm">
                             <span className="px-2 bg-white text-zinc-500">
-                                Already have an account?
+                                {t('auth.register.haveAccount')}
                             </span>
                         </div>
                     </div>
@@ -198,7 +204,7 @@ export default function RegisterPage() {
                             href="/login"
                             className="font-medium text-primary hover:text-primary/80 transition-colors"
                         >
-                            Log in instead
+                            {t('auth.register.signIn')}
                         </Link>
                     </div>
                 </form>

@@ -1,0 +1,66 @@
+{
+  "header": {
+    "hello": "Merhaba {{name}}",
+    "logout": "Çıkış Yap",
+    "login": "Giriş Yap",
+    "register": "Kayıt Ol"
+  },
+  "auth": {
+    "validation": {
+      "emailInvalid": "Lütfen geçerli bir e-posta adresi girin",
+      "passwordMin": "Şifre en az 6 karakter olmalıdır",
+      "firstNameMin": "Ad en az 2 karakter olmalıdır",
+      "lastNameMin": "Soyad en az 2 karakter olmalıdır",
+      "securityCheck": "Lütfen güvenlik kontrolünü tamamlayın."
+    },
+    "email": "E-posta Adresi",
+    "emailPlaceholder": "ornek@email.com",
+    "password": "Şifre",
+    "login": {
+      "title": "Tekrar Hoş Geldiniz",
+      "subtitle": "Hesabınıza giriş yapın ve lezzet dünyasına katılın",
+      "googleSignup": "Google ile giriş yap",
+      "orEmail": "Veya e-posta ile giriş yapın",
+      "forgot": "Şifrenizi mi unuttunuz?",
+      "submit": "Giriş Yap",
+      "submitting": "Giriş yapılıyor...",
+      "noAccount": "Hesabınız yok mu?",
+      "createAccount": "Hemen Kayıt Ol",
+      "success": "Giriş başarılı!",
+      "googleSuccess": "Google ile giriş başarılı!",
+      "googleRestoreError": "Google girişi tamamlandı, ancak oturum geri yüklenemedi.",
+      "googleFailed": "Google girişi başarısız oldu. Lütfen tekrar deneyin.",
+      "error": "Giriş sırasında bir hata oluştu. Lütfen bilgilerinizi kontrol edin."
+    },
+    "register": {
+      "title": "Hesap Oluştur",
+      "subtitle": "Lezzet yolculuğunuza başlamak için kayıt olun",
+      "googleSignup": "Google ile kayıt ol",
+      "orEmail": "Veya e-posta ile oluştur",
+      "firstName": "Ad",
+      "lastName": "Soyad",
+      "firstNamePlaceholder": "Ahmet",
+      "lastNamePlaceholder": "Yılmaz",
+      "submit": "Kayıt Ol",
+      "submitting": "Hesap oluşturuluyor...",
+      "haveAccount": "Zaten bir hesabınız var mı?",
+      "signIn": "Giriş yapın",
+      "success": "Kayıt başarılı. Lütfen giriş yapın.",
+      "error": "Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin."
+    },
+    "forgot": {
+      "title": "Şifre Sıfırla",
+      "subtitle": "E-postanızı girin, size bir sıfırlama bağlantısı gönderelim.",
+      "submit": "Sıfırlama Bağlantısı Gönder",
+      "submitting": "Gönderiliyor...",
+      "backToLogin": "Girişe Dön",
+      "sentTo": "{{email}} için bir hesap mevcutsa, bir şifre sıfırlama e-postası gönderildi.",
+      "sent": "Şifre sıfırlama e-postası gönderildi.",
+      "error": "Sıfırlama e-postası gönderilirken bir hata oluştu."
+    }
+  },
+  "profile": {
+    "loyaltyTitle": "Para Puan",
+    "loyaltySubtitle": "Cüzdan bakiyeniz"
+  }
+}

@@ -9,19 +9,23 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, User, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
 import { RecaptchaWidget } from '@/components/features/RecaptchaWidget';
 
-const loginSchema = z.object({
-    email: z.string().email('Please enter a valid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginFormValues = {
+    email: string;
+    password: string;
+};
 
 export default function LoginPage() {
     const { login, completeGoogleLogin } = useAuth();
     const router = useRouter();
+    const { t } = useTranslation();
+    const loginSchema = z.object({
+        email: z.string().email(t('auth.validation.emailInvalid')),
+        password: z.string().min(6, t('auth.validation.passwordMin')),
+    });
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
@@ -47,20 +51,20 @@ export default function LoginPage() {
 
     const onSubmit = async (data: LoginFormValues) => {
         if (isRecaptchaEnabled && !recaptchaToken) {
-            toast.error('Please complete the security check.');
+            toast.error(t('auth.validation.securityCheck'));
             return;
         }
 
         setIsLoading(true);
         try {
             await login({ ...data, recaptchaToken: recaptchaToken ?? undefined });
-            toast.success('Login successful!');
+            toast.success(t('auth.login.success'));
             router.push('/');
         } catch (error) {
             console.error(error);
             setRecaptchaToken(null);
             setRecaptchaResetKey((key) => key + 1);
-            toast.error(getErrorMessage(error) || 'An error occurred during login. Please check your credentials.');
+            toast.error(getErrorMessage(error) || t('auth.login.error'));
         } finally {
             setIsLoading(false);
         }
@@ -81,19 +85,19 @@ export default function LoginPage() {
             setIsLoading(true);
             completeGoogleLogin()
                 .then(() => {
-                    toast.success('Google login successful!');
+                    toast.success(t('auth.login.googleSuccess'));
                     router.push('/');
                 })
                 .catch((error) => {
                     console.error(error);
-                    toast.error('Google login completed, but the session could not be restored.');
+                    toast.error(t('auth.login.googleRestoreError'));
                 })
                 .finally(() => setIsLoading(false));
             return;
         }
 
-        toast.error(reason || 'Google login failed. Please try again.');
-    }, [completeGoogleLogin, router]);
+        toast.error(reason || t('auth.login.googleFailed'));
+    }, [completeGoogleLogin, router, t]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-white px-4">
@@ -104,10 +108,10 @@ export default function LoginPage() {
                         <User className="w-8 h-8 text-primary" />
                     </div>
                     <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-                        Welcome Back
+                        {t('auth.login.title')}
                     </h1>
                     <p className="text-zinc-500">
-                        Log in to your account and join the world of flavor
+                        {t('auth.login.subtitle')}
                     </p>
                 </div>
 
@@ -121,7 +125,7 @@ export default function LoginPage() {
                         </div>
                         <div className="relative flex justify-center text-sm">
                             <span className="px-2 bg-white text-zinc-500">
-                                Or log in with email
+                                {t('auth.login.orEmail')}
                             </span>
                         </div>
                     </div>
@@ -129,13 +133,13 @@ export default function LoginPage() {
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-zinc-700" htmlFor="email">
-                                Email Address
+                                {t('auth.email')}
                             </label>
                             <input
                                 {...register('email')}
                                 id="email"
                                 type="email"
-                                placeholder="example@email.com"
+                                placeholder={t('auth.emailPlaceholder')}
                                 className={`w-full px-3 py-2 border rounded-md shadow-sm outline-none transition-all text-zinc-900 placeholder:text-zinc-400 ${errors.email
                                         ? 'border-red-500 focus:ring-2 focus:ring-red-200'
                                         : 'border-zinc-200 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -149,13 +153,13 @@ export default function LoginPage() {
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-zinc-700" htmlFor="password">
-                                    Password
+                                    {t('auth.password')}
                                 </label>
                                 <Link
                                     href="/forgot-password"
                                     className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                                 >
-                                    Forgot Password?
+                                    {t('auth.login.forgot')}
                                 </Link>
                             </div>
                             <div className="relative">
@@ -196,10 +200,10 @@ export default function LoginPage() {
                         {isLoading ? (
                             <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Logging in...
+                                {t('auth.login.submitting')}
                             </>
                         ) : (
-                            'Login'
+                            t('auth.login.submit')
                         )}
                     </button>
 
@@ -209,7 +213,7 @@ export default function LoginPage() {
                         </div>
                         <div className="relative flex justify-center text-sm">
                             <span className="px-2 bg-white text-zinc-500">
-                                Don&apos;t have an account?
+                                {t('auth.login.noAccount')}
                             </span>
                         </div>
                     </div>
@@ -219,7 +223,7 @@ export default function LoginPage() {
                             href="/register"
                             className="font-medium text-primary hover:text-primary/80 transition-colors"
                         >
-                            Register Now
+                            {t('auth.login.createAccount')}
                         </Link>
                     </div>
                 </form>

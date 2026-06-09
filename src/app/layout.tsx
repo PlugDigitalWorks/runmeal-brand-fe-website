@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/Header";
 import { GoogleMapsProvider } from "@/providers/GoogleMapsProvider";
 import { AuthModal } from "@/components/features/AuthModal";
 import { ThemeProvider } from "@/themes/ThemeProvider";
+import { I18nProvider } from "@/i18n/I18nProvider";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3002"),
@@ -76,6 +77,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen">
+        <I18nProvider>
         <ThemeProvider>
           <AuthProvider>
             <UserProvider>
@@ -94,6 +96,7 @@ export default function RootLayout({
             </UserProvider>
           </AuthProvider>
         </ThemeProvider>
+        </I18nProvider>
       </body>
     </html>
   );

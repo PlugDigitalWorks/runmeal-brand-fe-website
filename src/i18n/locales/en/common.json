@@ -1,0 +1,66 @@
+{
+  "header": {
+    "hello": "Hello {{name}}",
+    "logout": "Logout",
+    "login": "Login",
+    "register": "Register"
+  },
+  "auth": {
+    "validation": {
+      "emailInvalid": "Please enter a valid email address",
+      "passwordMin": "Password must be at least 6 characters",
+      "firstNameMin": "First name must be at least 2 characters",
+      "lastNameMin": "Last name must be at least 2 characters",
+      "securityCheck": "Please complete the security check."
+    },
+    "email": "Email Address",
+    "emailPlaceholder": "example@email.com",
+    "password": "Password",
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Log in to your account and join the world of flavor",
+      "googleSignup": "Sign in with Google",
+      "orEmail": "Or log in with email",
+      "forgot": "Forgot Password?",
+      "submit": "Login",
+      "submitting": "Logging in...",
+      "noAccount": "Don't have an account?",
+      "createAccount": "Register Now",
+      "success": "Login successful!",
+      "googleSuccess": "Google login successful!",
+      "googleRestoreError": "Google login completed, but the session could not be restored.",
+      "googleFailed": "Google login failed. Please try again.",
+      "error": "An error occurred during login. Please check your credentials."
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Sign up to start your flavor journey",
+      "googleSignup": "Sign up with Google",
+      "orEmail": "Or create with email",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "firstNamePlaceholder": "John",
+      "lastNamePlaceholder": "Doe",
+      "submit": "Register",
+      "submitting": "Creating Account...",
+      "haveAccount": "Already have an account?",
+      "signIn": "Log in instead",
+      "success": "Registration successful. Please log in.",
+      "error": "An error occurred during registration. Please try again."
+    },
+    "forgot": {
+      "title": "Reset Password",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "submit": "Send Reset Link",
+      "submitting": "Sending...",
+      "backToLogin": "Back to Login",
+      "sentTo": "If an account exists for {{email}}, a password reset email has been sent.",
+      "sent": "Password reset email sent.",
+      "error": "An error occurred while sending the reset email."
+    }
+  },
+  "profile": {
+    "loyaltyTitle": "Para Puan",
+    "loyaltySubtitle": "Your wallet balance"
+  }
+}
