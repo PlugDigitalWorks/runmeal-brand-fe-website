@@ -4,21 +4,18 @@ import { Branch } from '@/types/branch';
 
 export const branchService = {
   async getNearbyBranches(lat?: number, lng?: number) {
-    const { DEFAULT_BRAND_ID } = await import('@/lib/constants');
+    const { getBrandId } = await import('@/lib/brand-store');
+    const brandId = getBrandId();
 
     const params = new URLSearchParams();
     if (lat) params.append('lat', lat.toString());
     if (lng) params.append('lng', lng.toString());
-    params.append('brandId', DEFAULT_BRAND_ID);
+    if (brandId) params.append('brandId', brandId);
 
     const queryString = params.toString();
     const url = `/branches/nearby/brand${queryString ? `?${queryString}` : ''}`;
 
-    const headers = {
-      'x-brand-id': DEFAULT_BRAND_ID
-    };
-
-    const response = await api.get<ApiResponse<Branch[]>>(url, { headers });
+    const response = await api.get<ApiResponse<Branch[]>>(url);
     return response.data.data;
   },
 

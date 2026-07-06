@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
-import { DEFAULT_BRAND_ID } from './constants';
+import { getBrandId } from './brand-store';
 
 const API_URL =
   typeof window === 'undefined'
@@ -14,7 +14,6 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'x-auth-mode': 'body', // Request tokens in body
-    'x-brand-id': DEFAULT_BRAND_ID,
   },
 });
 
@@ -22,6 +21,12 @@ export const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   let token: string | undefined;
+
+  // Attach the active brand (resolved on boot from the domain) to every request.
+  const brandId = getBrandId();
+  if (brandId) {
+    config.headers['x-brand-id'] = brandId;
+  }
 
   // Don't intercept auth requests to avoid loops
   if (config.url?.includes('/auth/refresh') || config.url?.includes('/auth/login')) {

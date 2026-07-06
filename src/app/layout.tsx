@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { BrandProvider } from "@/context/BrandContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { UserProvider } from "@/context/UserContext";
 import { BranchProvider } from "@/context/BranchContext";
@@ -79,6 +80,7 @@ export default function RootLayout({
       <body className="min-h-screen">
         <I18nProvider>
         <ThemeProvider>
+          <BrandProvider>
           <AuthProvider>
             <UserProvider>
               <GoogleMapsProvider>
@@ -95,6 +97,7 @@ export default function RootLayout({
               </GoogleMapsProvider>
             </UserProvider>
           </AuthProvider>
+          </BrandProvider>
         </ThemeProvider>
         </I18nProvider>
       </body>

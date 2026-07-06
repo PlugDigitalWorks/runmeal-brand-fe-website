@@ -1,5 +1,5 @@
 import { api } from '@/lib/axios';
-import { DEFAULT_BRAND_ID } from '@/lib/constants';
+import { getBrandId } from '@/lib/brand-store';
 import {
   LoginDto,
   RegisterDto,
@@ -86,7 +86,7 @@ export const authService = {
         headers: {
           'Content-Type': 'application/json',
           'x-auth-mode': 'body',
-          'x-brand-id': DEFAULT_BRAND_ID,
+          'x-brand-id': getBrandId(),
         },
       },
     );

@@ -9,7 +9,8 @@ import { Product } from '@/types/product';
 import { useCart } from '@/context/CartContext';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { DEFAULT_BRAND_ID, DEFAULT_PRODUCT_IMAGE } from '@/lib/constants';
+import { DEFAULT_PRODUCT_IMAGE } from '@/lib/constants';
+import { getBrandId } from '@/lib/brand-store';
 import { formatCurrency } from '@/lib/utils';
 import { ProductDetailModal, type SelectedProductAddon, type SelectedProductOption } from './ProductDetailModal';
 
@@ -41,7 +42,7 @@ export function ProductList() {
                     menuData = await catalogService.getBranchMenu(selectedBranch.id);
                 } else {
                     // Load Brand Menu (Fallback or Default View)
-                    menuData = await catalogService.getBrandMenu(DEFAULT_BRAND_ID);
+                    menuData = await catalogService.getBrandMenu(getBrandId());
                 }
 
                 if (menuData) {
