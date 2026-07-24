@@ -39,9 +39,12 @@ export function CartContent() {
 
     const hasItems = items.length > 0;
 
-    // Hardcoded values for demo matching image (discounts etc)
-    const discount = 0;
-    const finalTotal = cartTotal - discount;
+    // For authenticated carts the backend totals (totalCartPrice, discountAmount,
+    // finalPrice) are the single source of truth; guests have no discounts.
+    const discount = isAuthenticated ? (cart?.discountAmount ?? 0) : 0;
+    const finalTotal = isAuthenticated
+        ? (cart?.finalPrice ?? cartTotal - discount)
+        : cartTotal;
 
     return (
         <div className="space-y-4">

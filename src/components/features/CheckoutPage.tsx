@@ -10,7 +10,10 @@ import { paymentService, type PaymentMethod } from '@/services/payment.service';
 import { branchService } from '@/services/branch.service';
 import { userService } from '@/services/user.service';
 import type { Address } from '@/types/address';
+import { isRekonectPromotion } from '@/types/cart';
 import { formatCurrency, sanitizePositiveNumber } from '@/lib/utils';
+import { resolveLoyaltyError } from '@/lib/loyalty-errors';
+import { useTranslation } from 'react-i18next';
 import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
@@ -25,16 +28,6 @@ interface ApiErrorLike {
     };
 }
 
-interface AvailablePromotionItem {
-    applicable: boolean;
-    unapplicableReason?: string | null;
-    promotion: {
-        name: string;
-        description?: string | null;
-        couponCode?: string | null;
-    };
-}
-
 const getApiErrorMessage = (error: unknown, fallback: string) => {
     const apiError = error as ApiErrorLike;
     return apiError.response?.data?.message || fallback;
@@ -42,9 +35,22 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 
 export function CheckoutPage() {
     const router = useRouter();
+    const { t } = useTranslation();
     const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const { user, addresses, refreshAddresses, isLoading: isUserLoading } = useUser();
-    const { cart, cartTotal, isLoading: isCartLoading, applyCoupon, removeCoupon } = useCart();
+    const {
+        cart,
+        cartTotal,
+        isLoading: isCartLoading,
+        applyCoupon,
+        removeCoupon,
+        applyExternalPromotion,
+        removeExternalPromotion,
+        pendingPromotionKeys,
+        availablePromotions,
+        isPromotionsLoading,
+        refreshCart,
+    } = useCart();
     const { selectedBranch } = useBranch();
 
     const [isProcessing, setIsProcessing] = useState(false);
@@ -69,6 +75,23 @@ export function CheckoutPage() {
     const activeAddress = addresses.find(a => a.isActive);
     const cartItems = cart?.items || [];
     const targetBranchId = cart?.branchId || selectedBranch?.id;
+    // Applied promotions come exclusively from the backend cart response.
+    const appliedPromotions = React.useMemo(
+        () => cart?.appliedPromotions ?? [],
+        [cart?.appliedPromotions],
+    );
+    const appliedPromotionIds = React.useMemo(
+        () => new Set(appliedPromotions.map((promo) => promo.id)),
+        [appliedPromotions],
+    );
+    // Rekonect campaign candidates that are not applied yet; applied ones are
+    // rendered from appliedPromotions so they never disappear from the UI.
+    const rekonectCampaigns = React.useMemo(
+        () => availablePromotions.filter(
+            (item) => isRekonectPromotion(item.promotion) && !appliedPromotionIds.has(item.promotion.id),
+        ),
+        [availablePromotions, appliedPromotionIds],
+    );
     const paymentSettings = selectedBranch?.payment_settings;
     const paymentOptions = React.useMemo(() => [
         {
@@ -312,7 +335,15 @@ export function CheckoutPage() {
             }
         } catch (error: unknown) {
             console.error('Checkout error:', error);
-            toast.error(getApiErrorMessage(error, 'Failed to initialize payment'));
+            const loyaltyError = resolveLoyaltyError(error);
+            if (loyaltyError.isLoyaltyError) {
+                // Checkout revalidation changed the applied campaigns: re-sync
+                // the cart and ask the user to confirm the updated total.
+                await refreshCart();
+                toast.error(`${loyaltyError.message} ${t('loyalty.checkoutRecheck')}`);
+            } else {
+                toast.error(getApiErrorMessage(error, 'Failed to initialize payment'));
+            }
         } finally {
             setIsProcessing(false);
         }
@@ -515,74 +546,117 @@ export function CheckoutPage() {
                                 <Ticket size={20} />
                                 <h2 className="font-bold text-lg">Promotions</h2>
                             </div>
-                            <div className="p-5">
-                                {cart?.appliedPromotion ? (
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between bg-green-50 text-green-700 p-3 rounded-lg border border-green-200">
-                                            <div className="flex items-center gap-2">
-                                                <Ticket size={16} />
-                                                <div>
-                                                    <p className="font-bold text-sm">{cart.appliedPromotion.name}</p>
-                                                    <p className="text-xs">{cart.appliedPromotion.description}</p>
+                            <div className="p-5 space-y-4">
+                                {/* Applied promotions (internal + Rekonect) from the backend cart */}
+                                {appliedPromotions.length > 0 && (
+                                    <div className="space-y-2">
+                                        {appliedPromotions.map((promo) => {
+                                            const isRekonect = isRekonectPromotion(promo);
+                                            const isRowPending = isRekonect
+                                                ? pendingPromotionKeys.has(promo.id)
+                                                : isCouponLoading;
+
+                                            return (
+                                                <div
+                                                    key={promo.id}
+                                                    className="flex items-center justify-between gap-3 bg-green-50 text-green-700 p-3 rounded-lg border border-green-200"
+                                                >
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <Ticket size={16} className="shrink-0" />
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <p className="font-bold text-sm break-words">{promo.name}</p>
+                                                                {isRekonect && (
+                                                                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide border border-green-300 bg-green-100 text-green-700 rounded-full px-2 py-0.5">
+                                                                        {t('loyalty.providerTag')}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {promo.description && (
+                                                                <p className="text-xs break-words">{promo.description}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => (isRekonect ? removeExternalPromotion(promo.id) : handleRemoveCoupon())}
+                                                        disabled={isRowPending}
+                                                        aria-label={t('loyalty.remove')}
+                                                        className="shrink-0 text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
                                                 </div>
-                                            </div>
-                                            <button
-                                                onClick={handleRemoveCoupon}
-                                                disabled={isCouponLoading}
-                                                className="text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                        <button
-                                            onClick={() => setShowCouponModal(true)}
-                                            className="w-full text-center text-primary text-sm hover:underline"
-                                        >
-                                            View Available Coupons
-                                        </button>
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                value={couponCode}
-                                                onChange={(e) => setCouponCode(e.target.value)}
-                                                placeholder="Enter coupon code"
-                                                className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase placeholder:normal-case"
-                                            />
-                                            <button
-                                                onClick={handleApplyCoupon}
-                                                disabled={!couponCode.trim() || isCouponLoading}
-                                                className="bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                Apply
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        <button
-                                            onClick={() => setShowCouponModal(true)}
-                                            className="w-full text-center text-primary text-sm hover:underline"
-                                        >
-                                            View Available Coupons
-                                        </button>
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                value={couponCode}
-                                                onChange={(e) => setCouponCode(e.target.value)}
-                                                placeholder="Enter coupon code"
-                                                className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase placeholder:normal-case"
-                                            />
-                                            <button
-                                                onClick={handleApplyCoupon}
-                                                disabled={!couponCode.trim() || isCouponLoading}
-                                                className="bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                Apply
-                                            </button>
-                                        </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
+
+                                {/* Rekonect campaigns available for this cart */}
+                                {isPromotionsLoading && rekonectCampaigns.length === 0 ? (
+                                    <div className="flex items-center gap-2 text-sm text-zinc-500">
+                                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                        <span>{t('loyalty.loading')}</span>
+                                    </div>
+                                ) : rekonectCampaigns.length > 0 ? (
+                                    <div className="space-y-2">
+                                        <h3 className="text-sm font-semibold text-zinc-800">{t('loyalty.campaignsTitle')}</h3>
+                                        {rekonectCampaigns.map(({ promotion }) => {
+                                            const isPending = pendingPromotionKeys.has(promotion.id);
+
+                                            return (
+                                                <div
+                                                    key={promotion.id}
+                                                    className="flex items-center justify-between gap-3 p-3 rounded-lg border border-zinc-200 bg-zinc-50"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <p className="font-bold text-sm text-zinc-800 break-words">{promotion.name}</p>
+                                                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide border border-zinc-300 bg-white text-zinc-500 rounded-full px-2 py-0.5">
+                                                                {t('loyalty.providerTag')}
+                                                            </span>
+                                                        </div>
+                                                        {promotion.description && (
+                                                            <p className="text-xs text-zinc-600 break-words">{promotion.description}</p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => applyExternalPromotion(promotion.id)}
+                                                        disabled={isPending}
+                                                        className="shrink-0 bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                    >
+                                                        {isPending ? '...' : t('loyalty.apply')}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : null}
+
+                                {/* Internal coupon flow */}
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => setShowCouponModal(true)}
+                                        className="w-full text-center text-primary text-sm hover:underline"
+                                    >
+                                        View Available Coupons
+                                    </button>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={couponCode}
+                                            onChange={(e) => setCouponCode(e.target.value)}
+                                            placeholder="Enter coupon code"
+                                            className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase placeholder:normal-case"
+                                        />
+                                        <button
+                                            onClick={handleApplyCoupon}
+                                            disabled={!couponCode.trim() || isCouponLoading}
+                                            className="bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            Apply
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -840,7 +914,9 @@ export function CheckoutPage() {
 
 function CouponListModal({ onClose, onApply }: { onClose: () => void; onApply: (code: string) => void }) {
     const { availablePromotions, checkAvailablePromotions } = useCart();
-    const promotionItems = availablePromotions as AvailablePromotionItem[];
+    // Rekonect campaigns are handled in the checkout Campaigns area; this modal
+    // only serves the internal coupon-code flow.
+    const promotionItems = availablePromotions.filter((item) => !isRekonectPromotion(item.promotion));
 
     React.useEffect(() => {
         checkAvailablePromotions();

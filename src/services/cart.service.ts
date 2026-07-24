@@ -1,6 +1,6 @@
 import { api } from '@/lib/axios';
 import { ApiResponse } from '@/types/auth'; // Reusing ApiResponse wrapper
-import { Cart, AddItemDto, SetQtyDto } from '@/types/cart';
+import { Cart, AddItemDto, SetQtyDto, AvailablePromotion } from '@/types/cart';
 
 export const cartService = {
   async getAllCarts() {
@@ -47,9 +47,26 @@ export const cartService = {
   },
 
   async getAvailablePromotions(cartId: string, orderType: string = 'DELIVERY') {
-    const response = await api.get<ApiResponse<any[]>>(`/carts/${cartId}/promotions/available`, {
+    const response = await api.get<ApiResponse<AvailablePromotion[]>>(`/carts/${cartId}/promotions/available`, {
       params: { orderType }
     });
+    return response.data.data;
+  },
+
+  async applyExternalPromotion(cartId: string, assetKey: string, orderType: string = 'DELIVERY') {
+    const response = await api.post<ApiResponse<Cart>>(`/carts/${cartId}/apply-external-promotion`, {
+      assetKey,
+      orderType
+    });
+    return response.data.data;
+  },
+
+  // Omitting assetKey removes ALL external (Rekonect) promotions from the cart.
+  async removeExternalPromotion(cartId: string, assetKey?: string) {
+    const response = await api.post<ApiResponse<Cart>>(
+      `/carts/${cartId}/remove-external-promotion`,
+      assetKey ? { assetKey } : {}
+    );
     return response.data.data;
   },
 

@@ -62,5 +62,27 @@
   "profile": {
     "loyaltyTitle": "Para Puan",
     "loyaltySubtitle": "Your wallet balance"
+  },
+  "loyalty": {
+    "campaignsTitle": "Campaigns",
+    "apply": "Apply",
+    "remove": "Remove",
+    "appliedBadge": "Applied",
+    "providerTag": "Rekonect",
+    "loading": "Loading campaigns...",
+    "applySuccess": "Campaign applied",
+    "removeSuccess": "Campaign removed",
+    "applyFailed": "Failed to apply campaign",
+    "removeFailed": "Failed to remove campaign",
+    "checkoutRecheck": "Please review the updated total and confirm your order again.",
+    "errors": {
+      "LOYALTY_PROMOTION_NOT_APPLICABLE": "This campaign's cart conditions are not met yet.",
+      "LOYALTY_PROMOTION_NOT_OWNED": "This campaign is not available on your account.",
+      "LOYALTY_PROMOTION_INACTIVE": "This campaign is no longer active.",
+      "LOYALTY_PROMOTIONS_NOT_COMBINABLE": "The selected campaigns cannot be used together.",
+      "LOYALTY_PROMOTION_NOT_FOUND_ON_CART": "This campaign does not appear to be applied to the cart.",
+      "LOYALTY_PROMOTION_NO_LONGER_APPLICABLE": "One or more campaigns were removed because the cart changed.",
+      "LOYALTY_EXTERNAL_PROVIDER_NOT_ACTIVE": "External campaigns are not available for this restaurant."
+    }
   }
 }

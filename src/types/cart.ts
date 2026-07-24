@@ -33,7 +33,7 @@ export interface Cart {
   totalCartPrice?: number;
   discountAmount?: number;
   finalPrice?: number;
-  appliedPromotion?: CartPromotion;
+  appliedPromotions?: AppliedPromotion[];
   items?: CartItem[];
   isActive?: boolean;
   createdAt?: string;
@@ -41,12 +41,39 @@ export interface Cart {
   deletedAt?: string | null;
 }
 
-export interface CartPromotion {
+export interface AppliedPromotion {
   id: string;
   name: string;
-  description: string | null;
-  pointType: 'PERCENTAGE' | 'FIXED';
-  pointValue: number;
+  description?: string | null;
+  creditType?: string;
+  creditValue?: number;
+  externalProvider?: string | null;
+}
+
+export interface AvailablePromotion {
+  applicable: boolean;
+  unapplicableReason?: string | null;
+  promotion: {
+    id: string;
+    name: string;
+    description?: string | null;
+    couponCode?: string | null;
+    creditType?: string;
+    creditValue?: number;
+    externalProvider?: string | null;
+    status?: string;
+    raw?: {
+      assetDetails?: {
+        image?: string | null;
+      };
+    } & Record<string, unknown>;
+  };
+}
+
+export const REKONECT_PROVIDER = 'REKONECT';
+
+export function isRekonectPromotion(promotion: { externalProvider?: string | null }) {
+  return promotion.externalProvider === REKONECT_PROVIDER;
 }
 
 export interface AddItemDto {

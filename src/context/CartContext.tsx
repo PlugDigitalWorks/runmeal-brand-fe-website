@@ -3,7 +3,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { cartService } from '@/services/cart.service';
 import { userService } from '@/services/user.service';
-import { Cart, CartItem, CartItemOptionGroup } from '@/types/cart';
+import { Cart, CartItemOptionGroup, AvailablePromotion } from '@/types/cart';
+import { resolveLoyaltyError } from '@/lib/loyalty-errors';
+import i18n from '@/i18n/config';
 import { useAuth } from './AuthContext';
 import { useBranch } from './BranchContext';
 import { useUser } from './UserContext';
@@ -49,9 +51,14 @@ interface CartContextType {
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   applyCoupon: (couponCode: string) => Promise<void>;
   removeCoupon: () => Promise<void>;
+  applyExternalPromotion: (assetKey: string) => Promise<void>;
+  removeExternalPromotion: (assetKey?: string) => Promise<void>;
+  pendingPromotionKeys: Set<string>;
   cartTotal: number;
-  availablePromotions: any[];
+  availablePromotions: AvailablePromotion[];
+  isPromotionsLoading: boolean;
   checkAvailablePromotions: () => Promise<void>;
+  refreshCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -63,7 +70,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [guestCartItems, setGuestCartItems] = useState<GuestCartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [availablePromotions, setAvailablePromotions] = useState<any[]>([]);
+  const [availablePromotions, setAvailablePromotions] = useState<AvailablePromotion[]>([]);
+  const [isPromotionsLoading, setIsPromotionsLoading] = useState(false);
+  const [pendingPromotionKeys, setPendingPromotionKeys] = useState<Set<string>>(new Set());
+  // Synchronous mirror of pendingPromotionKeys: state updates are async, so a
+  // rapid double click could otherwise fire two mutations for the same asset.
+  const pendingPromotionKeysRef = useRef<Set<string>>(new Set());
+
+  const markPromotionPending = (key: string): boolean => {
+    if (pendingPromotionKeysRef.current.has(key)) return false;
+    pendingPromotionKeysRef.current.add(key);
+    setPendingPromotionKeys(new Set(pendingPromotionKeysRef.current));
+    return true;
+  };
+
+  const clearPromotionPending = (key: string) => {
+    pendingPromotionKeysRef.current.delete(key);
+    setPendingPromotionKeys(new Set(pendingPromotionKeysRef.current));
+  };
   const hasSyncedRef = useRef(false); // Track if cart has been synced to prevent duplicate syncs
 
   const getPreferredCartId = useCallback(
@@ -96,6 +120,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     },
     [getPreferredCartId, selectedBranch?.id],
   );
+
+  // Cart mutation responses (add/remove/qty, apply/remove promotion) are the
+  // full revalidated cart. Backend values are the single source of truth for
+  // totals and appliedPromotions, so write them straight into state. Merge over
+  // the previous cart to keep fields the mutation payload may omit.
+  const applyCartResponse = useCallback((updated: unknown): boolean => {
+    if (
+      updated &&
+      typeof updated === 'object' &&
+      ('items' in updated || 'cartId' in updated || 'id' in updated)
+    ) {
+      const updatedCart = updated as Cart;
+      setCart(prev => (prev ? { ...prev, ...updatedCart } : updatedCart));
+      return true;
+    }
+    return false;
+  }, []);
+
+  const refreshCart = useCallback(async () => {
+    await refreshUserCart(selectedBranch?.id || cart?.branchId);
+  }, [refreshUserCart, selectedBranch?.id, cart?.branchId]);
 
   // Load Guest Cart
   useEffect(() => {
@@ -278,7 +323,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           }));
         }
 
-        await cartService.addItem({
+        const updatedCart = await cartService.addItem({
           productId,
           qty: quantity,
           options: optionsDto,
@@ -287,8 +332,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         toast.success('Item added to cart');
 
-        // Refresh cart
-        await refreshUserCart(selectedBranch.id);
+        if (!applyCartResponse(updatedCart)) {
+          await refreshUserCart(selectedBranch.id);
+        }
       } catch (e: any) {
         console.error("Add to cart failed", e);
         toast.error(e.response?.data?.message || 'Failed to add item to cart');
@@ -415,8 +461,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (isAuthenticated) {
       setIsLoading(true);
       try {
-        await cartService.removeItem(itemId, selectedBranch?.id);
-        await refreshUserCart(selectedBranch?.id || cart?.branchId);
+        const updatedCart = await cartService.removeItem(itemId, selectedBranch?.id);
+        if (!applyCartResponse(updatedCart)) {
+          await refreshUserCart(selectedBranch?.id || cart?.branchId);
+        }
       } catch (e) {
         console.error("Remove failed", e);
       } finally {
@@ -434,8 +482,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (isAuthenticated) {
       setIsLoading(true);
       try {
-        await cartService.setQty({ itemId, qty: quantity }, selectedBranch?.id);
-        await refreshUserCart(selectedBranch?.id || cart?.branchId);
+        const updatedCart = await cartService.setQty({ itemId, qty: quantity }, selectedBranch?.id);
+        if (!applyCartResponse(updatedCart)) {
+          await refreshUserCart(selectedBranch?.id || cart?.branchId);
+        }
       } catch (e) {
         console.error("Update qty failed", e);
       } finally {
@@ -506,9 +556,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
 
 
-  const checkAvailablePromotions = async () => {
-    const cartId = cart?.id || cart?.cartId;
+  const cartId = cart?.id || cart?.cartId;
+
+  const checkAvailablePromotions = useCallback(async () => {
     if (!isAuthenticated || !cartId) return;
+    setIsPromotionsLoading(true);
     try {
       // Defaulting to DELIVERY as per current flow
       const promos = await cartService.getAvailablePromotions(cartId, 'DELIVERY');
@@ -516,6 +568,68 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error("Failed to fetch available promotions", e);
       // We don't block the UI for this, just log it
+    } finally {
+      setIsPromotionsLoading(false);
+    }
+  }, [isAuthenticated, cartId]);
+
+  // Load the campaign list once a cart ID exists and re-fetch (invalidate)
+  // whenever cart items or applied promotions change, since applicability
+  // depends on cart contents.
+  const promotionsSignature = cart
+    ? JSON.stringify({
+      items: (cart.items || []).map(item => [item.id, item.qty]),
+      applied: (cart.appliedPromotions || []).map(promo => promo.id),
+    })
+    : '';
+
+  useEffect(() => {
+    if (!isAuthenticated || !cartId) {
+      setAvailablePromotions([]);
+      return;
+    }
+    checkAvailablePromotions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, cartId, promotionsSignature]);
+
+  const applyExternalPromotion = async (assetKey: string) => {
+    if (!isAuthenticated || !cartId) return;
+    // Guard against double clicks / concurrent mutations for the same asset
+    if (!markPromotionPending(assetKey)) return;
+    try {
+      const updatedCart = await cartService.applyExternalPromotion(cartId, assetKey, 'DELIVERY');
+      applyCartResponse(updatedCart);
+      toast.success(i18n.t('loyalty.applySuccess'));
+    } catch (e) {
+      console.error("Apply external promotion failed", e);
+      const { code, message } = resolveLoyaltyError(e);
+      toast.error(message || i18n.t('loyalty.applyFailed'));
+      if (code === 'LOYALTY_PROMOTION_NO_LONGER_APPLICABLE') {
+        // Backend already dropped invalidated promotions; re-sync the cart.
+        await refreshCart();
+      }
+    } finally {
+      clearPromotionPending(assetKey);
+    }
+  };
+
+  const removeExternalPromotion = async (assetKey?: string) => {
+    if (!isAuthenticated || !cartId) return;
+    const pendingKey = assetKey ?? '__ALL_EXTERNAL__';
+    if (!markPromotionPending(pendingKey)) return;
+    try {
+      const updatedCart = await cartService.removeExternalPromotion(cartId, assetKey);
+      applyCartResponse(updatedCart);
+      toast.success(i18n.t('loyalty.removeSuccess'));
+    } catch (e) {
+      console.error("Remove external promotion failed", e);
+      const { code, message } = resolveLoyaltyError(e);
+      toast.error(message || i18n.t('loyalty.removeFailed'));
+      if (code === 'LOYALTY_PROMOTION_NO_LONGER_APPLICABLE' || code === 'LOYALTY_PROMOTION_NOT_FOUND_ON_CART') {
+        await refreshCart();
+      }
+    } finally {
+      clearPromotionPending(pendingKey);
     }
   };
 
@@ -534,8 +648,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       cartTotal,
       applyCoupon,
       removeCoupon,
+      applyExternalPromotion,
+      removeExternalPromotion,
+      pendingPromotionKeys,
       availablePromotions,
-      checkAvailablePromotions
+      isPromotionsLoading,
+      checkAvailablePromotions,
+      refreshCart
     }}>
       {children}
     </CartContext.Provider>
