@@ -1,6 +1,6 @@
 import i18n from '@/i18n/config';
 
-// Error codes returned by the loyalty/external-promotion endpoints.
+// Error codes returned by the loyalty promotion endpoints.
 // Messages live in i18n under `loyalty.errors.<CODE>`; never parse the
 // backend `message` text, only the `code` field.
 const LOYALTY_ERROR_CODES = new Set([
@@ -38,4 +38,16 @@ export function resolveLoyaltyError(error: unknown): ResolvedLoyaltyError {
   }
 
   return { code, isLoyaltyError: false, message: data?.message ?? null };
+}
+
+/**
+ * User facing copy for `CartPromotion.unapplicableReason`. Known reason codes get
+ * mapped copy; anything else is shown as the backend sent it.
+ */
+export function resolveUnapplicableReason(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+
+  const key = `loyalty.unapplicableReasons.${reason}`;
+  const translated = i18n.t(key);
+  return translated === key ? reason : translated;
 }

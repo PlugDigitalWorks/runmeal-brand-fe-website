@@ -33,7 +33,8 @@ export interface Cart {
   totalCartPrice?: number;
   discountAmount?: number;
   finalPrice?: number;
-  appliedPromotions?: AppliedPromotion[];
+  /** Single source of truth for every promotion currently applied to the cart. */
+  appliedPromotions?: CartPromotion[];
   items?: CartItem[];
   isActive?: boolean;
   createdAt?: string;
@@ -41,40 +42,46 @@ export interface Cart {
   deletedAt?: string | null;
 }
 
-export interface AppliedPromotion {
-  id: string;
-  name: string;
-  description?: string | null;
-  creditType?: string;
-  creditValue?: number;
-  externalProvider?: string | null;
+/** Loyalty provider that owns a promotion. */
+export enum LoyaltyProviderType {
+  INTERNAL = 'INTERNAL',
+  REKONECT = 'REKONECT',
 }
 
-export interface AvailablePromotion {
+/**
+ * The one promotion shape the backend uses, both in the available list and in
+ * the cart's `appliedPromotions`.
+ *
+ * `promotionCode` is a Runmeal coupon code for INTERNAL and a Rekonect asset key
+ * for REKONECT — the difference is the backend's business, we only echo `type`
+ * and `promotionCode` back.
+ */
+export interface CartPromotion {
+  type: LoyaltyProviderType;
+  promotionCode: string;
+  name: string | null;
+  description: string | null;
+  creditType: string;
+  creditValue: number;
+  imageUrl: string | null;
   applicable: boolean;
-  unapplicableReason?: string | null;
-  promotion: {
-    id: string;
-    name: string;
-    description?: string | null;
-    couponCode?: string | null;
-    creditType?: string;
-    creditValue?: number;
-    externalProvider?: string | null;
-    status?: string;
-    raw?: {
-      assetDetails?: {
-        image?: string | null;
-      };
-    } & Record<string, unknown>;
-  };
+  unapplicableReason: string | null;
 }
 
-export const REKONECT_PROVIDER = 'REKONECT';
-
-export function isRekonectPromotion(promotion: { externalProvider?: string | null }) {
-  return promotion.externalProvider === REKONECT_PROVIDER;
+export interface ApplyPromotionInput {
+  type: LoyaltyProviderType;
+  promotionCode: string;
 }
+
+/** Omitting `promotionCode` removes every promotion belonging to that provider. */
+export interface RemovePromotionInput {
+  type: LoyaltyProviderType;
+  promotionCode?: string;
+}
+
+/** Identity of a promotion across the available list and the applied list. */
+export const promotionKey = (promotion: Pick<CartPromotion, 'type' | 'promotionCode'>) =>
+  `${promotion.type}:${promotion.promotionCode}`;
 
 export interface AddItemDto {
   productId: string;

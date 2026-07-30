@@ -67,14 +67,24 @@
     "campaignsTitle": "Kampanyalar",
     "apply": "Uygula",
     "remove": "Kaldır",
-    "appliedBadge": "Uygulandı",
-    "providerTag": "Rekonect",
     "loading": "Kampanyalar yükleniyor...",
     "applySuccess": "Kampanya uygulandı",
     "removeSuccess": "Kampanya kaldırıldı",
     "applyFailed": "Kampanya uygulanamadı",
     "removeFailed": "Kampanya kaldırılamadı",
     "checkoutRecheck": "Lütfen güncel tutarı kontrol edip siparişi tekrar onaylayın.",
+    "empty": "Bu sepet için kullanılabilir kampanya bulunmuyor.",
+    "loadError": "Kampanyalar yüklenemedi.",
+    "retry": "Tekrar dene",
+    "couponPlaceholder": "Kupon kodu girin",
+    "providers": {
+      "INTERNAL": "Runmeal",
+      "REKONECT": "Rekonect"
+    },
+    "unapplicableReasons": {
+      "ALREADY_USED": "Bu kupon daha önce kullanılmış.",
+      "NOT_APPLICABLE": "Bu kampanyanın sepet koşulları henüz sağlanmıyor."
+    },
     "errors": {
       "LOYALTY_PROMOTION_NOT_APPLICABLE": "Bu kampanyanın sepet koşulları henüz sağlanmıyor.",
       "LOYALTY_PROMOTION_NOT_OWNED": "Bu kampanya hesabınızda kullanılamıyor.",

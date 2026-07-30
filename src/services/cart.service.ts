@@ -1,6 +1,13 @@
 import { api } from '@/lib/axios';
 import { ApiResponse } from '@/types/auth'; // Reusing ApiResponse wrapper
-import { Cart, AddItemDto, SetQtyDto, AvailablePromotion } from '@/types/cart';
+import {
+  AddItemDto,
+  ApplyPromotionInput,
+  Cart,
+  CartPromotion,
+  RemovePromotionInput,
+  SetQtyDto,
+} from '@/types/cart';
 
 export const cartService = {
   async getAllCarts() {
@@ -31,42 +38,33 @@ export const cartService = {
     return response.data.data;
   },
 
-  async applyPromotion(cartId: string, couponCode: string, branchId: string, cartTotal: number, orderType: string = 'DELIVERY') {
-    const response = await api.post<ApiResponse<Cart>>(`/carts/${cartId}/apply-promotion`, {
-      couponCode,
-      branchId,
-      cartTotal,
-      orderType
-    });
-    return response.data.data;
-  },
-
-  async removePromotion(cartId: string) {
-    const response = await api.post<ApiResponse<Cart>>(`/carts/${cartId}/remove-promotion`);
-    return response.data.data;
-  },
-
+  /** Internal Runmeal coupons and Rekonect campaigns, in one list. */
   async getAvailablePromotions(cartId: string, orderType: string = 'DELIVERY') {
-    const response = await api.get<ApiResponse<AvailablePromotion[]>>(`/carts/${cartId}/promotions/available`, {
+    const response = await api.get<ApiResponse<CartPromotion[]>>(`/carts/${cartId}/promotions/available`, {
       params: { orderType }
     });
-    return response.data.data;
+    return response.data.data ?? [];
   },
 
-  async applyExternalPromotion(cartId: string, assetKey: string, orderType: string = 'DELIVERY') {
-    const response = await api.post<ApiResponse<Cart>>(`/carts/${cartId}/apply-external-promotion`, {
-      assetKey,
+  /** Applies one promotion of either provider. The response is the full, re-priced cart. */
+  async applyPromotion(cartId: string, input: ApplyPromotionInput, orderType: string = 'DELIVERY') {
+    const response = await api.post<ApiResponse<Cart>>(`/carts/${cartId}/promotions/apply`, {
+      type: input.type,
+      promotionCode: input.promotionCode,
       orderType
     });
     return response.data.data;
   },
 
-  // Omitting assetKey removes ALL external (Rekonect) promotions from the cart.
-  async removeExternalPromotion(cartId: string, assetKey?: string) {
-    const response = await api.post<ApiResponse<Cart>>(
-      `/carts/${cartId}/remove-external-promotion`,
-      assetKey ? { assetKey } : {}
-    );
+  /**
+   * Removes one promotion, or every promotion of that provider when
+   * `promotionCode` is omitted. The response is the full, re-priced cart.
+   */
+  async removePromotion(cartId: string, input: RemovePromotionInput) {
+    const response = await api.post<ApiResponse<Cart>>(`/carts/${cartId}/promotions/remove`, {
+      type: input.type,
+      ...(input.promotionCode ? { promotionCode: input.promotionCode } : {})
+    });
     return response.data.data;
   },
 

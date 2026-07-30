@@ -3,7 +3,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { cartService } from '@/services/cart.service';
 import { userService } from '@/services/user.service';
-import { Cart, CartItemOptionGroup, AvailablePromotion } from '@/types/cart';
+import {
+  ApplyPromotionInput,
+  Cart,
+  CartItemOptionGroup,
+  CartPromotion,
+  promotionKey,
+  RemovePromotionInput,
+} from '@/types/cart';
 import { resolveLoyaltyError } from '@/lib/loyalty-errors';
 import i18n from '@/i18n/config';
 import { useAuth } from './AuthContext';
@@ -28,6 +35,12 @@ interface GuestCartItem {
   branchId?: string;
 }
 
+const DEFAULT_ORDER_TYPE = 'DELIVERY';
+
+/** Identifies an in-flight promotion mutation; `*` covers "remove every promotion of this provider". */
+const promotionMutationKey = ({ type, promotionCode }: RemovePromotionInput) =>
+  `${type}:${promotionCode ?? '*'}`;
+
 const getGuestItemKey = (
   productId: string,
   options?: CartItemOptionGroup[],
@@ -49,16 +62,17 @@ interface CartContextType {
   ) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>; // ItemId for user, ProductId for guest
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
-  applyCoupon: (couponCode: string) => Promise<void>;
-  removeCoupon: () => Promise<void>;
-  applyExternalPromotion: (assetKey: string) => Promise<void>;
-  removeExternalPromotion: (assetKey?: string) => Promise<void>;
-  pendingPromotionKeys: Set<string>;
   cartTotal: number;
-  availablePromotions: AvailablePromotion[];
-  isPromotionsLoading: boolean;
-  checkAvailablePromotions: () => Promise<void>;
   refreshCart: () => Promise<void>;
+
+  // Promotions — internal Runmeal coupons and Rekonect campaigns share one model.
+  availablePromotions: CartPromotion[];
+  isPromotionsLoading: boolean;
+  hasPromotionsError: boolean;
+  refreshAvailablePromotions: () => Promise<void>;
+  applyPromotion: (input: ApplyPromotionInput) => Promise<boolean>;
+  removePromotion: (input: RemovePromotionInput) => Promise<boolean>;
+  isPromotionPending: (input: RemovePromotionInput) => boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -70,11 +84,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [guestCartItems, setGuestCartItems] = useState<GuestCartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [availablePromotions, setAvailablePromotions] = useState<AvailablePromotion[]>([]);
+  const [availablePromotions, setAvailablePromotions] = useState<CartPromotion[]>([]);
   const [isPromotionsLoading, setIsPromotionsLoading] = useState(false);
+  const [hasPromotionsError, setHasPromotionsError] = useState(false);
   const [pendingPromotionKeys, setPendingPromotionKeys] = useState<Set<string>>(new Set());
   // Synchronous mirror of pendingPromotionKeys: state updates are async, so a
-  // rapid double click could otherwise fire two mutations for the same asset.
+  // rapid double click could otherwise fire two mutations for the same promotion.
   const pendingPromotionKeysRef = useRef<Set<string>>(new Set());
 
   const markPromotionPending = (key: string): boolean => {
@@ -507,127 +522,94 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const applyCoupon = async (couponCode: string) => {
-    const cartId = cart?.id || cart?.cartId;
-    const branchId = selectedBranch?.id || cart?.branchId;
-    if (!isAuthenticated || !cartId || !branchId) {
-      toast.error('Branch information is missing for this cart');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      await cartService.applyPromotion(
-        cartId,
-        couponCode,
-        branchId,
-        cart!.totalCartPrice || 0,
-        'DELIVERY' // Defaulting to DELIVERY as per prompt/context, might need adjustment if pickup is an option
-      );
-      toast.success('Coupon applied successfully');
-      // Refresh cart
-      const updatedCart = await cartService.getCart(cartId);
-      setCart(updatedCart);
-    } catch (e: any) {
-      console.error("Apply coupon failed", e);
-      toast.error(e.response?.data?.message || 'Failed to apply coupon');
-      throw e; // Re-throw to let component handle specific UI states if needed
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const removeCoupon = async () => {
-    const cartId = cart?.id || cart?.cartId;
-    if (!isAuthenticated || !cartId) return;
-    setIsLoading(true);
-    try {
-      await cartService.removePromotion(cartId);
-      toast.success('Coupon removed');
-      // Refresh cart
-      const updatedCart = await cartService.getCart(cartId);
-      setCart(updatedCart);
-    } catch (e: any) {
-      console.error("Remove coupon failed", e);
-      toast.error(e.response?.data?.message || 'Failed to remove coupon');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
+  // --- Promotions ---------------------------------------------------------
 
   const cartId = cart?.id || cart?.cartId;
 
-  const checkAvailablePromotions = useCallback(async () => {
+  const refreshAvailablePromotions = useCallback(async () => {
     if (!isAuthenticated || !cartId) return;
     setIsPromotionsLoading(true);
     try {
-      // Defaulting to DELIVERY as per current flow
-      const promos = await cartService.getAvailablePromotions(cartId, 'DELIVERY');
-      setAvailablePromotions(promos || []);
+      const promotions = await cartService.getAvailablePromotions(cartId, DEFAULT_ORDER_TYPE);
+      setAvailablePromotions(promotions);
+      setHasPromotionsError(false);
     } catch (e) {
+      // A failed list must never break checkout — surface it inline instead.
       console.error("Failed to fetch available promotions", e);
-      // We don't block the UI for this, just log it
+      setHasPromotionsError(true);
     } finally {
       setIsPromotionsLoading(false);
     }
   }, [isAuthenticated, cartId]);
 
-  // Load the campaign list once a cart ID exists and re-fetch (invalidate)
-  // whenever cart items or applied promotions change, since applicability
-  // depends on cart contents.
+  // Load the promotion list once a cart ID exists and re-fetch whenever cart
+  // items or applied promotions change, since applicability depends on both.
   const promotionsSignature = cart
     ? JSON.stringify({
       items: (cart.items || []).map(item => [item.id, item.qty]),
-      applied: (cart.appliedPromotions || []).map(promo => promo.id),
+      applied: (cart.appliedPromotions || []).map(promotionKey),
     })
     : '';
 
   useEffect(() => {
     if (!isAuthenticated || !cartId) {
       setAvailablePromotions([]);
+      setHasPromotionsError(false);
       return;
     }
-    checkAvailablePromotions();
+    refreshAvailablePromotions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, cartId, promotionsSignature]);
 
-  const applyExternalPromotion = async (assetKey: string) => {
-    if (!isAuthenticated || !cartId) return;
-    // Guard against double clicks / concurrent mutations for the same asset
-    if (!markPromotionPending(assetKey)) return;
-    try {
-      const updatedCart = await cartService.applyExternalPromotion(cartId, assetKey, 'DELIVERY');
-      applyCartResponse(updatedCart);
-      toast.success(i18n.t('loyalty.applySuccess'));
-    } catch (e) {
-      console.error("Apply external promotion failed", e);
-      const { code, message } = resolveLoyaltyError(e);
-      toast.error(message || i18n.t('loyalty.applyFailed'));
-      if (code === 'LOYALTY_PROMOTION_NO_LONGER_APPLICABLE') {
-        // Backend already dropped invalidated promotions; re-sync the cart.
-        await refreshCart();
-      }
-    } finally {
-      clearPromotionPending(assetKey);
+  const isPromotionPending = useCallback(
+    (input: RemovePromotionInput) => pendingPromotionKeys.has(promotionMutationKey(input)),
+    [pendingPromotionKeys],
+  );
+
+  /** Backend already dropped whatever stopped being valid — resync from it. */
+  const handlePromotionError = async (error: unknown, fallbackKey: string) => {
+    const { code, message } = resolveLoyaltyError(error);
+    toast.error(message || i18n.t(fallbackKey));
+
+    if (code === 'LOYALTY_PROMOTION_NO_LONGER_APPLICABLE' || code === 'LOYALTY_PROMOTION_NOT_FOUND_ON_CART') {
+      await refreshCart();
     }
   };
 
-  const removeExternalPromotion = async (assetKey?: string) => {
-    if (!isAuthenticated || !cartId) return;
-    const pendingKey = assetKey ?? '__ALL_EXTERNAL__';
-    if (!markPromotionPending(pendingKey)) return;
+  const applyPromotion = async (input: ApplyPromotionInput) => {
+    if (!isAuthenticated || !cartId || !input.promotionCode) return false;
+    // Guard against double clicks / concurrent mutations for the same promotion.
+    const pendingKey = promotionMutationKey(input);
+    if (!markPromotionPending(pendingKey)) return false;
+
     try {
-      const updatedCart = await cartService.removeExternalPromotion(cartId, assetKey);
+      const updatedCart = await cartService.applyPromotion(cartId, input, DEFAULT_ORDER_TYPE);
+      applyCartResponse(updatedCart);
+      toast.success(i18n.t('loyalty.applySuccess'));
+      return true;
+    } catch (e) {
+      console.error("Apply promotion failed", e);
+      await handlePromotionError(e, 'loyalty.applyFailed');
+      return false;
+    } finally {
+      clearPromotionPending(pendingKey);
+    }
+  };
+
+  const removePromotion = async (input: RemovePromotionInput) => {
+    if (!isAuthenticated || !cartId) return false;
+    const pendingKey = promotionMutationKey(input);
+    if (!markPromotionPending(pendingKey)) return false;
+
+    try {
+      const updatedCart = await cartService.removePromotion(cartId, input);
       applyCartResponse(updatedCart);
       toast.success(i18n.t('loyalty.removeSuccess'));
+      return true;
     } catch (e) {
-      console.error("Remove external promotion failed", e);
-      const { code, message } = resolveLoyaltyError(e);
-      toast.error(message || i18n.t('loyalty.removeFailed'));
-      if (code === 'LOYALTY_PROMOTION_NO_LONGER_APPLICABLE' || code === 'LOYALTY_PROMOTION_NOT_FOUND_ON_CART') {
-        await refreshCart();
-      }
+      console.error("Remove promotion failed", e);
+      await handlePromotionError(e, 'loyalty.removeFailed');
+      return false;
     } finally {
       clearPromotionPending(pendingKey);
     }
@@ -646,15 +628,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart,
       updateQuantity,
       cartTotal,
-      applyCoupon,
-      removeCoupon,
-      applyExternalPromotion,
-      removeExternalPromotion,
-      pendingPromotionKeys,
+      refreshCart,
       availablePromotions,
       isPromotionsLoading,
-      checkAvailablePromotions,
-      refreshCart
+      hasPromotionsError,
+      refreshAvailablePromotions,
+      applyPromotion,
+      removePromotion,
+      isPromotionPending
     }}>
       {children}
     </CartContext.Provider>

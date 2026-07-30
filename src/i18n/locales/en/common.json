@@ -67,14 +67,24 @@
     "campaignsTitle": "Campaigns",
     "apply": "Apply",
     "remove": "Remove",
-    "appliedBadge": "Applied",
-    "providerTag": "Rekonect",
     "loading": "Loading campaigns...",
     "applySuccess": "Campaign applied",
     "removeSuccess": "Campaign removed",
     "applyFailed": "Failed to apply campaign",
     "removeFailed": "Failed to remove campaign",
     "checkoutRecheck": "Please review the updated total and confirm your order again.",
+    "empty": "No campaigns are available for this cart.",
+    "loadError": "Campaigns could not be loaded.",
+    "retry": "Try again",
+    "couponPlaceholder": "Enter coupon code",
+    "providers": {
+      "INTERNAL": "Runmeal",
+      "REKONECT": "Rekonect"
+    },
+    "unapplicableReasons": {
+      "ALREADY_USED": "This coupon has already been used.",
+      "NOT_APPLICABLE": "This campaign does not meet the cart conditions yet."
+    },
     "errors": {
       "LOYALTY_PROMOTION_NOT_APPLICABLE": "This campaign's cart conditions are not met yet.",
       "LOYALTY_PROMOTION_NOT_OWNED": "This campaign is not available on your account.",

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
@@ -10,9 +11,9 @@ import { paymentService, type PaymentMethod } from '@/services/payment.service';
 import { branchService } from '@/services/branch.service';
 import { userService } from '@/services/user.service';
 import type { Address } from '@/types/address';
-import { isRekonectPromotion } from '@/types/cart';
+import { LoyaltyProviderType, promotionKey } from '@/types/cart';
 import { formatCurrency, sanitizePositiveNumber } from '@/lib/utils';
-import { resolveLoyaltyError } from '@/lib/loyalty-errors';
+import { resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
 import { useTranslation } from 'react-i18next';
 import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,13 +43,7 @@ export function CheckoutPage() {
         cart,
         cartTotal,
         isLoading: isCartLoading,
-        applyCoupon,
-        removeCoupon,
-        applyExternalPromotion,
-        removeExternalPromotion,
-        pendingPromotionKeys,
-        availablePromotions,
-        isPromotionsLoading,
+        applyPromotion,
         refreshCart,
     } = useCart();
     const { selectedBranch } = useBranch();
@@ -67,7 +62,6 @@ export function CheckoutPage() {
     const [walletAmountInput, setWalletAmountInput] = useState('');
     const [walletAppliedAmount, setWalletAppliedAmount] = useState(0);
     const [isCouponLoading, setIsCouponLoading] = useState(false);
-    const [showCouponModal, setShowCouponModal] = useState(false);
     const [deliverableAddressIds, setDeliverableAddressIds] = useState<Set<string>>(new Set());
     const [isCheckingAddresses, setIsCheckingAddresses] = useState(true);
     const [isChangingAddress, setIsChangingAddress] = useState(false);
@@ -75,23 +69,6 @@ export function CheckoutPage() {
     const activeAddress = addresses.find(a => a.isActive);
     const cartItems = cart?.items || [];
     const targetBranchId = cart?.branchId || selectedBranch?.id;
-    // Applied promotions come exclusively from the backend cart response.
-    const appliedPromotions = React.useMemo(
-        () => cart?.appliedPromotions ?? [],
-        [cart?.appliedPromotions],
-    );
-    const appliedPromotionIds = React.useMemo(
-        () => new Set(appliedPromotions.map((promo) => promo.id)),
-        [appliedPromotions],
-    );
-    // Rekonect campaign candidates that are not applied yet; applied ones are
-    // rendered from appliedPromotions so they never disappear from the UI.
-    const rekonectCampaigns = React.useMemo(
-        () => availablePromotions.filter(
-            (item) => isRekonectPromotion(item.promotion) && !appliedPromotionIds.has(item.promotion.id),
-        ),
-        [availablePromotions, appliedPromotionIds],
-    );
     const paymentSettings = selectedBranch?.payment_settings;
     const paymentOptions = React.useMemo(() => [
         {
@@ -212,35 +189,19 @@ export function CheckoutPage() {
         };
     }, [addresses, targetBranchId]);
 
-    const handleApplyCoupon = async () => {
+    // A code typed by hand is always an internal Runmeal coupon; anything the
+    // backend already knows about is applied straight from the promotion list.
+    const handleApplyCouponCode = async () => {
         if (!couponCode.trim()) return;
         setIsCouponLoading(true);
         try {
-            await applyCoupon(couponCode);
-            setCouponCode('');
-        } catch {
-            // Error handled in context
-        } finally {
-            setIsCouponLoading(false);
-        }
-    };
-
-    const handleApplySpecificCoupon = async (code: string) => {
-        setIsCouponLoading(true);
-        try {
-            await applyCoupon(code);
-            setShowCouponModal(false);
-        } catch {
-            // Error handled in context
-        } finally {
-            setIsCouponLoading(false);
-        }
-    };
-
-    const handleRemoveCoupon = async () => {
-        setIsCouponLoading(true);
-        try {
-            await removeCoupon();
+            const applied = await applyPromotion({
+                type: LoyaltyProviderType.INTERNAL,
+                promotionCode: couponCode.trim(),
+            });
+            if (applied) {
+                setCouponCode('');
+            }
         } finally {
             setIsCouponLoading(false);
         }
@@ -540,122 +501,31 @@ export function CheckoutPage() {
 
                     {/* Coupons & Wallet */}
                     <div className="grid gap-6 sm:grid-cols-2">
-                        {/* Coupon Card */}
+                        {/* Promotions Card — internal coupons and Rekonect campaigns in one list */}
                         <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
                             <div className="bg-primary p-4 flex items-center gap-3 text-white">
                                 <Ticket size={20} />
-                                <h2 className="font-bold text-lg">Promotions</h2>
+                                <h2 className="font-bold text-lg">{t('loyalty.campaignsTitle')}</h2>
                             </div>
                             <div className="p-5 space-y-4">
-                                {/* Applied promotions (internal + Rekonect) from the backend cart */}
-                                {appliedPromotions.length > 0 && (
-                                    <div className="space-y-2">
-                                        {appliedPromotions.map((promo) => {
-                                            const isRekonect = isRekonectPromotion(promo);
-                                            const isRowPending = isRekonect
-                                                ? pendingPromotionKeys.has(promo.id)
-                                                : isCouponLoading;
+                                <PromotionsList />
 
-                                            return (
-                                                <div
-                                                    key={promo.id}
-                                                    className="flex items-center justify-between gap-3 bg-green-50 text-green-700 p-3 rounded-lg border border-green-200"
-                                                >
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <Ticket size={16} className="shrink-0" />
-                                                        <div className="min-w-0">
-                                                            <div className="flex items-center gap-2 flex-wrap">
-                                                                <p className="font-bold text-sm break-words">{promo.name}</p>
-                                                                {isRekonect && (
-                                                                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide border border-green-300 bg-green-100 text-green-700 rounded-full px-2 py-0.5">
-                                                                        {t('loyalty.providerTag')}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            {promo.description && (
-                                                                <p className="text-xs break-words">{promo.description}</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => (isRekonect ? removeExternalPromotion(promo.id) : handleRemoveCoupon())}
-                                                        disabled={isRowPending}
-                                                        aria-label={t('loyalty.remove')}
-                                                        className="shrink-0 text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        <X size={14} />
-                                                    </button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                {/* Rekonect campaigns available for this cart */}
-                                {isPromotionsLoading && rekonectCampaigns.length === 0 ? (
-                                    <div className="flex items-center gap-2 text-sm text-zinc-500">
-                                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                        <span>{t('loyalty.loading')}</span>
-                                    </div>
-                                ) : rekonectCampaigns.length > 0 ? (
-                                    <div className="space-y-2">
-                                        <h3 className="text-sm font-semibold text-zinc-800">{t('loyalty.campaignsTitle')}</h3>
-                                        {rekonectCampaigns.map(({ promotion }) => {
-                                            const isPending = pendingPromotionKeys.has(promotion.id);
-
-                                            return (
-                                                <div
-                                                    key={promotion.id}
-                                                    className="flex items-center justify-between gap-3 p-3 rounded-lg border border-zinc-200 bg-zinc-50"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <p className="font-bold text-sm text-zinc-800 break-words">{promotion.name}</p>
-                                                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide border border-zinc-300 bg-white text-zinc-500 rounded-full px-2 py-0.5">
-                                                                {t('loyalty.providerTag')}
-                                                            </span>
-                                                        </div>
-                                                        {promotion.description && (
-                                                            <p className="text-xs text-zinc-600 break-words">{promotion.description}</p>
-                                                        )}
-                                                    </div>
-                                                    <button
-                                                        onClick={() => applyExternalPromotion(promotion.id)}
-                                                        disabled={isPending}
-                                                        className="shrink-0 bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                                    >
-                                                        {isPending ? '...' : t('loyalty.apply')}
-                                                    </button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : null}
-
-                                {/* Internal coupon flow */}
-                                <div className="space-y-3">
+                                {/* Coupon codes that are not in the list yet */}
+                                <div className="flex gap-2 border-t border-zinc-100 pt-4">
+                                    <input
+                                        type="text"
+                                        value={couponCode}
+                                        onChange={(e) => setCouponCode(e.target.value)}
+                                        placeholder={t('loyalty.couponPlaceholder')}
+                                        className="min-w-0 flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase placeholder:normal-case"
+                                    />
                                     <button
-                                        onClick={() => setShowCouponModal(true)}
-                                        className="w-full text-center text-primary text-sm hover:underline"
+                                        onClick={handleApplyCouponCode}
+                                        disabled={!couponCode.trim() || isCouponLoading}
+                                        className="shrink-0 bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
-                                        View Available Coupons
+                                        {t('loyalty.apply')}
                                     </button>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={couponCode}
-                                            onChange={(e) => setCouponCode(e.target.value)}
-                                            placeholder="Enter coupon code"
-                                            className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase placeholder:normal-case"
-                                        />
-                                        <button
-                                            onClick={handleApplyCoupon}
-                                            disabled={!couponCode.trim() || isCouponLoading}
-                                            className="bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            Apply
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -901,75 +771,149 @@ export function CheckoutPage() {
                 />
             )}
 
-            {/* Coupon List Modal */}
-            {showCouponModal && (
-                <CouponListModal
-                    onClose={() => setShowCouponModal(false)}
-                    onApply={handleApplySpecificCoupon}
-                />
-            )}
         </div>
     );
 }
 
-function CouponListModal({ onClose, onApply }: { onClose: () => void; onApply: (code: string) => void }) {
-    const { availablePromotions, checkAvailablePromotions } = useCart();
-    // Rekonect campaigns are handled in the checkout Campaigns area; this modal
-    // only serves the internal coupon-code flow.
-    const promotionItems = availablePromotions.filter((item) => !isRekonectPromotion(item.promotion));
+/**
+ * Every promotion for this cart, internal Runmeal coupons and Rekonect campaigns
+ * alike — one list, one row shape, no provider specific branch other than the
+ * remove payload the backend expects.
+ *
+ * Applied promotions come from the cart response, candidates from the available
+ * list. The client never computes a discount: after apply/remove the backend's
+ * re-priced cart is what the totals render from.
+ */
+function PromotionsList() {
+    const { t } = useTranslation();
+    const {
+        cart,
+        availablePromotions,
+        isPromotionsLoading,
+        hasPromotionsError,
+        refreshAvailablePromotions,
+        applyPromotion,
+        removePromotion,
+        isPromotionPending,
+    } = useCart();
 
-    React.useEffect(() => {
-        checkAvailablePromotions();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const appliedPromotions = React.useMemo(() => cart?.appliedPromotions ?? [], [cart?.appliedPromotions]);
+    const appliedKeys = React.useMemo(
+        () => new Set(appliedPromotions.map(promotionKey)),
+        [appliedPromotions],
+    );
+    // Applied ones first, then the candidates that are not applied yet. An
+    // applied promotion that drops out of the candidate list stays removable.
+    const rows = React.useMemo(
+        () => [
+            ...appliedPromotions,
+            ...availablePromotions.filter((promotion) => !appliedKeys.has(promotionKey(promotion))),
+        ],
+        [appliedPromotions, availablePromotions, appliedKeys],
+    );
+
+    if (isPromotionsLoading && rows.length === 0) {
+        return (
+            <div className="flex items-center gap-2 text-sm text-zinc-500">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span>{t('loyalty.loading')}</span>
+            </div>
+        );
+    }
+
+    if (rows.length === 0) {
+        return hasPromotionsError ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                <p className="text-xs text-zinc-500">{t('loyalty.loadError')}</p>
+                <button
+                    onClick={() => refreshAvailablePromotions()}
+                    className="text-xs font-medium text-primary hover:underline"
+                >
+                    {t('loyalty.retry')}
+                </button>
+            </div>
+        ) : (
+            <p className="rounded-lg border border-dashed border-zinc-200 p-3 text-xs text-zinc-500">
+                {t('loyalty.empty')}
+            </p>
+        );
+    }
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[80vh] flex flex-col">
-                <div className="p-4 border-b flex items-center justify-between">
-                    <h3 className="font-bold text-lg">Available Coupons</h3>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-zinc-800">
-                        <X size={20} />
-                    </button>
-                </div>
-                <div className="p-4 overflow-y-auto">
-                    {promotionItems.length === 0 ? (
-                        <p className="text-center text-zinc-500 py-4">No available coupons found.</p>
-                    ) : (
-                        <div className="space-y-3">
-                            {promotionItems.map((item, idx: number) => (
-                                <div key={idx} className={`p-4 rounded-lg border ${item.applicable ? 'border-green-200 bg-green-50' : 'border-zinc-200 bg-zinc-50 opacity-70'}`}>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <h4 className="font-bold text-zinc-800">{item.promotion.name}</h4>
-                                        {item.applicable && (
-                                            <button
-                                                onClick={() => item.promotion.couponCode && onApply(item.promotion.couponCode)}
-                                                disabled={!item.promotion.couponCode}
-                                                className="text-xs bg-green-600 text-white px-3 py-1 rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                Apply
-                                            </button>
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-zinc-600 mb-2">{item.promotion.description}</p>
-                                    {item.applicable && !item.promotion.couponCode && (
-                                        <p className="text-xs text-amber-600">
-                                            This promotion has no coupon code configured.
-                                        </p>
-                                    )}
-                                    {!item.applicable && (
-                                        <p className="text-xs text-red-500">
-                                            {item.unapplicableReason === 'ALREADY_USED'
-                                                ? 'This coupon has already been used'
-                                                : item.unapplicableReason}
-                                        </p>
-                                    )}
+        <div className="space-y-2">
+            {rows.map((promotion) => {
+                const isApplied = appliedKeys.has(promotionKey(promotion));
+                // A Rekonect campaign is removed by its own code — several can be
+                // applied at once. Internal coupons are removed per provider.
+                const removeInput = promotion.type === LoyaltyProviderType.REKONECT
+                    ? { type: promotion.type, promotionCode: promotion.promotionCode }
+                    : { type: promotion.type };
+                const isPending = isPromotionPending(isApplied ? removeInput : promotion);
+                const reason = resolveUnapplicableReason(promotion.unapplicableReason);
+
+                return (
+                    <div
+                        key={promotionKey(promotion)}
+                        className={`flex items-start justify-between gap-3 p-3 rounded-lg border ${isApplied ? 'bg-green-50 border-green-200 text-green-700' : 'bg-zinc-50 border-zinc-200'
+                            }`}
+                    >
+                        <div className="flex items-start gap-2 min-w-0">
+                            {promotion.imageUrl ? (
+                                <Image
+                                    src={promotion.imageUrl}
+                                    alt=""
+                                    width={40}
+                                    height={40}
+                                    unoptimized
+                                    className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                                />
+                            ) : (
+                                <Ticket size={16} className="mt-0.5 shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <p className={`font-bold text-sm break-words ${isApplied ? '' : 'text-zinc-800'}`}>
+                                        {promotion.name}
+                                    </p>
+                                    <span className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 border ${isApplied
+                                        ? 'border-green-300 bg-green-100 text-green-700'
+                                        : 'border-zinc-300 bg-white text-zinc-500'
+                                        }`}>
+                                        {t(`loyalty.providers.${promotion.type}`)}
+                                    </span>
                                 </div>
-                            ))}
+                                {promotion.description && (
+                                    <p className={`text-xs break-words ${isApplied ? '' : 'text-zinc-600'}`}>
+                                        {promotion.description}
+                                    </p>
+                                )}
+                                {!isApplied && !promotion.applicable && reason && (
+                                    <p className="text-xs text-amber-600 break-words">{reason}</p>
+                                )}
+                            </div>
                         </div>
-                    )}
-                </div>
-            </div>
+
+                        {isApplied ? (
+                            <button
+                                onClick={() => removePromotion(removeInput)}
+                                disabled={isPending}
+                                aria-label={t('loyalty.remove')}
+                                className="shrink-0 text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <X size={14} />
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => applyPromotion({ type: promotion.type, promotionCode: promotion.promotionCode })}
+                                disabled={isPending || !promotion.applicable}
+                                className="shrink-0 bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {isPending ? '...' : t('loyalty.apply')}
+                            </button>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }
