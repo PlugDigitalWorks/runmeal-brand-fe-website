@@ -60,8 +60,9 @@
     }
   },
   "profile": {
-    "loyaltyTitle": "Para Puan",
-    "loyaltySubtitle": "Cüzdan bakiyeniz"
+    "loyaltyTitle": "Runmeal Para Puanı",
+    "loyaltySubtitle": "Cüzdan bakiyeniz",
+    "loyaltyNote": "Bu bakiye Runmeal genel hesabınıza aittir. Kullanılabilir ödeme bakiyesi, restoranın sadakat sistemine göre ödeme ekranında farklılık gösterebilir."
   },
   "loyalty": {
     "campaignsTitle": "Kampanyalar",
@@ -84,6 +85,13 @@
     "unapplicableReasons": {
       "ALREADY_USED": "Bu kupon daha önce kullanılmış.",
       "NOT_APPLICABLE": "Bu kampanyanın sepet koşulları henüz sağlanmıyor."
+    },
+    "availableBalance": "Kullanılabilir bakiye",
+    "balanceNotUsable": "Bu bakiye bu sipariş için kullanılamıyor.",
+    "balanceTypes": {
+      "points": "Puan",
+      "credit": "Kredi",
+      "currency": "Bakiye"
     },
     "errors": {
       "LOYALTY_PROMOTION_NOT_APPLICABLE": "Bu kampanyanın sepet koşulları henüz sağlanmıyor.",

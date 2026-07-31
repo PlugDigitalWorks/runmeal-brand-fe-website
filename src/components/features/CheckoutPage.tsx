@@ -11,8 +11,9 @@ import { paymentService, type PaymentMethod } from '@/services/payment.service';
 import { branchService } from '@/services/branch.service';
 import { userService } from '@/services/user.service';
 import type { Address } from '@/types/address';
-import { LoyaltyProviderType, promotionKey } from '@/types/cart';
-import { formatCurrency, sanitizePositiveNumber } from '@/lib/utils';
+import { cartService } from '@/services/cart.service';
+import { CartLoyaltyWallet, LoyaltyProviderType, promotionKey } from '@/types/cart';
+import { formatCurrency, resolveCurrencySymbol, sanitizePositiveNumber } from '@/lib/utils';
 import { resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
 import { useTranslation } from 'react-i18next';
 import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle, Banknote } from 'lucide-react';
@@ -59,6 +60,7 @@ export function CheckoutPage() {
     // New States
     const [couponCode, setCouponCode] = useState('');
     const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
+    const [loyaltyWallet, setLoyaltyWallet] = useState<CartLoyaltyWallet | null>(null);
     const [walletAmountInput, setWalletAmountInput] = useState('');
     const [walletAppliedAmount, setWalletAppliedAmount] = useState(0);
     const [isCouponLoading, setIsCouponLoading] = useState(false);
@@ -133,7 +135,7 @@ export function CheckoutPage() {
         }
     }, [isSelectedPaymentAvailable, paymentOptions]);
 
-    // Fetch Wallet Balance
+    // Account-wide Runmeal balance; only the fallback for the amount shown below.
     React.useEffect(() => {
         if (isAuthenticated) {
             walletService.getBalance()
@@ -141,6 +143,38 @@ export function CheckoutPage() {
                 .catch(err => console.error('Failed to fetch wallet balance', err));
         }
     }, [isAuthenticated]);
+
+    // What this cart's branch actually lets the user spend, per its loyalty provider.
+    const cartId = cart?.id || cart?.cartId;
+    React.useEffect(() => {
+        if (!isAuthenticated || !cartId) {
+            setLoyaltyWallet(null);
+            return;
+        }
+
+        let isCurrent = true;
+        cartService.getLoyaltyWallet(cartId)
+            .then(wallet => {
+                if (isCurrent) setLoyaltyWallet(wallet);
+            })
+            .catch(err => {
+                // Branches without a provider wallet fall back to the Runmeal balance.
+                console.error('Failed to fetch cart loyalty wallet', err);
+                if (isCurrent) setLoyaltyWallet(null);
+            });
+
+        return () => {
+            isCurrent = false;
+        };
+    }, [isAuthenticated, cartId]);
+
+    const spendableBalance = loyaltyWallet?.balance ?? walletBalance?.balance ?? 0;
+    const isBalanceSpendable = (loyaltyWallet?.usable ?? true) && spendableBalance > 0;
+    const balanceSymbol = resolveCurrencySymbol(loyaltyWallet?.currency);
+    const balanceTypeKey = loyaltyWallet && `loyalty.balanceTypes.${loyaltyWallet.balanceType}`;
+    const balanceTypeLabel = balanceTypeKey
+        ? (t(balanceTypeKey) === balanceTypeKey ? loyaltyWallet.balanceType : t(balanceTypeKey))
+        : null;
 
     React.useEffect(() => {
         let isCurrent = true;
@@ -208,7 +242,7 @@ export function CheckoutPage() {
     };
 
     const handleApplyWallet = (amountOverride?: number) => {
-        if (!walletBalance) return;
+        if (!isBalanceSpendable) return;
 
         let amount = amountOverride;
         if (amount === undefined) {
@@ -221,7 +255,7 @@ export function CheckoutPage() {
             return;
         }
 
-        if (amount > walletBalance.balance) {
+        if (amount > spendableBalance) {
             toast.error('Amount cannot exceed wallet balance');
             return;
         }
@@ -237,10 +271,9 @@ export function CheckoutPage() {
     };
 
     const handleUseMaxWallet = () => {
-        if (!walletBalance || !cart) return;
+        if (!isBalanceSpendable || !cart) return;
         const totalToPay = cart.finalPrice ?? cart.totalCartPrice ?? 0;
-        const maxAmount = Math.min(walletBalance.balance, totalToPay);
-        handleApplyWallet(maxAmount);
+        handleApplyWallet(Math.min(spendableBalance, totalToPay));
     };
 
     const handleRemoveWallet = () => {
@@ -537,11 +570,22 @@ export function CheckoutPage() {
                                 <h2 className="font-bold text-lg">Wallet</h2>
                             </div>
                             <div className="p-5">
-                                <div className="flex items-center justify-between mb-4">
-                                    <span className="text-zinc-600 text-sm">Review Wallet Balance</span>
-                                    <span className="font-bold text-zinc-800">
-                                        {formatCurrency(walletBalance?.balance)}
-                                    </span>
+                                <div className="mb-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span className="text-zinc-600 text-sm">{t('loyalty.availableBalance')}</span>
+                                        <span className="font-bold text-zinc-800">
+                                            {formatCurrency(spendableBalance, balanceSymbol)}
+                                        </span>
+                                    </div>
+                                    {loyaltyWallet && (
+                                        <p className="mt-1 text-xs text-zinc-500">
+                                            {t(`loyalty.providers.${loyaltyWallet.provider}`)}
+                                            {balanceTypeLabel ? ` · ${balanceTypeLabel}` : ''}
+                                        </p>
+                                    )}
+                                    {loyaltyWallet && !loyaltyWallet.usable && (
+                                        <p className="mt-1 text-xs text-amber-600">{t('loyalty.balanceNotUsable')}</p>
+                                    )}
                                 </div>
 
                                 {walletAppliedAmount > 0 ? (
@@ -567,14 +611,14 @@ export function CheckoutPage() {
                                         />
                                         <button
                                             onClick={() => handleApplyWallet()}
-                                            disabled={!walletBalance || walletBalance.balance <= 0 || !walletAmountInput}
+                                            disabled={!isBalanceSpendable || !walletAmountInput}
                                             className="bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                         >
                                             Apply
                                         </button>
                                         <button
                                             onClick={handleUseMaxWallet}
-                                            disabled={!walletBalance || walletBalance.balance <= 0}
+                                            disabled={!isBalanceSpendable}
                                             className="bg-primary/10 text-primary border border-primary/20 px-3 py-2 rounded-lg text-sm font-medium hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                                         >
                                             Use All

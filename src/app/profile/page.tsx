@@ -180,6 +180,9 @@ function ProfileContent() {
                             <div className="text-2xl font-bold text-primary">
                                 {walletBalance === null ? '—' : formatCurrency(walletBalance)}
                             </div>
+                            <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+                                {t('profile.loyaltyNote')}
+                            </p>
                         </div>
                     </div>
                 </div>
