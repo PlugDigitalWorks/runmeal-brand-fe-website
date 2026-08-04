@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, Plus, Trash2, X, Edit2, ChevronDown, Package, User as UserIcon, Mail, Shield, Wallet } from 'lucide-react';
+import { MapPin, Plus, Trash2, X, Edit2, ChevronDown, Package, User as UserIcon, Mail, Shield, Wallet, ClipboardCheck } from 'lucide-react';
 import { useEffect, useState, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@/context/UserContext';
@@ -9,6 +9,7 @@ import { Address } from '@/types/address';
 import { userService } from '@/services/user.service';
 import { walletService } from '@/services/wallet.service';
 import { AddressForm } from '@/components/features/address/AddressForm';
+import { PendingSurveys } from '@/components/features/PendingSurveys';
 import { orderService } from '@/services/order.service';
 import { Order, OrderDetails } from '@/services/order.service';
 import { toast } from 'sonner';
@@ -23,7 +24,7 @@ function ProfileContent() {
     const [isAddingAddress, setIsAddingAddress] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [orders, setOrders] = useState<Order[]>([]);
-    const [activeTab, setActiveTab] = useState<'addresses' | 'orders'>('addresses');
+    const [activeTab, setActiveTab] = useState<'addresses' | 'orders' | 'surveys'>('addresses');
     const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
     const [orderDetails, setOrderDetails] = useState<Record<string, OrderDetails>>({});
     const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
@@ -39,7 +40,7 @@ function ProfileContent() {
 
     useEffect(() => {
         const tab = searchParams.get('tab');
-        if (tab === 'orders' || tab === 'addresses') {
+        if (tab === 'orders' || tab === 'addresses' || tab === 'surveys') {
             setActiveTab(tab);
         }
     }, [searchParams]);
@@ -201,7 +202,25 @@ function ProfileContent() {
                         >
                             Orders
                         </button>
+                        <button
+                            onClick={() => setActiveTab('surveys')}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'surveys' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
+                        >
+                            {t('survey.tab')}
+                        </button>
                     </div>
+
+                    {activeTab === 'surveys' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div>
+                                <h3 className="font-semibold text-zinc-900 flex items-center gap-2">
+                                    <ClipboardCheck className="w-4 h-4" /> {t('survey.title')}
+                                </h3>
+                                <p className="mt-1 text-sm text-zinc-500">{t('survey.subtitle')}</p>
+                            </div>
+                            <PendingSurveys />
+                        </div>
+                    )}
 
                     {activeTab === 'orders' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
