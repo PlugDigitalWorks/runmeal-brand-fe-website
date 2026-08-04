@@ -106,6 +106,7 @@
   "contact": {
     "title": "Contact the Branch",
     "subtitle": "Send your question or request straight to the branch.",
+    "close": "Close",
     "loading": "Loading...",
     "branchLabel": "Branch",
     "optional": "(optional)",
@@ -162,6 +163,20 @@
       "alreadyEvaluated": "This order has already been rated.",
       "orderUnavailable": "This order can no longer be rated.",
       "questionsChanged": "The survey questions changed. Please review the list and try again."
+    }
+  },
+  "cms": {
+    "loading": "Loading page...",
+    "mainNavigation": "Main navigation",
+    "footerNavigation": "Footer navigation",
+    "backHome": "Back to home",
+    "notFound": {
+      "title": "Page not found",
+      "description": "The page you are looking for may have been removed or its address changed."
+    },
+    "error": {
+      "title": "Page could not be loaded",
+      "description": "Something went wrong. Please try again later."
     }
   }
 }

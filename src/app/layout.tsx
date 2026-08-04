@@ -7,6 +7,8 @@ import { UserProvider } from "@/context/UserContext";
 import { BranchProvider } from "@/context/BranchContext";
 import { CartProvider } from "@/context/CartContext";
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { CmsNavigationProvider } from "@/context/CmsNavigationContext";
 import { GoogleMapsProvider } from "@/providers/GoogleMapsProvider";
 import { AuthModal } from "@/components/features/AuthModal";
 import { ThemeProvider } from "@/themes/ThemeProvider";
@@ -86,12 +88,17 @@ export default function RootLayout({
               <GoogleMapsProvider>
                 <BranchProvider>
                   <CartProvider>
-                    <Header />
-                    <main className="container mx-auto py-8 px-4">
-                      {children}
-                    </main>
-                    <Toaster position="bottom-left" />
-                    <AuthModal />
+                    <CmsNavigationProvider>
+                      <div className="flex min-h-screen flex-col">
+                        <Header />
+                        <main className="container mx-auto flex-1 py-8 px-4">
+                          {children}
+                        </main>
+                        <Footer />
+                      </div>
+                      <Toaster position="bottom-left" />
+                      <AuthModal />
+                    </CmsNavigationProvider>
                   </CartProvider>
                 </BranchProvider>
               </GoogleMapsProvider>

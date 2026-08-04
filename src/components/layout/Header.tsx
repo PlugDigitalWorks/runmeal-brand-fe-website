@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useTranslation } from 'react-i18next';
 import { RUNMEAL_LOGO } from '@/lib/constants';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { HeaderNavigation } from '@/components/layout/HeaderNavigation';
 
 export function Header() {
     const { user, isAuthenticated, logout } = useAuth();
@@ -15,17 +16,21 @@ export function Header() {
     return (
         <header className="bg-white text-zinc-900 border-b border-zinc-100 sticky top-0 z-50">
             <div className="container mx-auto flex justify-between items-center py-4">
-                {/* Logo */}
-                <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-90">
-                    <Image
-                        src={RUNMEAL_LOGO}
-                        alt="Runmeal"
-                        width={120}
-                        height={32}
-                        className="h-8 w-auto"
-                        priority
-                    />
-                </Link>
+                <div className="flex items-center gap-8">
+                    {/* Logo */}
+                    <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-90">
+                        <Image
+                            src={RUNMEAL_LOGO}
+                            alt="Runmeal"
+                            width={120}
+                            height={32}
+                            className="h-8 w-auto"
+                            priority
+                        />
+                    </Link>
+
+                    <HeaderNavigation />
+                </div>
 
                 {/* Right Actions */}
                 <div className="flex items-center gap-4">

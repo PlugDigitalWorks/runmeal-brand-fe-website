@@ -6,7 +6,7 @@ import * as z from 'zod';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { toast } from 'sonner';
-import { Send } from 'lucide-react';
+import { Send, X } from 'lucide-react';
 
 import { contactService } from '@/services/contact.service';
 import { CONTACT_MESSAGE_MAX_LENGTH } from '@/types/contact';
@@ -45,9 +45,11 @@ interface ContactFormProps {
     branchId: string;
     branchName: string;
     brandId?: string;
+    /** Set by the modal host; adds the close control to the card header. */
+    onClose?: () => void;
 }
 
-export function ContactForm({ branchId, branchName, brandId }: ContactFormProps) {
+export function ContactForm({ branchId, branchName, brandId, onClose }: ContactFormProps) {
     const { t } = useTranslation();
     const {
         register,
@@ -86,8 +88,18 @@ export function ContactForm({ branchId, branchName, brandId }: ContactFormProps)
     return (
         <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
             <div className="bg-primary p-4 flex items-center gap-3 text-white">
-                <Send size={20} />
-                <h1 className="font-bold text-lg">{t('contact.title')}</h1>
+                <Send size={20} className="shrink-0" />
+                <h2 className="font-bold text-lg flex-1">{t('contact.title')}</h2>
+                {onClose && (
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label={t('contact.close')}
+                        className="shrink-0 rounded-full p-1 transition-colors hover:bg-white/20"
+                    >
+                        <X size={18} />
+                    </button>
+                )}
             </div>
 
             <form onSubmit={onSubmit} className="p-5 space-y-5" noValidate>

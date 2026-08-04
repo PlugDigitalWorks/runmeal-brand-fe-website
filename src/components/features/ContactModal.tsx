@@ -1,39 +1,58 @@
 'use client';
 
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, MapPin, UserIcon } from 'lucide-react';
+import { AlertCircle, UserIcon, X } from 'lucide-react';
 
 import { ContactForm } from '@/components/features/ContactForm';
 import { useAuth } from '@/context/AuthContext';
-import { useBranch } from '@/context/BranchContext';
 import { useBrand } from '@/context/BrandContext';
 import { useUser } from '@/context/UserContext';
 import { hasCompleteContactIdentity } from '@/types/contact';
 
-/** Blocking states share one layout so the page never jumps between shapes. */
+interface ContactModalProps {
+    branchId: string;
+    branchName: string;
+    onClose: () => void;
+}
+
+/** Shown instead of the form when the account cannot send a request yet. */
 function ContactNotice({
     icon: Icon,
     title,
     description,
     actionHref,
     actionLabel,
+    onClose,
 }: {
     icon: typeof AlertCircle;
     title: string;
     description: string;
     actionHref: string;
     actionLabel: string;
+    onClose: () => void;
 }) {
+    const { t } = useTranslation();
+
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-zinc-100 p-6 text-center">
+        <div className="relative rounded-lg bg-white p-6 text-center shadow-xl">
+            <button
+                type="button"
+                onClick={onClose}
+                aria-label={t('contact.close')}
+                className="absolute right-3 top-3 rounded-full p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+            >
+                <X size={18} />
+            </button>
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-50 text-primary">
                 <Icon size={22} />
             </span>
-            <h1 className="mt-4 text-lg font-bold text-zinc-800">{title}</h1>
+            <h2 className="mt-4 text-lg font-bold text-zinc-800">{title}</h2>
             <p className="mt-2 text-sm leading-relaxed text-zinc-500">{description}</p>
             <Link
                 href={actionHref}
+                onClick={onClose}
                 className="mt-5 inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
             >
                 {actionLabel}
@@ -42,25 +61,29 @@ function ContactNotice({
     );
 }
 
-export default function ContactPage() {
+export function ContactModal({ branchId, branchName, onClose }: ContactModalProps) {
     const { t } = useTranslation();
-    const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-    const { user, isLoading: isUserLoading } = useUser();
-    const { selectedBranch, isLoading: isBranchLoading } = useBranch();
+    const { isAuthenticated } = useAuth();
+    const { user } = useUser();
     const { brand } = useBrand();
 
-    const isLoading = isAuthLoading || (isAuthenticated && isUserLoading) || isBranchLoading;
+    // Escape closes it, and the page behind must not scroll while it is open.
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') onClose();
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.removeEventListener('keydown', onKeyDown);
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [onClose]);
 
     const body = () => {
-        if (isLoading) {
-            return (
-                <div className="flex items-center justify-center gap-3 rounded-lg border border-zinc-100 bg-white p-10 text-sm text-zinc-500">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    {t('contact.loading')}
-                </div>
-            );
-        }
-
         if (!isAuthenticated) {
             return (
                 <ContactNotice
@@ -69,6 +92,7 @@ export default function ContactPage() {
                     description={t('contact.authRequired.description')}
                     actionHref="/login"
                     actionLabel={t('contact.authRequired.action')}
+                    onClose={onClose}
                 />
             );
         }
@@ -84,35 +108,33 @@ export default function ContactPage() {
                     description={t('contact.incompleteProfile.description')}
                     actionHref="/profile"
                     actionLabel={t('contact.incompleteProfile.action')}
-                />
-            );
-        }
-
-        if (!selectedBranch) {
-            return (
-                <ContactNotice
-                    icon={MapPin}
-                    title={t('contact.noBranch.title')}
-                    description={t('contact.noBranch.description')}
-                    actionHref="/"
-                    actionLabel={t('contact.noBranch.action')}
+                    onClose={onClose}
                 />
             );
         }
 
         return (
             <ContactForm
-                branchId={selectedBranch.id}
-                branchName={selectedBranch.name}
+                branchId={branchId}
+                branchName={branchName}
                 brandId={brand?.brandId}
+                onClose={onClose}
             />
         );
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50">
-            <div className="mx-auto max-w-2xl px-4 py-8 sm:py-12">
-                <p className="mb-4 text-sm text-zinc-500">{t('contact.subtitle')}</p>
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('contact.title')}
+        >
+            <div
+                className="max-h-[90vh] w-full max-w-md overflow-y-auto"
+                onClick={(event) => event.stopPropagation()}
+            >
                 {body()}
             </div>
         </div>
