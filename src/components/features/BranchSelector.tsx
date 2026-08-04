@@ -1,9 +1,11 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { useBranch } from '@/context/BranchContext';
 import { useUser } from '@/context/UserContext';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, MessageSquareText } from 'lucide-react';
 import { AddressSearch } from '@/components/features/AddressSearch';
 import { formatCurrency } from '@/lib/utils';
 import type { Branch } from '@/types/branch';
@@ -15,6 +17,7 @@ const getDayName = () => {
 };
 
 export function BranchSelector() {
+    const { t } = useTranslation();
     const { selectedBranch, branches, selectBranch, isLoading, searchedAddress, searchBranches } = useBranch();
     const { addresses } = useUser(); // Get addresses from UserContext
     const [nearbyBranches, setNearbyBranches] = React.useState<Branch[]>([]);
@@ -155,6 +158,14 @@ export function BranchSelector() {
                             <p>Minimum Delivery Amount: {formatCurrency(branchDetails.minimumDeliveryAmount)}</p>
                             <p>Payment: {branchDetails.paymentMethods.join(', ')}</p>
                             <p>{branchDetails.deliveryOptions.join(', ')}</p>
+                            {/* The Contact tab above is desktop only, so mobile needs its own way in. */}
+                            <Link
+                                href="/contact"
+                                className="inline-flex items-center gap-1.5 pt-1 font-medium text-primary hover:underline md:hidden"
+                            >
+                                <MessageSquareText size={14} className="shrink-0" />
+                                {t('contact.title')}
+                            </Link>
                         </div>
                     )}
                 </div>
@@ -186,6 +197,13 @@ export function BranchSelector() {
                                 <>
                                     <span className="block font-medium text-zinc-700 mb-1">Phone Number</span>
                                     {branchDetails.phoneNumber}
+                                    <Link
+                                        href="/contact"
+                                        className="mt-2 flex items-center gap-1.5 font-medium text-primary hover:underline"
+                                    >
+                                        <MessageSquareText size={14} className="shrink-0" />
+                                        {t('contact.title')}
+                                    </Link>
                                 </>
                             )}
                         </div>

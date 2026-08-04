@@ -150,6 +150,7 @@
     "retry": "Tekrar dene",
     "loadMore": "Daha fazla göster",
     "unknownBranch": "Şube",
+    "orderNo": "Sipariş #{{id}}",
     "answerAllHint": "Göndermek için tüm soruları puanlayın.",
     "submit": "Değerlendirmeyi gönder",
     "submitting": "Gönderiliyor...",
