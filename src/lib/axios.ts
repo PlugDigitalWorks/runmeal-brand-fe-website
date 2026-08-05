@@ -8,6 +8,10 @@ const API_URL =
     ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000')
     : '/api';
 
+export const AUTH_API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+).replace(/\/+$/, '');
+
 export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
@@ -15,6 +19,23 @@ export const api = axios.create({
     'Content-Type': 'application/json',
     'x-auth-mode': 'body', // Request tokens in body
   },
+});
+
+export const authApi = axios.create({
+  baseURL: AUTH_API_URL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+    'x-auth-mode': 'body', // Request tokens in body
+  },
+});
+
+authApi.interceptors.request.use((config) => {
+  const brandId = getBrandId();
+  if (brandId) {
+    config.headers['x-brand-id'] = brandId;
+  }
+  return config;
 });
 
 
@@ -97,13 +118,8 @@ const refreshAccessToken = async (): Promise<string> => {
         sid = Cookies.get('sid');
       }
 
-      const response = await axios.post(`${API_URL}/auth/refresh`, {
+      const response = await authApi.post('/auth/refresh', {
         ...(refreshToken && sid ? { refreshToken, sid } : {}),
-      }, {
-        withCredentials: true,
-        headers: {
-          'x-auth-mode': 'body'
-        }
       });
 
       const data = response.data.data || response.data;
