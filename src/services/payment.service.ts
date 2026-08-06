@@ -13,6 +13,8 @@ export interface PaymentInitializationResponse {
 
 export interface InitializePaymentInput {
     cartId: string;
+    /** Part of the protected-request contract; the backend re-derives it from the cart. */
+    branchId?: string | null;
     paymentMethod?: PaymentMethod;
     orderType?: OrderType;
     /**
@@ -35,20 +37,25 @@ export const paymentService = {
      */
     async initializePayment({
         cartId,
+        branchId,
         paymentMethod = 'ONLINE_CARD',
         orderType = 'DELIVERY',
         tableId,
         creditUsedAmount,
         note,
     }: InitializePaymentInput) {
-        const response = await api.post<ApiResponse<PaymentInitializationResponse>>('/payments/initialize', {
-            cartId,
-            paymentMethod,
-            orderType,
-            ...(orderType === 'TABLE_ORDER' && tableId ? { tableId } : {}),
-            ...(creditUsedAmount && creditUsedAmount > 0 ? { creditUsedAmount } : {}),
-            ...(note?.trim() ? { note: note.trim() } : {}),
-        });
+        const response = await api.post<ApiResponse<PaymentInitializationResponse>>(
+            '/payments/initialize',
+            {
+                cartId,
+                paymentMethod,
+                orderType,
+                ...(orderType === 'TABLE_ORDER' && tableId ? { tableId } : {}),
+                creditUsedAmount: creditUsedAmount && creditUsedAmount > 0 ? creditUsedAmount : 0,
+                ...(note?.trim() ? { note: note.trim() } : {}),
+            },
+            branchId ? { headers: { 'x-branch-id': branchId } } : {},
+        );
         return response.data.data;
     }
 };

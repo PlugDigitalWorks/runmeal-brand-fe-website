@@ -225,7 +225,8 @@
     "viewOrder": "View Order",
     "continueShopping": "Continue Shopping",
     "orderId": "Order ID",
-    "paymentId": "Payment ID"
+    "paymentId": "Payment ID",
+    "table": "Table"
   },
   "table": {
     "resolving": "Loading table details...",
@@ -271,7 +272,8 @@
       "payment": "Payment",
       "payAtCounter": "Pay at the counter",
       "counterHint": "Every order from this table is collected on one check; settle it at the counter when you leave.",
-      "orderMore": "Keep Ordering"
+      "orderMore": "Keep Ordering",
+      "paidOnline": "Paid online"
     },
     "journeyErrors": {
       "backHome": "Back to Home",

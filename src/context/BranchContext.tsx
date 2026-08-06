@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { branchService } from '@/services/branch.service';
 import { userService } from '@/services/user.service';
 import {
@@ -27,6 +27,13 @@ interface BranchContextType {
      * read this instead of waiting for the full record.
      */
     activeBranchId: string | null;
+    /**
+     * Bumped whenever the branch menu we rendered is known to be stale — a
+     * cart/product validation error means the backend disagrees with the
+     * availability or price we showed. Menu consumers refetch on change.
+     */
+    menuRevision: number;
+    invalidateMenu: () => void;
     selectBranch: (branch: Branch) => void;
     searchBranches: (address: DeliveryAddressSelection) => Promise<void>;
 }
@@ -41,6 +48,9 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     const [branches, setBranches] = useState<Branch[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [searchedAddress, setSearchedAddress] = useState<DeliveryAddressSelection | null>(null);
+    const [menuRevision, setMenuRevision] = useState(0);
+
+    const invalidateMenu = useCallback(() => setMenuRevision((revision) => revision + 1), []);
 
     const tableBranchId = isTableMode ? journey?.branchId ?? null : null;
     const activeBranchId = tableBranchId ?? selectedBranch?.id ?? null;
@@ -222,7 +232,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <BranchContext.Provider value={{ selectedBranch, branches, isLoading, searchedAddress, activeBranchId, selectBranch, searchBranches }}>
+        <BranchContext.Provider value={{ selectedBranch, branches, isLoading, searchedAddress, activeBranchId, menuRevision, invalidateMenu, selectBranch, searchBranches }}>
             {children}
         </BranchContext.Provider>
     );

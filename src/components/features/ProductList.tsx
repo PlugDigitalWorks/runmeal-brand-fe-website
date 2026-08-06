@@ -19,7 +19,7 @@ export function ProductList() {
     // `activeBranchId`, not `selectedBranch`: in a QR journey the branch is
     // known from the token immediately, while the full branch record needs a
     // session — and the branch menu endpoint is public either way.
-    const { activeBranchId } = useBranch();
+    const { activeBranchId, menuRevision } = useBranch();
     const { addToCart } = useCart();
     const { t } = useTranslation();
     const [categories, setCategories] = useState<Category[]>([]);
@@ -61,7 +61,10 @@ export function ProductList() {
             }
         };
         fetchData();
-    }, [activeBranchId]);
+        // `menuRevision` changes when a cart/product validation error told us
+        // the availability or prices we rendered are no longer what the
+        // backend enforces.
+    }, [activeBranchId, menuRevision]);
 
 
 

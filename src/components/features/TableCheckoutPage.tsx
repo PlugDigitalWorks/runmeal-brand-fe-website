@@ -22,7 +22,7 @@ import { resolveTableOrderError } from '@/lib/table-order-errors';
 import { formatCurrency } from '@/lib/utils';
 import { TableJourneyError } from '@/components/features/TableJourneyError';
 import { TableOrderSuccess } from '@/components/features/TableOrderSuccess';
-import type { TableFulfillment, TablePayLaterOrder, TablePaymentChoice } from '@/types/table';
+import type { TableFulfillment, TableOrderView, TablePaymentChoice } from '@/types/table';
 
 /**
  * Checkout for a QR table journey.
@@ -44,7 +44,7 @@ export function TableCheckoutPage() {
     const [paymentChoice, setPaymentChoice] = React.useState<TablePaymentChoice | null>(null);
     const [note, setNote] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const [placedOrder, setPlacedOrder] = React.useState<TablePayLaterOrder | null>(null);
+    const [placedOrder, setPlacedOrder] = React.useState<TableOrderView | null>(null);
 
     const cartId = cart?.id || cart?.cartId;
     const cartItems = cart?.items || [];
@@ -78,7 +78,7 @@ export function TableCheckoutPage() {
     const backToMenuHref = journey ? `/order?qr=${encodeURIComponent(journey.qrToken)}` : '/order';
 
     /** Applies whatever recovery the backend's error asks for. */
-    const handleCheckoutError = async (submitError: unknown) => {
+    const handleCheckoutError = async (submitError: unknown, submittedCartId: string) => {
         const resolved = resolveTableOrderError(submitError);
         toast.error(resolved.message);
 
@@ -86,10 +86,26 @@ export function TableCheckoutPage() {
             case 'REFRESH_QR':
                 await refreshOptions();
                 break;
-            case 'RESET_CART':
+            case 'RESET_CART': {
+                // The cart is spent but the error does not say which order
+                // consumed it, so look it up before dropping local state —
+                // otherwise the customer is bounced back to the menu with no
+                // idea their order already exists.
+                const existingOrder = journey
+                    ? await orderService
+                        .findOrderByCartId(submittedCartId, journey.branchId)
+                        .catch(() => null)
+                    : null;
+
                 resetCartState();
-                router.replace(backToMenuHref);
+
+                if (existingOrder) {
+                    setPlacedOrder(existingOrder);
+                } else {
+                    router.replace(backToMenuHref);
+                }
                 break;
+            }
             case 'KEEP_PAYMENT':
                 // A payment already owns this cart. Do not start another one
                 // and do not fall through to pay later — that is how a table
@@ -109,6 +125,7 @@ export function TableCheckoutPage() {
             if (fulfillment === 'PICKUP') {
                 const response = await paymentService.initializePayment({
                     cartId,
+                    branchId: journey.branchId,
                     paymentMethod: 'ONLINE_CARD',
                     orderType: 'PICKUP',
                     note,
@@ -125,6 +142,7 @@ export function TableCheckoutPage() {
             if (paymentChoice === 'PAY_NOW') {
                 const response = await paymentService.initializePayment({
                     cartId,
+                    branchId: journey.branchId,
                     paymentMethod: 'ONLINE_CARD',
                     orderType: 'TABLE_ORDER',
                     tableId: journey.tableId,
@@ -159,7 +177,7 @@ export function TableCheckoutPage() {
             toast.error(t('table.errors.GENERIC'));
         } catch (submitError) {
             console.error('Table checkout failed', submitError);
-            await handleCheckoutError(submitError);
+            await handleCheckoutError(submitError, cartId);
         } finally {
             setIsSubmitting(false);
         }

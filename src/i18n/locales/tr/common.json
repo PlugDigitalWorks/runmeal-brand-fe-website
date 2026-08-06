@@ -225,7 +225,8 @@
     "viewOrder": "Siparişi Görüntüle",
     "continueShopping": "Alışverişe Devam Et",
     "orderId": "Sipariş No",
-    "paymentId": "Ödeme No"
+    "paymentId": "Ödeme No",
+    "table": "Masa"
   },
   "table": {
     "resolving": "Masa bilgileri yükleniyor...",
@@ -271,7 +272,8 @@
       "payment": "Ödeme",
       "payAtCounter": "Kasada ödenecek",
       "counterHint": "Aynı masadan verilen tüm siparişler tek hesapta toplanır; çıkışta kasada ödeyebilirsiniz.",
-      "orderMore": "Sipariş Eklemeye Devam Et"
+      "orderMore": "Sipariş Eklemeye Devam Et",
+      "paidOnline": "Online ödendi"
     },
     "journeyErrors": {
       "backHome": "Ana Sayfaya Dön",

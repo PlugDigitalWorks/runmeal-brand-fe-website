@@ -155,7 +155,7 @@ export function CheckoutPage() {
         }
 
         let isCurrent = true;
-        cartService.getLoyaltyWallet(cartId)
+        cartService.getLoyaltyWallet(cartId, targetBranchId)
             .then(wallet => {
                 if (isCurrent) setLoyaltyWallet(wallet);
             })
@@ -168,7 +168,7 @@ export function CheckoutPage() {
         return () => {
             isCurrent = false;
         };
-    }, [isAuthenticated, cartId]);
+    }, [isAuthenticated, cartId, targetBranchId]);
 
     const spendableBalance = loyaltyWallet?.balance ?? walletBalance?.balance ?? 0;
     const isBalanceSpendable = (loyaltyWallet?.usable ?? true) && spendableBalance > 0;
@@ -305,6 +305,7 @@ export function CheckoutPage() {
         try {
             const response = await paymentService.initializePayment({
                 cartId,
+                branchId: targetBranchId,
                 paymentMethod: selectedPaymentMethod,
                 orderType: 'DELIVERY',
                 creditUsedAmount: walletAppliedAmount > 0 ? walletAppliedAmount : undefined,

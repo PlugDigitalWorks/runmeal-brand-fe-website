@@ -6,22 +6,25 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { resolveCurrencySymbol } from '@/lib/utils';
-import type { TablePayLaterOrder } from '@/types/table';
+import type { TableOrderView } from '@/types/table';
 
 /**
- * Confirmation for a pay-later table order. The response from
- * `POST /orders/table/pay-later` is itself the confirmation — the order is
- * already in the kitchen and already sitting in the table's open check, so
- * nothing here needs to poll or verify anything.
+ * Order confirmation for a table journey.
+ *
+ * Fed either by the pay-later response (which *is* the confirmation — the
+ * order is already in the kitchen and in the table's open check) or by the
+ * authoritative order read after an online payment. Neither case polls or
+ * infers anything: the backend has already decided.
  */
 export function TableOrderSuccess({
     order,
     backToMenuHref,
 }: {
-    order: TablePayLaterOrder;
+    order: TableOrderView;
     backToMenuHref: string;
 }) {
     const { t } = useTranslation();
+    const isPayAtCounter = order.paymentMethod === 'PAY_AT_COUNTER';
 
     return (
         <div className="flex min-h-[50vh] items-center justify-center px-4">
@@ -41,16 +44,25 @@ export function TableOrderSuccess({
                     <div className="flex justify-between gap-3">
                         <dt className="text-zinc-500">{t('table.success.total')}</dt>
                         <dd className="font-bold text-zinc-800">
-                            {formatCurrency(order.totalPrice, resolveCurrencySymbol(order.currency))}
+                            {/* The formatted view resolves the symbol; the raw
+                                pay-later row only carries the ISO code. */}
+                            {formatCurrency(
+                                order.totalPrice,
+                                order.currencySymbol ?? resolveCurrencySymbol(order.currency),
+                            )}
                         </dd>
                     </div>
                     <div className="flex justify-between gap-3">
                         <dt className="text-zinc-500">{t('table.success.payment')}</dt>
-                        <dd className="font-medium text-zinc-800">{t('table.success.payAtCounter')}</dd>
+                        <dd className="font-medium text-zinc-800">
+                            {isPayAtCounter ? t('table.success.payAtCounter') : t('table.success.paidOnline')}
+                        </dd>
                     </div>
                 </dl>
 
-                <p className="mt-4 text-xs text-zinc-500">{t('table.success.counterHint')}</p>
+                {isPayAtCounter && (
+                    <p className="mt-4 text-xs text-zinc-500">{t('table.success.counterHint')}</p>
+                )}
 
                 <Link
                     href={backToMenuHref}

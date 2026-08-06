@@ -88,7 +88,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, ensureSession } = useAuth();
-  const { selectedBranch, activeBranchId } = useBranch();
+  const { selectedBranch, activeBranchId, invalidateMenu } = useBranch();
   const { isTableMode } = useTable();
   const { refreshAddresses } = useUser();
   const [cart, setCart] = useState<Cart | null>(null);
@@ -127,19 +127,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUserCart = useCallback(
     async (preferredBranchId?: string | null) => {
-      const carts = await cartService.getAllCarts();
+      const scopedBranchId = preferredBranchId || activeBranchId;
+      const carts = await cartService.getAllCarts(scopedBranchId);
       if (!carts || carts.length === 0) {
         setCart(null);
         return null;
       }
 
-      const cartId = getPreferredCartId(carts, preferredBranchId || activeBranchId);
+      const cartId = getPreferredCartId(carts, scopedBranchId);
       if (!cartId) {
         setCart(null);
         return null;
       }
 
-      const fullCart = await cartService.getCart(cartId);
+      const fullCart = await cartService.getCart(cartId, scopedBranchId);
       setCart(fullCart);
       return fullCart;
     },
@@ -337,6 +338,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     productDetails?: any
   ) => {
     const addToBackendCart = async (branchId: string) => {
+      const activeCartId = cart?.id || cart?.cartId;
       setIsLoading(true);
       try {
         let optionsDto: any[] | undefined;
@@ -353,12 +355,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           }));
         }
 
-        const updatedCart = await cartService.addItem({
+        const payload = {
           productId,
           qty: quantity,
           options: optionsDto,
           note: notes?.trim() || undefined,
-        }, branchId);
+        };
+
+        // Targets the cart we already know about instead of letting the
+        // backend re-resolve one. `cartId` may be stale if another tab
+        // submitted it, and the backend answers 404 for that — so fall back
+        // to letting it resolve/create a fresh cart rather than dead-ending.
+        let updatedCart;
+        try {
+          updatedCart = await cartService.addItem(
+            { ...payload, ...(activeCartId ? { cartId: activeCartId } : {}) },
+            branchId,
+          );
+        } catch (error: any) {
+          if (!activeCartId || error?.response?.status !== 404) throw error;
+          updatedCart = await cartService.addItem(payload, branchId);
+        }
 
         toast.success(i18n.t('cart.itemAdded'));
 
@@ -368,6 +385,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       } catch (e: any) {
         console.error("Add to cart failed", e);
         toast.error(e.response?.data?.message || i18n.t('cart.itemAddFailed'));
+        // The rejection means our view of the product or the cart is stale —
+        // resync both so the customer is not staring at what caused it.
+        invalidateMenu();
+        await refreshUserCart(branchId).catch(() => undefined);
       } finally {
         setIsLoading(false);
       }
@@ -573,7 +594,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated || !cartId) return;
     setIsPromotionsLoading(true);
     try {
-      const promotions = await cartService.getAvailablePromotions(cartId, promotionOrderType);
+      const promotions = await cartService.getAvailablePromotions(cartId, promotionOrderType, activeBranchId);
       setAvailablePromotions(promotions);
       setHasPromotionsError(false);
     } catch (e) {
@@ -583,7 +604,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsPromotionsLoading(false);
     }
-  }, [isAuthenticated, cartId, promotionOrderType]);
+  }, [isAuthenticated, cartId, promotionOrderType, activeBranchId]);
 
   // Load the promotion list once a cart ID exists and re-fetch whenever cart
   // items or applied promotions change, since applicability depends on both.
@@ -626,7 +647,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!markPromotionPending(pendingKey)) return false;
 
     try {
-      const updatedCart = await cartService.applyPromotion(cartId, input, promotionOrderType);
+      const updatedCart = await cartService.applyPromotion(cartId, input, promotionOrderType, activeBranchId);
       applyCartResponse(updatedCart);
       toast.success(i18n.t('loyalty.applySuccess'));
       return true;
@@ -645,7 +666,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!markPromotionPending(pendingKey)) return false;
 
     try {
-      const updatedCart = await cartService.removePromotion(cartId, input);
+      const updatedCart = await cartService.removePromotion(cartId, input, activeBranchId);
       applyCartResponse(updatedCart);
       toast.success(i18n.t('loyalty.removeSuccess'));
       return true;

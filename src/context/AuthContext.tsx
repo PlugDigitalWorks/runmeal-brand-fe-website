@@ -66,6 +66,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         guestSessionRef.current = (async () => {
             try {
+                // Revive the existing session before minting a new guest —
+                // a new guest owns a different, empty cart, so it is the last
+                // resort rather than the first move.
+                try {
+                    await authService.refreshSessionFromCookies();
+                    const refreshedUser = authService.getUser();
+                    if (refreshedUser && authService.isAuthenticated()) {
+                        setUser(refreshedUser);
+                        setIsAuthenticated(true);
+                        return refreshedUser;
+                    }
+                } catch {
+                    // Nothing left to refresh (or the guest's five-hour
+                    // lifetime is up) — fall through to a new guest.
+                }
+
                 const session = await authService.createGuestSession();
                 setUser(session.user);
                 setIsAuthenticated(true);

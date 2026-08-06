@@ -1,6 +1,6 @@
 import { api } from '@/lib/axios';
 import { ApiResponse } from '@/types/auth';
-import { TablePayLaterOrder } from '@/types/table';
+import { TableOrderView } from '@/types/table';
 
 export interface CreateOrderDto {
     cartId: string;
@@ -13,6 +13,11 @@ export interface CreateTablePayLaterOrderDto {
     note?: string;
 }
 
+/**
+ * Raw `Order` row shape. `GET /orders/customer` answers with entities rather
+ * than the formatted view, which is why `cartId` is available here (and why
+ * the decimal columns arrive as strings).
+ */
 export interface Order {
     id: string;
     createdAt: string;
@@ -27,6 +32,13 @@ export interface Order {
     status: string;
     isActive: boolean;
     userAddressId: string;
+    orderType?: string;
+    paymentMethod?: string;
+    tableId?: string | null;
+    tableLabel?: string | null;
+    tableCheckId?: string | null;
+    currency?: string;
+    currencySymbol?: string;
 }
 export interface OrderItem {
     id: string;
@@ -44,13 +56,27 @@ export interface OrderDetails extends Order {
 }
 
 export const orderService = {
-    async getMyOrders() {
-        const response = await api.get<ApiResponse<PaginatedResponse<Order>>>('/orders/customer');
+    async getMyOrders(branchId?: string | null) {
+        const response = await api.get<ApiResponse<PaginatedResponse<Order>>>('/orders/customer', {
+            ...(branchId ? { headers: { 'x-branch-id': branchId } } : {}),
+        });
         const data = response.data.data;
         if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as PaginatedResponse<Order>).data)) {
             return (data as PaginatedResponse<Order>).data;
         }
         return Array.isArray(data) ? data : [];
+    },
+
+    /**
+     * Finds the order a cart was already turned into.
+     *
+     * `CART_ALREADY_SUBMITTED` tells us the cart is spent but not which order
+     * consumed it, and the formatted order view drops `cartId` — so the lookup
+     * goes through the entity-shaped customer list, newest first.
+     */
+    async findOrderByCartId(cartId: string, branchId?: string | null) {
+        const orders = await orderService.getMyOrders(branchId);
+        return orders.find((order) => order.cartId === cartId) ?? null;
     },
 
     /**
@@ -63,7 +89,7 @@ export const orderService = {
      * was already created rather than a duplicate.
      */
     async createTablePayLaterOrder({ cartId, tableId, branchId, note }: CreateTablePayLaterOrderDto) {
-        const response = await api.post<ApiResponse<TablePayLaterOrder>>(
+        const response = await api.post<ApiResponse<TableOrderView>>(
             '/orders/table/pay-later',
             {
                 cartId,
@@ -96,4 +122,3 @@ interface PaginatedResponse<T> {
         totalPages: number;
     };
 }
-

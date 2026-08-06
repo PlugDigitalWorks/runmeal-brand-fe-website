@@ -7,6 +7,9 @@ import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useTable } from "@/context/TableContext";
+import { orderService } from "@/services/order.service";
+import { formatCurrency, resolveCurrencySymbol } from "@/lib/utils";
+import type { TableOrderView } from "@/types/table";
 
 export default function PaymentCallbackClient() {
   const searchParams = useSearchParams();
@@ -15,31 +18,58 @@ export default function PaymentCallbackClient() {
   const { isGuest } = useAuth();
   const { journey } = useTable();
   const { resetCartState } = useCart();
-  const [status, setStatus] = useState<"loading" | "success" | "failure">(
-    "loading",
-  );
+  const [order, setOrder] = useState<TableOrderView | null>(null);
 
   const paymentStatus = searchParams.get("status");
   const paymentId = searchParams.get("paymentId");
   const orderId = searchParams.get("orderId");
 
+  // Nothing to hold in state: what we render is a pure function of the status
+  // the backend redirected us with.
+  const status =
+    paymentStatus === "success"
+      ? "success"
+      : paymentStatus === "failure"
+        ? "failure"
+        : "loading";
+
   // The journey survives the provider round trip in sessionStorage, so a table
   // customer lands back on their own menu instead of the storefront.
   const tableMenuHref = journey ? `/order?qr=${encodeURIComponent(journey.qrToken)}` : null;
 
+  // Retiring the cart is a side effect on shared state, not something we
+  // render from — and it only happens on success. A failure/cancel URL
+  // deliberately keeps the cart so the customer can retry.
   useEffect(() => {
-    if (paymentStatus === "success") {
-      setStatus("success");
-      // The backend callback/webhook is what actually marks the payment done;
-      // reaching this URL only tells us the cart is no longer ours to reuse.
-      resetCartState();
-    } else if (paymentStatus === "failure") {
-      // Deliberately keeps the cart: the customer must be able to retry.
-      setStatus("failure");
-    } else {
-      setStatus("loading");
-    }
-  }, [paymentStatus, resetCartState]);
+    if (status !== "success") return;
+    // The backend callback/webhook is what actually marks the payment done;
+    // reaching this URL only tells us the cart is no longer ours to reuse.
+    resetCartState();
+  }, [status, resetCartState]);
+
+  // The success URL alone proves nothing — the backend callback/webhook is
+  // what marks a payment done. Reading the order back is the only way to show
+  // an authoritative result, and it needs the branch/brand context a table
+  // journey carries.
+  useEffect(() => {
+    if (status !== "success" || !orderId || !journey) return;
+
+    let cancelled = false;
+    orderService
+      .getOrderById(orderId, journey.branchId, journey.brandId)
+      .then((fetched) => {
+        if (!cancelled && fetched) setOrder(fetched as unknown as TableOrderView);
+      })
+      .catch((error) => {
+        // Falls back to the plain confirmation below; the payment itself is
+        // unaffected by our inability to read it back.
+        console.error("Failed to load the order behind this payment", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, orderId, journey]);
 
   const handleContinue = () => {
     if (status !== "success") {
@@ -89,10 +119,34 @@ export default function PaymentCallbackClient() {
             <p className="text-zinc-600 mb-2">
               {tableMenuHref ? t("payment.successTableBody") : t("payment.successBody")}
             </p>
-            {orderId && (
-              <p className="text-sm text-zinc-500 mb-6">
-                {t("payment.orderId")}: {orderId}
-              </p>
+            {order ? (
+              <dl className="mb-6 mt-4 space-y-2 rounded-lg border border-zinc-100 bg-zinc-50 p-4 text-left text-sm">
+                {order.tableLabel && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">{t("payment.table")}</dt>
+                    <dd className="font-medium text-zinc-800">{order.tableLabel}</dd>
+                  </div>
+                )}
+                <div className="flex justify-between gap-3">
+                  <dt className="text-zinc-500">{t("table.success.total")}</dt>
+                  <dd className="font-bold text-zinc-800">
+                    {formatCurrency(
+                      order.totalPrice,
+                      order.currencySymbol ?? resolveCurrencySymbol(order.currency),
+                    )}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-zinc-500">{t("payment.orderId")}</dt>
+                  <dd className="font-mono text-xs text-zinc-600">{order.id}</dd>
+                </div>
+              </dl>
+            ) : (
+              orderId && (
+                <p className="text-sm text-zinc-500 mb-6">
+                  {t("payment.orderId")}: {orderId}
+                </p>
+              )
             )}
             <button
               onClick={handleContinue}

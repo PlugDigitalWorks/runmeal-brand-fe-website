@@ -109,8 +109,22 @@ export const authService = {
     return response.data.data;
   },
 
+  /**
+   * Renews the session from whatever this client holds.
+   *
+   * In `x-auth-mode: body` the rotated `refreshToken`/`sid` live in readable
+   * cookies and must be sent back. The Google flow instead leaves HTTP-only
+   * cookies that JS cannot read, so the body is empty there and the backend
+   * falls back to them — both modes go through this one call.
+   */
   async refreshSessionFromCookies() {
-    const response = await authApi.post<ApiResponse<RefreshResponse>>('/auth/refresh', {});
+    const refreshToken = Cookies.get('refreshToken');
+    const sid = Cookies.get('sid');
+
+    const response = await authApi.post<ApiResponse<RefreshResponse>>(
+      '/auth/refresh',
+      refreshToken && sid ? { refreshToken, sid } : {},
+    );
     persistRefreshResponse(response.data.data);
     return response.data.data;
   },
