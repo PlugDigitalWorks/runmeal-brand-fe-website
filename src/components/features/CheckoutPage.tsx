@@ -38,7 +38,7 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 export function CheckoutPage() {
     const router = useRouter();
     const { t } = useTranslation();
-    const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+    const { isAuthenticated, isGuest, isLoading: isAuthLoading } = useAuth();
     const { user, addresses, refreshAddresses, isLoading: isUserLoading } = useUser();
     const {
         cart,
@@ -105,12 +105,14 @@ export function CheckoutPage() {
         ? deliverableAddressIds.has(activeAddress.id)
         : false;
 
-    // Redirect if not authenticated
+    // Redirect if not authenticated. A QR guest counts as unauthenticated
+    // here: this screen needs a delivery address they will never have, and
+    // their checkout lives at /order/checkout.
     React.useEffect(() => {
-        if (!isAuthLoading && !isAuthenticated) {
+        if (!isAuthLoading && (!isAuthenticated || isGuest)) {
             router.push('/');
         }
-    }, [isAuthenticated, isAuthLoading, router]);
+    }, [isAuthenticated, isGuest, isAuthLoading, router]);
 
     // Mark as initialized once cart has loaded
     React.useEffect(() => {
@@ -301,13 +303,13 @@ export function CheckoutPage() {
 
         setIsProcessing(true);
         try {
-            const response = await paymentService.initializePayment(
+            const response = await paymentService.initializePayment({
                 cartId,
-                selectedPaymentMethod,
-                'DELIVERY',
-                walletAppliedAmount > 0 ? walletAppliedAmount : undefined,
-                orderNote.trim() || undefined,
-            );
+                paymentMethod: selectedPaymentMethod,
+                orderType: 'DELIVERY',
+                creditUsedAmount: walletAppliedAmount > 0 ? walletAppliedAmount : undefined,
+                note: orderNote.trim() || undefined,
+            });
 
             if (response.paymentUrl) {
                 // Redirect to payment URL

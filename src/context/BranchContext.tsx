@@ -10,6 +10,7 @@ import {
 import type { DeliveryAddressSelection } from '@/lib/address-parsing';
 import type { Branch } from '@/types/branch';
 import { useAuth } from './AuthContext';
+import { useTable } from './TableContext';
 import { useUser } from './UserContext';
 
 interface BranchContextType {
@@ -17,6 +18,15 @@ interface BranchContextType {
     branches: Branch[];
     isLoading: boolean;
     searchedAddress: DeliveryAddressSelection | null;
+    /**
+     * The branch every menu/cart call should use.
+     *
+     * In a QR journey this is known from the resolved token straight away,
+     * while `selectedBranch` only fills in once `GET /branches/:id` (which
+     * needs a session) comes back — so consumers that just need an id must
+     * read this instead of waiting for the full record.
+     */
+    activeBranchId: string | null;
     selectBranch: (branch: Branch) => void;
     searchBranches: (address: DeliveryAddressSelection) => Promise<void>;
 }
@@ -26,13 +36,60 @@ const BranchContext = createContext<BranchContextType | undefined>(undefined);
 export function BranchProvider({ children }: { children: React.ReactNode }) {
     const { isAuthenticated } = useAuth();
     const { addresses, isLoading: isUserLoading, refreshAddresses } = useUser();
+    const { isTableMode, journey } = useTable();
     const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
     const [branches, setBranches] = useState<Branch[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [searchedAddress, setSearchedAddress] = useState<DeliveryAddressSelection | null>(null);
 
+    const tableBranchId = isTableMode ? journey?.branchId ?? null : null;
+    const activeBranchId = tableBranchId ?? selectedBranch?.id ?? null;
+
+    /**
+     * QR journeys pin the branch to the scanned table — no address search, no
+     * branch picker. `GET /branches/:branchId` is not public, so the details
+     * only arrive once a (guest) session exists; until then consumers work off
+     * `activeBranchId`.
+     */
+    useEffect(() => {
+        if (!tableBranchId) return;
+        if (selectedBranch?.id !== tableBranchId) {
+            setSelectedBranch(null);
+        }
+        if (!isAuthenticated) return;
+
+        let cancelled = false;
+        setIsLoading(true);
+
+        branchService
+            .getBranchDetails(tableBranchId)
+            .then((branch) => {
+                if (cancelled || !branch) return;
+                setSelectedBranch(branch);
+                setBranches([branch]);
+            })
+            .catch((error) => {
+                console.error('Failed to load table branch details', error);
+            })
+            .finally(() => {
+                if (!cancelled) setIsLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+        // `selectedBranch` is intentionally not a dependency: reading it here
+        // only clears a stale branch, and depending on it would re-fetch on
+        // every successful load.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tableBranchId, isAuthenticated]);
+
     useEffect(() => {
         const initBranch = async () => {
+            // A QR journey owns the branch; the address/guest-cart heuristics
+            // below would otherwise fight it for `selectedBranch`.
+            if (isTableMode) return;
+
             // Priority 1: Restore from Guest Cart (if unauthenticated and exists)
             if (!isAuthenticated) {
                 const guestCart = localStorage.getItem('guest_cart');
@@ -106,9 +163,10 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         if (!isUserLoading) {
             initBranch();
         }
-    }, [isAuthenticated, addresses, isUserLoading]);
+    }, [isAuthenticated, addresses, isUserLoading, isTableMode]);
 
     const selectBranch = (branch: Branch) => {
+        if (isTableMode) return;
         setSelectedBranch(branch);
         if (!isAuthenticated) {
             localStorage.setItem('guest_branch', JSON.stringify(branch));
@@ -137,6 +195,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     };
 
     const searchBranches = async (address: DeliveryAddressSelection) => {
+        if (isTableMode) return;
         setSearchedAddress(address);
         try {
             const data = await branchService.getNearbyBranches(address.latitude, address.longitude);
@@ -163,7 +222,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <BranchContext.Provider value={{ selectedBranch, branches, isLoading, searchedAddress, selectBranch, searchBranches }}>
+        <BranchContext.Provider value={{ selectedBranch, branches, isLoading, searchedAddress, activeBranchId, selectBranch, searchBranches }}>
             {children}
         </BranchContext.Provider>
     );

@@ -1,13 +1,21 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { authService } from '@/services/auth.service';
 import { User, LoginDto, RegisterDto } from '@/types/auth';
 
 interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
+    /** Authenticated through a throwaway QR guest account rather than a real login. */
+    isGuest: boolean;
     isLoading: boolean;
+    /**
+     * Guarantees a usable session for the QR journey: keeps a signed-in
+     * customer, revives an existing guest, and only creates a new guest when
+     * neither is available. Concurrent callers share one in-flight request.
+     */
+    ensureSession: () => Promise<User | null>;
     login: (data: LoginDto) => Promise<void>;
     loginWithGoogle: () => Promise<void>;
     completeGoogleLogin: () => Promise<User>;
@@ -26,6 +34,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    // Several table-mode callers (page mount, first add-to-cart) may ask for a
+    // session at once; without this they would each mint their own guest.
+    const guestSessionRef = useRef<Promise<User | null> | null>(null);
 
     useEffect(() => {
         const initAuth = () => {
@@ -36,6 +47,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsLoading(false);
         };
         initAuth();
+    }, []);
+
+    const ensureSession = useCallback(async () => {
+        const existingUser = authService.getUser();
+
+        // A real login or a still-valid guest is reused as is. An expired
+        // access token is not our problem here — the axios interceptor
+        // refreshes it on the next call and only falls through to us if the
+        // guest's five-hour absolute lifetime is over.
+        if (authService.isAuthenticated() && existingUser) {
+            return existingUser;
+        }
+
+        if (guestSessionRef.current) {
+            return guestSessionRef.current;
+        }
+
+        guestSessionRef.current = (async () => {
+            try {
+                const session = await authService.createGuestSession();
+                setUser(session.user);
+                setIsAuthenticated(true);
+                return session.user;
+            } catch (error) {
+                console.error('Failed to create guest session', error);
+                return null;
+            } finally {
+                guestSessionRef.current = null;
+            }
+        })();
+
+        return guestSessionRef.current;
     }, []);
 
     const login = async (data: LoginDto) => {
@@ -102,7 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         <AuthContext.Provider value={{
             user,
             isAuthenticated,
+            isGuest: !!user?.isGuest,
             isLoading,
+            ensureSession,
             login,
             loginWithGoogle,
             completeGoogleLogin,

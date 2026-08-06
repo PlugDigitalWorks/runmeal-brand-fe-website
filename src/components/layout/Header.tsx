@@ -1,7 +1,8 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
-import { User } from 'lucide-react';
+import { useTable } from '@/context/TableContext';
+import { QrCode, User } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTranslation } from 'react-i18next';
@@ -10,8 +11,14 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { HeaderNavigation } from '@/components/layout/HeaderNavigation';
 
 export function Header() {
-    const { user, isAuthenticated, logout } = useAuth();
+    const { user, isAuthenticated, isGuest, logout } = useAuth();
+    const { isTableMode, journey } = useTable();
     const { t } = useTranslation();
+
+    // A QR guest is technically authenticated (throwaway CUSTOMER account), but
+    // has no name, no profile and nothing to log out of — treat them as a
+    // visitor and offer the real sign-in instead.
+    const showAccount = isAuthenticated && !!user && !isGuest;
 
     return (
         <header className="bg-white text-zinc-900 border-b border-zinc-100 sticky top-0 z-50">
@@ -34,7 +41,13 @@ export function Header() {
 
                 {/* Right Actions */}
                 <div className="flex items-center gap-4">
-                    {isAuthenticated && user ? (
+                    {isTableMode && journey && (
+                        <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-primary">
+                            <QrCode size={13} className="shrink-0" />
+                            {journey.tableLabel}
+                        </span>
+                    )}
+                    {showAccount ? (
                         <div className="flex items-center gap-4">
                             <Link href="/profile" className="text-zinc-700 font-medium flex items-center gap-2 hover:text-primary transition-colors cursor-pointer">
                                 {t('header.hello', { name: `${user.firstName} ${user.lastName}` })}

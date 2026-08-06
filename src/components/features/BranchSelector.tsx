@@ -4,18 +4,18 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBranch } from '@/context/BranchContext';
 import { useUser } from '@/context/UserContext';
-import { ChevronDown, MessageSquareText } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { AddressSearch } from '@/components/features/AddressSearch';
-import { ContactModal } from '@/components/features/ContactModal';
+import { BranchContactLink, BranchInfoTabs } from '@/components/features/BranchInfoTabs';
+import { resolveBranchDetails } from '@/lib/branch-details';
 import { formatCurrency } from '@/lib/utils';
 import type { Branch } from '@/types/branch';
 
-// Helper to get day name
-const getDayName = () => {
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    return days[new Date().getDay()];
-};
-
+/**
+ * The address/branch context panel that sits above the menu on the storefront.
+ * A QR journey renders `TableInfoPanel` in the same slot instead — the branch
+ * there comes from the scanned table, so there is nothing to search or pick.
+ */
 export function BranchSelector() {
     const { t } = useTranslation();
     const { selectedBranch, branches, selectBranch, isLoading, searchedAddress, searchBranches } = useBranch();
@@ -23,45 +23,9 @@ export function BranchSelector() {
     const [nearbyBranches, setNearbyBranches] = React.useState<Branch[]>([]);
     const [isSearching, setIsSearching] = React.useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
-    const [isContactOpen, setIsContactOpen] = React.useState(false);
-    const [activeTab, setActiveTab] = React.useState<'workingHours' | 'contact'>('workingHours');
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-    const branchDetails = React.useMemo(() => {
-        if (!selectedBranch) return null;
-
-        // Parse Working Hours
-        const today = getDayName();
-        const todayHours = selectedBranch.business_hour?.[today];
-        let workingHours = 'Closed Today';
-
-        if (todayHours?.isOpen && todayHours?.timeSlots?.length > 0) {
-            const slot = todayHours.timeSlots[0];
-            workingHours = `${slot.openTime} - ${slot.closeTime}`;
-        }
-
-        // Parse Payment Methods
-        const paymentMethods: string[] = [];
-        const paymentSettings = selectedBranch.payment_settings;
-        if (paymentSettings?.onlineMethods?.card?.isActive) paymentMethods.push('Online Card');
-        if (paymentSettings?.offlineMethods?.cash?.isActive) paymentMethods.push('Cash');
-        if (paymentSettings?.offlineMethods?.cardOnDelivery?.isActive) paymentMethods.push('Card on Delivery');
-
-        // Parse Delivery Options
-        const deliveryOptions: string[] = [];
-        const orderTypeSettings = selectedBranch.order_type_settings;
-        if (orderTypeSettings?.delivery?.isActive) deliveryOptions.push('Delivery');
-        if (orderTypeSettings?.pickup?.isActive) deliveryOptions.push('Pickup');
-        if (orderTypeSettings?.scheduledDelivery?.isActive) deliveryOptions.push('Scheduled');
-
-        return {
-            workingHours,
-            minimumDeliveryAmount: selectedBranch.minBasketPrice || 0,
-            paymentMethods,
-            deliveryOptions,
-            phoneNumber: selectedBranch.phoneNumber || 'Not provided',
-        };
-    }, [selectedBranch]);
+    const branchDetails = React.useMemo(() => resolveBranchDetails(selectedBranch), [selectedBranch]);
 
     const activeAddress = addresses.find(a => a.isActive);
     const activeAddressString = activeAddress
@@ -104,7 +68,7 @@ export function BranchSelector() {
 
                     {/* Address Search Section */}
                     <div className="mb-6">
-                        <h3 className="text-sm font-semibold text-zinc-900 mb-2">Enter Neighborhood first, then Street</h3>
+                        <h3 className="text-sm font-semibold text-zinc-900 mb-2">{t('branch.addressSearchHint')}</h3>
                         <AddressSearch
                             onAddressSelect={handleAddressSelect}
                             className="w-full max-w-md"
@@ -114,7 +78,7 @@ export function BranchSelector() {
 
                     <div className="mb-4">
                         <h2 className="text-2xl font-bold text-zinc-800 mb-1">
-                            {selectedBranch ? selectedBranch.name : isLoading ? 'Loading branches...' : 'Branches available for order'}
+                            {selectedBranch ? selectedBranch.name : isLoading ? t('branch.loading') : t('branch.availableBranches')}
                         </h2>
                         {/* Branch Selection Dropdown */}
                         <div className="relative inline-block" ref={dropdownRef}>
@@ -122,12 +86,12 @@ export function BranchSelector() {
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
                             >
-                                {selectedBranch ? 'Change Branch' : 'Select Branch'} <ChevronDown size={14} className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                                {selectedBranch ? t('branch.change') : t('branch.select')} <ChevronDown size={14} className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isDropdownOpen && (
                                 <div className="absolute top-full left-0 mt-2 w-72 bg-white border border-zinc-200 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
                                     {isSearching ? (
-                                        <div className="p-4 text-center text-sm text-zinc-500">Searching...</div>
+                                        <div className="p-4 text-center text-sm text-zinc-500">{t('branch.searching')}</div>
                                     ) : nearbyBranches.length > 0 ? (
                                         nearbyBranches.map(branch => (
                                             <button
@@ -146,7 +110,7 @@ export function BranchSelector() {
                                         ))
                                     ) : (
                                         <div className="p-4 text-center text-sm text-zinc-500">
-                                            No branches found in this location.
+                                            {t('branch.noneFound')}
                                         </div>
                                     )}
                                 </div>
@@ -156,71 +120,22 @@ export function BranchSelector() {
 
                     {selectedBranch && branchDetails && (
                         <div className="mt-4 text-sm text-zinc-500 space-y-1">
-                            <p>Minimum Delivery Amount: {formatCurrency(branchDetails.minimumDeliveryAmount)}</p>
-                            <p>Payment: {branchDetails.paymentMethods.join(', ')}</p>
-                            <p>{branchDetails.deliveryOptions.join(', ')}</p>
+                            <p>{t('branch.minimumOrder')}: {formatCurrency(branchDetails.minimumDeliveryAmount)}</p>
+                            <p>
+                                {t('branch.payment')}:{' '}
+                                {branchDetails.paymentMethodKeys.map(key => t(`branch.paymentMethods.${key}`)).join(', ')}
+                            </p>
+                            <p>{branchDetails.orderTypeKeys.map(key => t(`branch.orderTypes.${key}`)).join(', ')}</p>
                             {/* The Contact tab above is desktop only, so mobile needs its own way in. */}
-                            <button
-                                type="button"
-                                onClick={() => setIsContactOpen(true)}
-                                className="inline-flex items-center gap-1.5 pt-1 font-medium text-primary hover:underline md:hidden"
-                            >
-                                <MessageSquareText size={14} className="shrink-0" />
-                                {t('contact.title')}
-                            </button>
+                            <BranchContactLink branch={selectedBranch} />
                         </div>
                     )}
                 </div>
 
-                {/* Tabs */}
                 {selectedBranch && branchDetails && (
-                    <div className="hidden md:block w-auto shrink-0">
-                        <div className="flex border-b border-zinc-200 mb-2">
-                            <button
-                                onClick={() => setActiveTab('workingHours')}
-                                className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === 'workingHours' ? 'border-zinc-900 text-zinc-900' : 'border-transparent text-zinc-500 hover:text-zinc-900'}`}
-                            >
-                                Working Hours
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('contact')}
-                                className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === 'contact' ? 'border-zinc-900 text-zinc-900' : 'border-transparent text-zinc-500 hover:text-zinc-900'}`}
-                            >
-                                Contact
-                            </button>
-                        </div>
-                        <div className="text-xs text-zinc-500 min-h-[3rem]">
-                            {activeTab === 'workingHours' ? (
-                                <>
-                                    <span className="block font-medium text-zinc-700 mb-1">Today</span>
-                                    {branchDetails.workingHours}
-                                </>
-                            ) : (
-                                <>
-                                    <span className="block font-medium text-zinc-700 mb-1">Phone Number</span>
-                                    {branchDetails.phoneNumber}
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsContactOpen(true)}
-                                        className="mt-2 flex items-center gap-1.5 font-medium text-primary hover:underline"
-                                    >
-                                        <MessageSquareText size={14} className="shrink-0" />
-                                        {t('contact.title')}
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
+                    <BranchInfoTabs branch={selectedBranch} details={branchDetails} />
                 )}
             </div>
-
-            {isContactOpen && selectedBranch && (
-                <ContactModal
-                    branchId={selectedBranch.id}
-                    branchName={selectedBranch.name}
-                    onClose={() => setIsContactOpen(false)}
-                />
-            )}
         </div>
     );
 }

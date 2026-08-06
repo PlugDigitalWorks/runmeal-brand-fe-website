@@ -6,6 +6,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { UserProvider } from "@/context/UserContext";
 import { BranchProvider } from "@/context/BranchContext";
 import { CartProvider } from "@/context/CartContext";
+import { TableProvider } from "@/context/TableContext";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CmsNavigationProvider } from "@/context/CmsNavigationContext";
@@ -86,21 +87,26 @@ export default function RootLayout({
           <AuthProvider>
             <UserProvider>
               <GoogleMapsProvider>
-                <BranchProvider>
-                  <CartProvider>
-                    <CmsNavigationProvider>
-                      <div className="flex min-h-screen flex-col">
-                        <Header />
-                        <main className="container mx-auto flex-1 py-8 px-4">
-                          {children}
-                        </main>
-                        <Footer />
-                      </div>
-                      <Toaster position="bottom-left" />
-                      <AuthModal />
-                    </CmsNavigationProvider>
-                  </CartProvider>
-                </BranchProvider>
+                {/* Wraps BranchProvider: a QR journey pins the branch, so the
+                    table context has to be readable before branch/cart state
+                    settles on an address-derived one. */}
+                <TableProvider>
+                  <BranchProvider>
+                    <CartProvider>
+                      <CmsNavigationProvider>
+                        <div className="flex min-h-screen flex-col">
+                          <Header />
+                          <main className="container mx-auto flex-1 py-8 px-4">
+                            {children}
+                          </main>
+                          <Footer />
+                        </div>
+                        <Toaster position="bottom-left" />
+                        <AuthModal />
+                      </CmsNavigationProvider>
+                    </CartProvider>
+                  </BranchProvider>
+                </TableProvider>
               </GoogleMapsProvider>
             </UserProvider>
           </AuthProvider>

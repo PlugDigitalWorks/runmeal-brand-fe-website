@@ -15,6 +15,7 @@ import { resolveLoyaltyError } from '@/lib/loyalty-errors';
 import i18n from '@/i18n/config';
 import { useAuth } from './AuthContext';
 import { useBranch } from './BranchContext';
+import { useTable } from './TableContext';
 import { useUser } from './UserContext';
 import { toast } from 'sonner';
 
@@ -36,6 +37,8 @@ interface GuestCartItem {
 }
 
 const DEFAULT_ORDER_TYPE = 'DELIVERY';
+/** Promotion applicability is order-type dependent, and so is checkout revalidation. */
+const TABLE_ORDER_TYPE = 'TABLE_ORDER';
 
 /** Identifies an in-flight promotion mutation; `*` covers "remove every promotion of this provider". */
 const promotionMutationKey = ({ type, promotionCode }: RemovePromotionInput) =>
@@ -64,6 +67,12 @@ interface CartContextType {
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   cartTotal: number;
   refreshCart: () => Promise<void>;
+  /**
+   * Drops the local view of the cart after the backend already retired it —
+   * a confirmed pay-later order or a verified online payment. Never call it
+   * on a failed checkout: the cart is still live and must stay retryable.
+   */
+  resetCartState: () => void;
 
   // Promotions — internal Runmeal coupons and Rekonect campaigns share one model.
   availablePromotions: CartPromotion[];
@@ -78,8 +87,9 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
-  const { selectedBranch } = useBranch();
+  const { user, isAuthenticated, ensureSession } = useAuth();
+  const { selectedBranch, activeBranchId } = useBranch();
+  const { isTableMode } = useTable();
   const { refreshAddresses } = useUser();
   const [cart, setCart] = useState<Cart | null>(null);
   const [guestCartItems, setGuestCartItems] = useState<GuestCartItem[]>([]);
@@ -123,7 +133,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
 
-      const cartId = getPreferredCartId(carts, preferredBranchId || selectedBranch?.id);
+      const cartId = getPreferredCartId(carts, preferredBranchId || activeBranchId);
       if (!cartId) {
         setCart(null);
         return null;
@@ -133,7 +143,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setCart(fullCart);
       return fullCart;
     },
-    [getPreferredCartId, selectedBranch?.id],
+    [getPreferredCartId, activeBranchId],
   );
 
   // Cart mutation responses (add/remove/qty, apply/remove promotion) are the
@@ -154,11 +164,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshCart = useCallback(async () => {
-    await refreshUserCart(selectedBranch?.id || cart?.branchId);
-  }, [refreshUserCart, selectedBranch?.id, cart?.branchId]);
+    await refreshUserCart(activeBranchId || cart?.branchId);
+  }, [refreshUserCart, activeBranchId, cart?.branchId]);
 
-  // Load Guest Cart
+  // Load Guest Cart — never in a table journey: that cart belongs to a
+  // delivery/pickup session and must not leak onto a table order.
   useEffect(() => {
+    if (isTableMode) {
+      setGuestCartItems([]);
+      return;
+    }
+
     if (!isAuthenticated) {
       const stored = localStorage.getItem('guest_cart');
       if (stored) {
@@ -175,7 +191,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isTableMode]);
 
   // Load User Cart
   useEffect(() => {
@@ -183,8 +199,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (isAuthenticated) {
         setIsLoading(true);
         try {
-          const fullCart = await refreshUserCart(selectedBranch?.id);
-          console.log('CartContext: loadUserCart fullCart result:', fullCart);
+          await refreshUserCart(activeBranchId);
         } catch (err) {
           console.error("Failed to load user cart", err);
         } finally {
@@ -195,7 +210,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     };
     loadUserCart();
-  }, [isAuthenticated, refreshUserCart, selectedBranch?.id]);
+  }, [isAuthenticated, refreshUserCart, activeBranchId]);
 
   // SYNC Logic: Guest -> User
   // Triggered when user becomes authenticated and has guest items
@@ -204,7 +219,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const syncCart = async () => {
       // Sync if authenticated, has items, AND has a selected branch (target for sync)
-      if (!isAuthenticated || guestCartItems.length === 0 || !selectedBranch?.id) {
+      // A table journey never syncs: its guest account is throwaway and the
+      // local cart belongs to a different (delivery) branch context.
+      if (isTableMode || !isAuthenticated || guestCartItems.length === 0 || !selectedBranch?.id) {
         return;
       }
 
@@ -308,7 +325,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
 
     syncCart();
-  }, [isAuthenticated, guestCartItems, selectedBranch]);
+  }, [isAuthenticated, guestCartItems, selectedBranch, isTableMode]);
 
 
   const addToCart = async (
@@ -319,9 +336,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     notes?: string,
     productDetails?: any
   ) => {
-    // ONLY use backend if authenticated AND a branch is selected (address is valid)
-    if (isAuthenticated && selectedBranch?.id) {
-
+    const addToBackendCart = async (branchId: string) => {
       setIsLoading(true);
       try {
         let optionsDto: any[] | undefined;
@@ -343,19 +358,43 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           qty: quantity,
           options: optionsDto,
           note: notes?.trim() || undefined,
-        }, selectedBranch.id);
+        }, branchId);
 
-        toast.success('Item added to cart');
+        toast.success(i18n.t('cart.itemAdded'));
 
         if (!applyCartResponse(updatedCart)) {
-          await refreshUserCart(selectedBranch.id);
+          await refreshUserCart(branchId);
         }
       } catch (e: any) {
         console.error("Add to cart failed", e);
-        toast.error(e.response?.data?.message || 'Failed to add item to cart');
+        toast.error(e.response?.data?.message || i18n.t('cart.itemAddFailed'));
       } finally {
         setIsLoading(false);
       }
+    };
+
+    // A table journey has no local fallback: an item that only ever reaches
+    // localStorage would never make it to the kitchen. Open a guest session
+    // first and always go through the backend cart.
+    if (isTableMode) {
+      if (!activeBranchId) {
+        toast.error(i18n.t('table.errors.GENERIC'));
+        return;
+      }
+
+      const sessionUser = await ensureSession();
+      if (!sessionUser) {
+        toast.error(i18n.t('table.errors.SESSION_FAILED'));
+        return;
+      }
+
+      await addToBackendCart(activeBranchId);
+      return;
+    }
+
+    // ONLY use backend if authenticated AND a branch is selected (address is valid)
+    if (isAuthenticated && selectedBranch?.id) {
+      await addToBackendCart(selectedBranch.id);
     } else {
       // Guest Logic OR Logged-in-but-no-address Logic
       // Stores in local storage until address/branch is available
@@ -468,7 +507,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('guest_branch', JSON.stringify(selectedBranch));
       }
 
-      toast.success('Item added to cart');
+      toast.success(i18n.t('cart.itemAdded'));
     }
   };
 
@@ -476,9 +515,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (isAuthenticated) {
       setIsLoading(true);
       try {
-        const updatedCart = await cartService.removeItem(itemId, selectedBranch?.id);
+        const updatedCart = await cartService.removeItem(itemId, activeBranchId ?? undefined);
         if (!applyCartResponse(updatedCart)) {
-          await refreshUserCart(selectedBranch?.id || cart?.branchId);
+          await refreshUserCart(activeBranchId || cart?.branchId);
         }
       } catch (e) {
         console.error("Remove failed", e);
@@ -497,9 +536,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (isAuthenticated) {
       setIsLoading(true);
       try {
-        const updatedCart = await cartService.setQty({ itemId, qty: quantity }, selectedBranch?.id);
+        const updatedCart = await cartService.setQty({ itemId, qty: quantity }, activeBranchId ?? undefined);
         if (!applyCartResponse(updatedCart)) {
-          await refreshUserCart(selectedBranch?.id || cart?.branchId);
+          await refreshUserCart(activeBranchId || cart?.branchId);
         }
       } catch (e) {
         console.error("Update qty failed", e);
@@ -525,12 +564,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // --- Promotions ---------------------------------------------------------
 
   const cartId = cart?.id || cart?.cartId;
+  // Applicability is evaluated per order type, and checkout revalidates with
+  // the same one — asking for DELIVERY offers on a table cart would show
+  // campaigns that get dropped at submit.
+  const promotionOrderType = isTableMode ? TABLE_ORDER_TYPE : DEFAULT_ORDER_TYPE;
 
   const refreshAvailablePromotions = useCallback(async () => {
     if (!isAuthenticated || !cartId) return;
     setIsPromotionsLoading(true);
     try {
-      const promotions = await cartService.getAvailablePromotions(cartId, DEFAULT_ORDER_TYPE);
+      const promotions = await cartService.getAvailablePromotions(cartId, promotionOrderType);
       setAvailablePromotions(promotions);
       setHasPromotionsError(false);
     } catch (e) {
@@ -540,7 +583,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsPromotionsLoading(false);
     }
-  }, [isAuthenticated, cartId]);
+  }, [isAuthenticated, cartId, promotionOrderType]);
 
   // Load the promotion list once a cart ID exists and re-fetch whenever cart
   // items or applied promotions change, since applicability depends on both.
@@ -583,7 +626,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!markPromotionPending(pendingKey)) return false;
 
     try {
-      const updatedCart = await cartService.applyPromotion(cartId, input, DEFAULT_ORDER_TYPE);
+      const updatedCart = await cartService.applyPromotion(cartId, input, promotionOrderType);
       applyCartResponse(updatedCart);
       toast.success(i18n.t('loyalty.applySuccess'));
       return true;
@@ -615,6 +658,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Only the backend cart is dropped. The local guest cart belongs to an
+  // unauthenticated storefront visitor, and every caller here has a session by
+  // definition — clearing it would just wipe an unrelated delivery cart the
+  // customer left behind in the same browser.
+  const resetCartState = useCallback(() => {
+    setCart(null);
+    setAvailablePromotions([]);
+    setHasPromotionsError(false);
+  }, []);
+
   const cartTotal = isAuthenticated
     ? (cart?.totalCartPrice || 0)
     : guestCartItems.reduce((acc, item) => acc + ((item.price || 0) * item.quantity), 0);
@@ -629,6 +682,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       updateQuantity,
       cartTotal,
       refreshCart,
+      resetCartState,
       availablePromotions,
       isPromotionsLoading,
       hasPromotionsError,

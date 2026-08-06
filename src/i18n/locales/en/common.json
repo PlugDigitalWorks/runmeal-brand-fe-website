@@ -178,5 +178,134 @@
       "title": "Page could not be loaded",
       "description": "Something went wrong. Please try again later."
     }
+  },
+  "branch": {
+    "addressSearchHint": "Enter Neighborhood first, then Street",
+    "loading": "Loading branches...",
+    "availableBranches": "Branches available for order",
+    "change": "Change Branch",
+    "select": "Select Branch",
+    "searching": "Searching...",
+    "noneFound": "No branches found in this location.",
+    "selectToOrder": "Please select a branch to order.",
+    "minimumOrder": "Minimum order amount",
+    "payment": "Payment",
+    "workingHours": "Working Hours",
+    "today": "Today",
+    "closedToday": "Closed today",
+    "phoneNumber": "Phone Number",
+    "notProvided": "Not provided",
+    "paymentMethods": {
+      "onlineCard": "Online Card",
+      "cash": "Cash",
+      "cardOnDelivery": "Card on Delivery"
+    },
+    "orderTypes": {
+      "delivery": "Delivery",
+      "pickup": "Pickup",
+      "scheduledDelivery": "Scheduled",
+      "tableOrder": "Table Ordering"
+    }
+  },
+  "cart": {
+    "itemAdded": "Item added to cart",
+    "itemAddFailed": "Failed to add item to cart",
+    "confirmOrder": "Confirm Order"
+  },
+  "payment": {
+    "processingTitle": "Processing Payment",
+    "processingBody": "Please wait while we confirm your payment...",
+    "successTitle": "Payment Successful!",
+    "successBody": "Your order has been placed successfully.",
+    "successTableBody": "Your order has been received and sent to the kitchen.",
+    "failureTitle": "Payment Failed",
+    "failureBody": "Unfortunately, your payment could not be processed. Please try again.",
+    "tryAgain": "Try Again",
+    "backHome": "Back to Home",
+    "viewOrder": "View Order",
+    "continueShopping": "Continue Shopping",
+    "orderId": "Order ID",
+    "paymentId": "Payment ID"
+  },
+  "table": {
+    "resolving": "Loading table details...",
+    "panel": {
+      "badge": "QR ordering",
+      "branchLine": "{{branch}}",
+      "branchUnknown": "Loading branch details...",
+      "servedAtTable": "Your order will be brought to {{table}}.",
+      "tableClosed": "This table cannot take orders right now. Please ask a member of staff.",
+      "tableClosedPickupOnly": "This table cannot take orders right now, but you can still order for pickup."
+    },
+    "checkout": {
+      "title": "Confirm Order",
+      "backToMenu": "Back to Menu",
+      "fulfillmentTitle": "Fulfillment",
+      "serveToTable": "Bring to {{table}}",
+      "serveToTableHint": "Your order is served straight to your table.",
+      "pickup": "Pickup",
+      "pickupHint": "You collect your order at the counter.",
+      "pickupPaymentNote": "Pickup orders are paid online by card.",
+      "paymentTitle": "Payment",
+      "payNow": "Pay online now",
+      "payNowHint": "Pay by card; the order is sent once payment is confirmed.",
+      "payLater": "Pay at the counter",
+      "payLaterHint": "The order is sent right away; you settle at the counter on your way out.",
+      "noteLabel": "Order Note",
+      "notePlaceholder": "Add a note for this order",
+      "summaryTitle": "Order Summary",
+      "orderingFrom": "Ordering from",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "total": "Total",
+      "submitting": "Submitting...",
+      "submitPayNow": "Proceed to Payment",
+      "submitPayLater": "Send Order",
+      "emptyCart": "Your cart is empty. Add something from the menu to place an order."
+    },
+    "success": {
+      "title": "Order received!",
+      "sent": "Your order has been sent to the kitchen.",
+      "sentToTable": "Your order has been sent to the kitchen for {{table}}.",
+      "total": "Amount",
+      "payment": "Payment",
+      "payAtCounter": "Pay at the counter",
+      "counterHint": "Every order from this table is collected on one check; settle it at the counter when you leave.",
+      "orderMore": "Keep Ordering"
+    },
+    "journeyErrors": {
+      "backHome": "Back to Home",
+      "MISSING_QR": {
+        "title": "Invalid QR code",
+        "description": "This link carries no table information. Please scan the QR code on your table again."
+      },
+      "TABLE_NOT_FOUND": {
+        "title": "Table unavailable",
+        "description": "This QR code is invalid or the table is no longer active. Please ask a member of staff."
+      },
+      "BRAND_MISMATCH": {
+        "title": "QR belongs to another site",
+        "description": "The QR you scanned belongs to a different brand. Please scan the QR code on your table again."
+      },
+      "UNKNOWN": {
+        "title": "Could not load table details",
+        "description": "Something went wrong. Please refresh the page and try again."
+      }
+    },
+    "errors": {
+      "GENERIC": "We could not complete this. Please try again.",
+      "SESSION_FAILED": "Could not start a session. Please refresh the page and try again.",
+      "PAYMENT_INIT_FAILED": "Payment could not be started. Please try again.",
+      "TABLE_PAY_NOW_DISABLED": "Paying online is currently switched off for this table.",
+      "TABLE_PAY_LATER_DISABLED": "Paying at the counter is currently switched off for this table.",
+      "TABLE_ORDER_PAYMENT_METHOD_INVALID": "That payment method cannot be used for a table order.",
+      "PAY_AT_COUNTER_REQUIRES_TABLE_ORDER_ENDPOINT": "Paying at the counter is only available for table orders.",
+      "PAYMENT_CONTEXT_CHANGED": "A payment is already pending for different order details. Please complete or cancel it first.",
+      "PAYMENT_ALREADY_IN_PROGRESS": "This cart already has a payment in progress. Please complete it.",
+      "CART_ALREADY_SUBMITTED": "This cart has already been submitted. Go back to the menu to start a new order.",
+      "TABLE_INVALID_FOR_BRANCH": "The table could not be verified. Please scan the QR code again.",
+      "ORDER_TYPE_UNAVAILABLE": "This order type is not available right now. Please check your options.",
+      "SESSION_RESTARTED": "Your session expired and was restarted. Your cart is now empty, so please add your items again."
+    }
   }
 }

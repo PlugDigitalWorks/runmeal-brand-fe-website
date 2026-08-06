@@ -72,6 +72,34 @@ export const authService = {
     return response.data.data;
   },
 
+  /**
+   * Silently opens a throwaway CUSTOMER account so a QR table journey can use
+   * the backend cart/order endpoints without a signup.
+   *
+   * Sent in `x-auth-mode: body` like every other call here, so the returned
+   * tokens land in the same cookies and the shared refresh interceptor keeps
+   * working unchanged. The session has a hard five-hour lifetime that
+   * refreshing does not extend.
+   */
+  async createGuestSession() {
+    const response = await api.post<ApiResponse<AuthResponse>>('/auth/guest-session', {});
+
+    // The endpoint answers with the same trimmed user shape as login —
+    // `{ id, email, firstName, lastName, fullName, role }` — and a guest even
+    // carries the ordinary CUSTOMER role, so nothing in the payload says it is
+    // a guest. Stamping it here is safe because this call is the *only* way
+    // the app opens a guest session; a real login later overwrites the same
+    // cookie with a user that has no flag.
+    const data: AuthResponse = {
+      ...response.data.data,
+      user: { ...response.data.data.user, isGuest: true },
+    };
+
+    persistAuthResponse(data);
+
+    return data;
+  },
+
   async startGoogleLogin() {
     const response = await authApi.post<ApiResponse<GoogleLoginStartResponse>>(
       '/auth/login',

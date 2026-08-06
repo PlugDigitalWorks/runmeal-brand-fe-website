@@ -2,11 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
+import { useTable } from "@/context/TableContext";
 
 export default function PaymentCallbackClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useTranslation();
+  const { isGuest } = useAuth();
+  const { journey } = useTable();
+  const { resetCartState } = useCart();
   const [status, setStatus] = useState<"loading" | "success" | "failure">(
     "loading",
   );
@@ -15,22 +23,41 @@ export default function PaymentCallbackClient() {
   const paymentId = searchParams.get("paymentId");
   const orderId = searchParams.get("orderId");
 
+  // The journey survives the provider round trip in sessionStorage, so a table
+  // customer lands back on their own menu instead of the storefront.
+  const tableMenuHref = journey ? `/order?qr=${encodeURIComponent(journey.qrToken)}` : null;
+
   useEffect(() => {
     if (paymentStatus === "success") {
       setStatus("success");
+      // The backend callback/webhook is what actually marks the payment done;
+      // reaching this URL only tells us the cart is no longer ours to reuse.
+      resetCartState();
     } else if (paymentStatus === "failure") {
+      // Deliberately keeps the cart: the customer must be able to retry.
       setStatus("failure");
     } else {
       setStatus("loading");
     }
-  }, [paymentStatus]);
+  }, [paymentStatus, resetCartState]);
 
   const handleContinue = () => {
-    if (status === "success") {
-      router.push(`/profile?tab=orders`);
-    } else {
-      router.push("/");
+    if (status !== "success") {
+      router.push(tableMenuHref ?? "/");
+      return;
     }
+
+    if (tableMenuHref) {
+      router.push(tableMenuHref);
+      return;
+    }
+
+    // A guest has no order history page to send them to.
+    router.push(isGuest ? "/" : "/profile?tab=orders");
+  };
+
+  const handleRetry = () => {
+    router.push(tableMenuHref ? "/order/checkout" : "/checkout");
   };
 
   return (
@@ -42,11 +69,9 @@ export default function PaymentCallbackClient() {
               <Loader2 size={32} className="text-primary animate-spin" />
             </div>
             <h1 className="text-2xl font-bold text-zinc-800 mb-2">
-              Processing Payment
+              {t("payment.processingTitle")}
             </h1>
-            <p className="text-zinc-600 mb-6">
-              Please wait while we confirm your payment...
-            </p>
+            <p className="text-zinc-600 mb-6">{t("payment.processingBody")}</p>
           </>
         )}
 
@@ -56,19 +81,28 @@ export default function PaymentCallbackClient() {
               <CheckCircle size={32} className="text-green-600" />
             </div>
             <h1 className="text-2xl font-bold text-zinc-800 mb-2">
-              Payment Successful!
+              {t("payment.successTitle")}
             </h1>
+            {/* Fulfillment is not carried through the provider round trip, and
+                a pickup order can also start from the table page — so the copy
+                stays neutral instead of promising table service. */}
             <p className="text-zinc-600 mb-2">
-              Your order has been placed successfully.
+              {tableMenuHref ? t("payment.successTableBody") : t("payment.successBody")}
             </p>
             {orderId && (
-              <p className="text-sm text-zinc-500 mb-6">Order ID: {orderId}</p>
+              <p className="text-sm text-zinc-500 mb-6">
+                {t("payment.orderId")}: {orderId}
+              </p>
             )}
             <button
               onClick={handleContinue}
               className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity"
             >
-              {orderId ? "View Order" : "Continue Shopping"}
+              {tableMenuHref
+                ? t("table.success.orderMore")
+                : orderId
+                  ? t("payment.viewOrder")
+                  : t("payment.continueShopping")}
             </button>
           </>
         )}
@@ -79,31 +113,30 @@ export default function PaymentCallbackClient() {
               <XCircle size={32} className="text-red-600" />
             </div>
             <h1 className="text-2xl font-bold text-zinc-800 mb-2">
-              Payment Failed
+              {t("payment.failureTitle")}
             </h1>
-            <p className="text-zinc-600 mb-6">
-              Unfortunately, your payment could not be processed. Please try
-              again.
-            </p>
+            <p className="text-zinc-600 mb-6">{t("payment.failureBody")}</p>
             <div className="space-y-3">
               <button
-                onClick={() => router.push("/checkout")}
+                onClick={handleRetry}
                 className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity"
               >
-                Try Again
+                {t("payment.tryAgain")}
               </button>
               <button
-                onClick={() => router.push("/")}
+                onClick={() => router.push(tableMenuHref ?? "/")}
                 className="w-full border border-zinc-200 text-zinc-700 font-medium py-3 rounded-lg hover:bg-zinc-50 transition-colors"
               >
-                Back to Home
+                {tableMenuHref ? t("table.checkout.backToMenu") : t("payment.backHome")}
               </button>
             </div>
           </>
         )}
 
         {paymentId && (
-          <p className="text-xs text-zinc-400 mt-6">Payment ID: {paymentId}</p>
+          <p className="text-xs text-zinc-400 mt-6">
+            {t("payment.paymentId")}: {paymentId}
+          </p>
         )}
       </div>
     </div>

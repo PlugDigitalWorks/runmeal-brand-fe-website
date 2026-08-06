@@ -1,9 +1,12 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { useCart } from '@/context/CartContext';
 import { ShoppingCart, Trash2, Minus, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTable } from '@/context/TableContext';
 import { formatCurrency } from '@/lib/utils';
 
 type CartContentItem = {
@@ -31,6 +34,25 @@ type CartContentItem = {
 export function CartContent() {
     const { cart, guestCartItems, cartTotal, removeFromCart, updateQuantity } = useCart();
     const { isAuthenticated, openAuthModal } = useAuth();
+    const { isTableMode } = useTable();
+    const { t } = useTranslation();
+    const router = useRouter();
+
+    // A QR customer already has a (guest) session by the time items exist, so
+    // the login wall the storefront puts in front of checkout must not appear.
+    const handleCheckout = () => {
+        if (isTableMode) {
+            router.push('/order/checkout');
+            return;
+        }
+
+        if (!isAuthenticated) {
+            openAuthModal();
+            return;
+        }
+
+        window.location.href = '/checkout';
+    };
 
     // Unified items view
     const items: CartContentItem[] = isAuthenticated
@@ -158,17 +180,10 @@ export function CartContent() {
                             </div>
 
                             <button
-                                onClick={() => {
-                                    if (!isAuthenticated) {
-                                        openAuthModal();
-                                    } else {
-                                        // Navigate to checkout page
-                                        window.location.href = '/checkout';
-                                    }
-                                }}
+                                onClick={handleCheckout}
                                 className="w-full bg-primary text-white font-bold py-3 rounded mt-4 hover:opacity-90 transition-opacity uppercase"
                             >
-                                Confirm Order
+                                {t('cart.confirmOrder')}
                             </button>
                         </div>
                     )}

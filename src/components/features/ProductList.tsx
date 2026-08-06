@@ -9,14 +9,19 @@ import { Product } from '@/types/product';
 import { useCart } from '@/context/CartContext';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { DEFAULT_PRODUCT_IMAGE } from '@/lib/constants';
 import { getBrandId } from '@/lib/brand-store';
 import { formatCurrency } from '@/lib/utils';
 import { ProductDetailModal, type SelectedProductAddon, type SelectedProductOption } from './ProductDetailModal';
 
 export function ProductList() {
-    const { selectedBranch } = useBranch();
+    // `activeBranchId`, not `selectedBranch`: in a QR journey the branch is
+    // known from the token immediately, while the full branch record needs a
+    // session — and the branch menu endpoint is public either way.
+    const { activeBranchId } = useBranch();
     const { addToCart } = useCart();
+    const { t } = useTranslation();
     const [categories, setCategories] = useState<Category[]>([]);
     // const [products, setProducts] = useState<Product[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -37,9 +42,9 @@ export function ProductList() {
             setLoading(true);
             try {
                 let menuData;
-                if (selectedBranch) {
+                if (activeBranchId) {
                     // Load Branch Menu
-                    menuData = await catalogService.getBranchMenu(selectedBranch.id);
+                    menuData = await catalogService.getBranchMenu(activeBranchId);
                 } else {
                     // Load Brand Menu (Fallback or Default View)
                     menuData = await catalogService.getBrandMenu(getBrandId());
@@ -56,7 +61,7 @@ export function ProductList() {
             }
         };
         fetchData();
-    }, [selectedBranch]);
+    }, [activeBranchId]);
 
 
 
@@ -92,8 +97,8 @@ export function ProductList() {
     };
 
     const handleProductClick = (product: Product) => {
-        if (!selectedBranch) {
-            toast.error("Please select a branch to order.");
+        if (!activeBranchId) {
+            toast.error(t('branch.selectToOrder'));
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
@@ -157,7 +162,7 @@ export function ProductList() {
                         title={categories.find(c => c.id === selectedCategory)?.name || 'Products'}
                         products={categories.find(c => c.id === selectedCategory)?.products || []}
                         onProductClick={handleProductClick}
-                        isBranchSelected={!!selectedBranch}
+                        isBranchSelected={!!activeBranchId}
                     />
                 ) : categories.length > 0 ? (
                     categories.map(cat => {
@@ -169,7 +174,7 @@ export function ProductList() {
                                 title={cat.name}
                                 products={catProducts}
                                 onProductClick={handleProductClick}
-                                isBranchSelected={!!selectedBranch}
+                                isBranchSelected={!!activeBranchId}
                             />
                         );
                     })

@@ -44,6 +44,8 @@ export interface Branch {
     delivery?: { isActive: boolean };
     pickup?: { isActive: boolean };
     scheduledDelivery?: { isActive: boolean };
+    /** QR table ordering; the backend keys this `tableOrder`. */
+    tableOrder?: { isActive: boolean };
   };
   adisyo_settings?: {
     paymentMethodMapping?: {

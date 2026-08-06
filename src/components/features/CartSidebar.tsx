@@ -8,21 +8,25 @@ import { walletService } from '@/services/wallet.service';
 import { formatCurrency } from '@/lib/utils';
 
 export function CartSidebar() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, isGuest } = useAuth();
     const [balance, setBalance] = useState<number>(0);
 
+    // A QR guest is authenticated but owns no wallet or rewards — showing them
+    // an account panel with a zero balance is just noise.
+    const hasAccount = isAuthenticated && !isGuest;
+
     useEffect(() => {
-        if (isAuthenticated) {
+        if (hasAccount) {
             walletService.getBalance()
                 .then(res => setBalance(res.balance))
                 .catch(err => console.error('Failed to fetch wallet balance', err));
         }
-    }, [isAuthenticated]);
+    }, [hasAccount]);
 
     return (
         <div className="hidden lg:block w-full lg:w-80 flex-shrink-0 space-y-4">
             {/* Points - Only for Authenticated Users */}
-            {isAuthenticated && (
+            {hasAccount && (
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-zinc-100 flex justify-between items-center">
                     <span className="font-medium flex gap-1 text-zinc-700">Cash Points <span className="w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-white text-xs font-bold">₺</span></span>
                     <span className="font-bold text-zinc-800">{formatCurrency(balance)}</span>
@@ -32,7 +36,7 @@ export function CartSidebar() {
             {/* Carts */}
             <CartContent />
 
-            {isAuthenticated && (
+            {hasAccount && (
                 <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
                     <div className="p-3 border-b border-zinc-100 flex justify-between items-center">
                         <h3 className="font-bold text-zinc-800">My Rewards</h3>

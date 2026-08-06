@@ -178,5 +178,134 @@
       "title": "Sayfa yüklenemedi",
       "description": "Bir sorun oluştu. Lütfen daha sonra tekrar deneyin."
     }
+  },
+  "branch": {
+    "addressSearchHint": "Önce mahalle, sonra sokak girin",
+    "loading": "Şubeler yükleniyor...",
+    "availableBranches": "Siparişe açık şubeler",
+    "change": "Şubeyi Değiştir",
+    "select": "Şube Seç",
+    "searching": "Aranıyor...",
+    "noneFound": "Bu konumda şube bulunamadı.",
+    "selectToOrder": "Sipariş vermek için bir şube seçin.",
+    "minimumOrder": "Minimum sipariş tutarı",
+    "payment": "Ödeme",
+    "workingHours": "Çalışma Saatleri",
+    "today": "Bugün",
+    "closedToday": "Bugün kapalı",
+    "phoneNumber": "Telefon",
+    "notProvided": "Belirtilmemiş",
+    "paymentMethods": {
+      "onlineCard": "Online Kart",
+      "cash": "Nakit",
+      "cardOnDelivery": "Kapıda Kart"
+    },
+    "orderTypes": {
+      "delivery": "Teslimat",
+      "pickup": "Gel-Al",
+      "scheduledDelivery": "İleri Tarihli",
+      "tableOrder": "Masadan Sipariş"
+    }
+  },
+  "cart": {
+    "itemAdded": "Ürün sepete eklendi",
+    "itemAddFailed": "Ürün sepete eklenemedi",
+    "confirmOrder": "Siparişi Onayla"
+  },
+  "payment": {
+    "processingTitle": "Ödeme İşleniyor",
+    "processingBody": "Ödemeniz doğrulanırken lütfen bekleyin...",
+    "successTitle": "Ödeme Başarılı!",
+    "successBody": "Siparişiniz başarıyla oluşturuldu.",
+    "successTableBody": "Siparişiniz alındı ve mutfağa iletildi.",
+    "failureTitle": "Ödeme Başarısız",
+    "failureBody": "Ödemeniz alınamadı. Lütfen tekrar deneyin.",
+    "tryAgain": "Tekrar Dene",
+    "backHome": "Ana Sayfaya Dön",
+    "viewOrder": "Siparişi Görüntüle",
+    "continueShopping": "Alışverişe Devam Et",
+    "orderId": "Sipariş No",
+    "paymentId": "Ödeme No"
+  },
+  "table": {
+    "resolving": "Masa bilgileri yükleniyor...",
+    "panel": {
+      "badge": "QR ile sipariş",
+      "branchLine": "{{branch}}",
+      "branchUnknown": "Şube bilgisi yükleniyor...",
+      "servedAtTable": "Siparişiniz {{table}} masasına getirilecek.",
+      "tableClosed": "Bu masadan şu anda sipariş alınamıyor. Lütfen personele başvurun.",
+      "tableClosedPickupOnly": "Bu masadan şu anda sipariş alınamıyor, ancak gel-al siparişi verebilirsiniz."
+    },
+    "checkout": {
+      "title": "Sipariş Onayı",
+      "backToMenu": "Menüye Dön",
+      "fulfillmentTitle": "Teslim Şekli",
+      "serveToTable": "{{table}} masasına getir",
+      "serveToTableHint": "Siparişiniz doğrudan masanıza servis edilir.",
+      "pickup": "Gel-Al",
+      "pickupHint": "Siparişinizi tezgâhtan kendiniz alırsınız.",
+      "pickupPaymentNote": "Gel-al siparişleri online kart ile ödenir.",
+      "paymentTitle": "Ödeme",
+      "payNow": "Şimdi online öde",
+      "payNowHint": "Kartla ödersiniz, sipariş ödeme onayından sonra mutfağa iletilir.",
+      "payLater": "Kasada öde",
+      "payLaterHint": "Sipariş hemen mutfağa iletilir, ödemeyi çıkışta kasada yaparsınız.",
+      "noteLabel": "Sipariş Notu",
+      "notePlaceholder": "Siparişinizle ilgili bir not ekleyin",
+      "summaryTitle": "Sipariş Özeti",
+      "orderingFrom": "Sipariş verilen yer",
+      "subtotal": "Ara Toplam",
+      "discount": "İndirim",
+      "total": "Toplam",
+      "submitting": "Gönderiliyor...",
+      "submitPayNow": "Ödemeye Geç",
+      "submitPayLater": "Siparişi Gönder",
+      "emptyCart": "Sepetiniz boş. Sipariş vermek için menüden ürün ekleyin."
+    },
+    "success": {
+      "title": "Siparişiniz alındı!",
+      "sent": "Siparişiniz mutfağa iletildi.",
+      "sentToTable": "Siparişiniz {{table}} için mutfağa iletildi.",
+      "total": "Tutar",
+      "payment": "Ödeme",
+      "payAtCounter": "Kasada ödenecek",
+      "counterHint": "Aynı masadan verilen tüm siparişler tek hesapta toplanır; çıkışta kasada ödeyebilirsiniz.",
+      "orderMore": "Sipariş Eklemeye Devam Et"
+    },
+    "journeyErrors": {
+      "backHome": "Ana Sayfaya Dön",
+      "MISSING_QR": {
+        "title": "Geçersiz QR kodu",
+        "description": "Bağlantıda masa bilgisi yok. Lütfen masadaki QR kodu tekrar okutun."
+      },
+      "TABLE_NOT_FOUND": {
+        "title": "Masa kullanılamıyor",
+        "description": "Bu QR kod geçersiz veya masa artık aktif değil. Lütfen personele başvurun."
+      },
+      "BRAND_MISMATCH": {
+        "title": "QR bu siteye ait değil",
+        "description": "Okuttuğunuz QR kod başka bir markaya ait. Lütfen masadaki QR kodu tekrar okutun."
+      },
+      "UNKNOWN": {
+        "title": "Masa bilgisi alınamadı",
+        "description": "Beklenmeyen bir hata oluştu. Lütfen sayfayı yenileyip tekrar deneyin."
+      }
+    },
+    "errors": {
+      "GENERIC": "İşlem tamamlanamadı. Lütfen tekrar deneyin.",
+      "SESSION_FAILED": "Oturum başlatılamadı. Lütfen sayfayı yenileyip tekrar deneyin.",
+      "PAYMENT_INIT_FAILED": "Ödeme başlatılamadı. Lütfen tekrar deneyin.",
+      "TABLE_PAY_NOW_DISABLED": "Bu masa için online ödeme şu anda kapalı.",
+      "TABLE_PAY_LATER_DISABLED": "Bu masa için kasada ödeme şu anda kapalı.",
+      "TABLE_ORDER_PAYMENT_METHOD_INVALID": "Bu ödeme yöntemi masa siparişi için kullanılamıyor.",
+      "PAY_AT_COUNTER_REQUIRES_TABLE_ORDER_ENDPOINT": "Kasada ödeme yalnızca masa siparişlerinde kullanılabilir.",
+      "PAYMENT_CONTEXT_CHANGED": "Sipariş bilgileri değiştiği için bekleyen bir ödeme var. Lütfen mevcut ödemeyi tamamlayın veya iptal edin.",
+      "PAYMENT_ALREADY_IN_PROGRESS": "Bu sepet için başlatılmış bir ödeme var. Lütfen ödeme işlemini tamamlayın.",
+      "CART_ALREADY_SUBMITTED": "Bu sepet zaten gönderildi. Yeni sipariş için menüye dönün.",
+      "TABLE_INVALID_FOR_BRANCH": "Masa bilgisi doğrulanamadı. Lütfen QR kodu tekrar okutun.",
+      "ORDER_TYPE_UNAVAILABLE": "Bu sipariş türü şu anda kullanılamıyor. Lütfen seçeneklerinizi kontrol edin.",
+      "SESSION_RESTARTED": "Oturum süreniz dolduğu için yeniden başlatıldı. Sepetiniz boşaldı, ürünleri tekrar eklemeniz gerekiyor."
+    }
   }
 }

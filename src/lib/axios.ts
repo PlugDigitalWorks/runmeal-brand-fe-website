@@ -2,6 +2,13 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
 import { getBrandId } from './brand-store';
+import { getDeviceId } from './device-id';
+
+/** Auth endpoints that must never be decorated or retried by the interceptors. */
+const AUTH_BYPASS_PATHS = ['/auth/refresh', '/auth/login', '/auth/guest-session'];
+
+const isAuthBypassUrl = (url?: string) =>
+  !!url && AUTH_BYPASS_PATHS.some((path) => url.includes(path));
 
 const API_URL =
   typeof window === 'undefined'
@@ -35,6 +42,10 @@ authApi.interceptors.request.use((config) => {
   if (brandId) {
     config.headers['x-brand-id'] = brandId;
   }
+  const deviceId = getDeviceId();
+  if (deviceId) {
+    config.headers['x-device-id'] = deviceId;
+  }
   return config;
 });
 
@@ -49,8 +60,16 @@ api.interceptors.request.use(async (config) => {
     config.headers['x-brand-id'] = brandId;
   }
 
-  // Don't intercept auth requests to avoid loops
-  if (config.url?.includes('/auth/refresh') || config.url?.includes('/auth/login')) {
+  // Lets the backend bind one refresh session per browser instead of issuing a
+  // fresh guest on every scan.
+  const deviceId = getDeviceId();
+  if (deviceId) {
+    config.headers['x-device-id'] = deviceId;
+  }
+
+  // Don't intercept auth requests to avoid loops. `guest-session` is public and
+  // must not carry a stale Authorization header either.
+  if (isAuthBypassUrl(config.url)) {
     return config;
   }
 
@@ -69,6 +88,26 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+/**
+ * Last-resort session recovery, registered by the QR table journey.
+ *
+ * A guest session has a hard five-hour lifetime that refreshing does not
+ * extend, so once it lapses there is nothing left to refresh — the only way
+ * back is a brand new guest. Registered as a hook rather than imported
+ * directly to keep this module free of app/context dependencies, and left
+ * unset outside the table flow: a real customer whose session died must land
+ * on the login screen, not be silently downgraded to a guest.
+ *
+ * Returns the new access token, or null when recovery is not possible.
+ */
+type SessionRecovery = () => Promise<string | null>;
+
+let sessionRecovery: SessionRecovery | null = null;
+
+export function setSessionRecovery(recovery: SessionRecovery | null) {
+  sessionRecovery = recovery;
+}
 
 interface RetryQueueItem {
   resolve: (value?: unknown) => void;
@@ -160,10 +199,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
 
-      if (
-        originalRequest.url?.includes('/auth/login') ||
-        originalRequest.url?.includes('/auth/refresh')
-      ) {
+      if (isAuthBypassUrl(originalRequest.url)) {
         return Promise.reject(error);
       }
 
@@ -180,9 +216,20 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-          // Optional: redirect to login
+        // Refresh is exhausted. `_retry` is already set, so a 401 on the call
+        // below cannot re-enter this branch and loop.
+        if (sessionRecovery) {
+          try {
+            const recoveredToken = await sessionRecovery();
+            if (recoveredToken) {
+              originalRequest.headers.Authorization = `Bearer ${recoveredToken}`;
+              return api(originalRequest);
+            }
+          } catch (recoveryError) {
+            console.error('Session recovery failed', recoveryError);
+          }
         }
+
         return Promise.reject(refreshError);
       }
     }

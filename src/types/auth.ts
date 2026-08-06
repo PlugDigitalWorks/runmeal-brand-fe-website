@@ -26,6 +26,12 @@ export interface User {
   lastName: string;
   fullName?: string;
   role: string;
+  /**
+   * Set on the throwaway account a QR table journey creates. Such a user has
+   * the ordinary CUSTOMER role, so `isAuthenticated` alone cannot tell them
+   * apart from a signed-in customer — check this before showing account UI.
+   */
+  isGuest?: boolean;
   isActive?: boolean;
   isEmailVerified?: boolean;
   phoneNumber?: string;
