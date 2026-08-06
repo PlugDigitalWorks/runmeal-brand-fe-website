@@ -22,16 +22,16 @@ export function Header() {
 
     return (
         <header className="bg-white text-zinc-900 border-b border-zinc-100 sticky top-0 z-50">
-            <div className="container mx-auto flex justify-between items-center py-4">
-                <div className="flex items-center gap-8">
+            <div className="container mx-auto flex items-center justify-between gap-2 px-3 py-3 sm:px-4 sm:py-4">
+                <div className="flex min-w-0 shrink items-center gap-3 md:gap-8">
                     {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-90">
+                    <Link href="/" className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-90">
                         <Image
                             src={RUNMEAL_LOGO}
                             alt="Runmeal"
                             width={120}
                             height={32}
-                            className="h-8 w-auto"
+                            className="h-7 w-auto max-[360px]:h-6 sm:h-8"
                             priority
                         />
                     </Link>
@@ -40,7 +40,7 @@ export function Header() {
                 </div>
 
                 {/* Right Actions */}
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-0 shrink items-center gap-1.5 sm:gap-4">
                     {isTableMode && journey && (
                         <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-primary">
                             <QrCode size={13} className="shrink-0" />
@@ -48,25 +48,27 @@ export function Header() {
                         </span>
                     )}
                     {showAccount ? (
-                        <div className="flex items-center gap-4">
-                            <Link href="/profile" className="text-zinc-700 font-medium flex items-center gap-2 hover:text-primary transition-colors cursor-pointer">
-                                {t('header.hello', { name: `${user.firstName} ${user.lastName}` })}
-                                <User size={16} />
+                        <div className="flex min-w-0 items-center gap-1.5 sm:gap-4">
+                            <Link href="/profile" className="flex min-w-0 items-center gap-1 text-xs font-medium text-zinc-700 transition-colors hover:text-primary sm:gap-2 sm:text-sm">
+                                <span className="max-w-24 truncate whitespace-nowrap max-[360px]:max-w-14 sm:max-w-48">
+                                    {[user.firstName, user.lastName].filter(Boolean).join(' ')}
+                                </span>
+                                <User size={15} className="shrink-0" />
                             </Link>
                             <button
                                 onClick={() => logout()}
-                                className="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1 rounded text-sm transition-colors"
+                                className="shrink-0 whitespace-nowrap rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-900 transition-colors hover:bg-zinc-200 sm:px-3 sm:text-sm"
                             >
                                 {t('header.logout')}
                             </button>
                             <LanguageSwitcher />
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2">
-                            <Link href="/login" className="bg-primary hover:opacity-90 text-white px-4 py-2 rounded-md font-medium transition-opacity shadow-sm">
+                        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+                            <Link href="/login" className="shrink-0 whitespace-nowrap rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-white shadow-sm transition-opacity hover:opacity-90 sm:px-4 sm:py-2 sm:text-sm">
                                 {t('header.login')}
                             </Link>
-                            <Link href="/register" className="border border-zinc-200 hover:border-primary hover:text-primary text-zinc-700 px-4 py-2 rounded-md font-medium transition-colors">
+                            <Link href="/register" className="shrink-0 whitespace-nowrap rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:border-primary hover:text-primary sm:px-4 sm:py-2 sm:text-sm">
                                 {t('header.register')}
                             </Link>
                             <LanguageSwitcher />

@@ -23,10 +23,10 @@ export function LanguageSwitcher() {
     <button
       type="button"
       onClick={next}
-      className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+      className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 sm:gap-1.5 sm:px-2.5 sm:py-1.5 sm:text-sm"
       aria-label="Change language"
     >
-      <Globe className="h-4 w-4" />
+      <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       <span>{LABELS[current as SupportedLanguage] ?? current.toUpperCase()}</span>
     </button>
   );
