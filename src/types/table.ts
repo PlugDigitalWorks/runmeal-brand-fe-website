@@ -136,6 +136,18 @@ export interface TableCheckItemSelection {
     quantity: number;
 }
 
+/** Exact mode-based request retained so an active provider checkout can resume. */
+export type TableCheckPaymentRequest =
+    | {
+        mode: 'ITEMS';
+        selections: TableCheckItemSelection[];
+    }
+    | {
+        mode: 'EQUAL_SPLIT';
+        splitPlanId: string;
+        partNumber: number;
+    };
+
 export interface TableCheckPaymentInitialization {
     paymentId: string;
     tableCheckId: string;

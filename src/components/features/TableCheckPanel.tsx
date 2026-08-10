@@ -17,16 +17,27 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
-import { rememberTableCheckPayment, type PendingTableCheckPayment } from '@/lib/table-check-payment';
+import {
+    forgetTableCheckPayment,
+    getTableCheckPaymentSnapshot,
+    isTableCheckPaymentActive,
+    parseTableCheckPayment,
+    rememberTableCheckPayment,
+    type PendingTableCheckPayment,
+} from '@/lib/table-check-payment';
 import { tableService } from '@/services/table.service';
 import type {
     CustomerTableCheck,
     QrOrderContext,
     TableCheckPaymentInitialization,
+    TableCheckPaymentRequest,
     TableSplitPart,
 } from '@/types/table';
 
 type SelectionMap = Record<string, number>;
+
+const subscribeToPendingPayment = () => () => undefined;
+const getServerPendingPayment = () => null;
 
 const REFRESH_ERROR_CODES = new Set([
     'CHECK_ITEMS_UNAVAILABLE',
@@ -71,6 +82,22 @@ export function TableCheckPanel({
     const [isExpanded, setIsExpanded] = React.useState(true);
     const [checkoutForm, setCheckoutForm] = React.useState<string | null>(null);
     const [clock, setClock] = React.useState(() => Date.now());
+    const [dismissedPendingPaymentId, setDismissedPendingPaymentId] = React.useState<string | null>(null);
+    const pendingPaymentSnapshot = React.useSyncExternalStore(
+        subscribeToPendingPayment,
+        getTableCheckPaymentSnapshot,
+        getServerPendingPayment,
+    );
+    const storedPendingPayment = React.useMemo(
+        () => parseTableCheckPayment(pendingPaymentSnapshot),
+        [pendingPaymentSnapshot],
+    );
+    const pendingPayment =
+        storedPendingPayment?.qrToken === journey.qrToken &&
+        isTableCheckPaymentActive(storedPendingPayment) &&
+        storedPendingPayment.paymentId !== dismissedPendingPaymentId
+            ? storedPendingPayment
+            : null;
 
     const loadCheck = React.useCallback(async (quiet = false) => {
         if (!sessionReady) return null;
@@ -147,8 +174,15 @@ export function TableCheckPanel({
     const openCheckout = (
         payment: TableCheckPaymentInitialization,
         confirmation: PendingTableCheckPayment['confirmation'],
+        request: TableCheckPaymentRequest,
     ) => {
-        rememberTableCheckPayment(journey.qrToken, payment, confirmation, check?.remainingAmount ?? 0);
+        rememberTableCheckPayment(
+            journey.qrToken,
+            payment,
+            confirmation,
+            check?.remainingAmount ?? 0,
+            request,
+        );
         if (payment.paymentUrl) {
             window.location.assign(payment.paymentUrl);
         } else if (payment.checkoutFormContent) {
@@ -171,8 +205,9 @@ export function TableCheckPanel({
                     order.items.map((item) => [item.orderItemId, item.paidQuantity] as const),
                 ) ?? [],
             );
+            const request: TableCheckPaymentRequest = { mode: 'ITEMS', selections: selectedItems };
             openCheckout(
-                await tableService.initializeItemPayment(journey.qrToken, selectedItems),
+                await tableService.initializeTableCheckPayment(journey.qrToken, request),
                 {
                     mode: 'ITEMS',
                     items: selectedItems.map(({ orderItemId, quantity }) => ({
@@ -180,6 +215,7 @@ export function TableCheckPanel({
                         paidQuantity: (paidQuantities.get(orderItemId) ?? 0) + quantity,
                     })),
                 },
+                request,
             );
         } catch (error) {
             await handleFailure(error);
@@ -205,19 +241,46 @@ export function TableCheckPanel({
         if (!check?.splitPlan || part.status !== 'AVAILABLE' || isSubmitting) return;
         setIsSubmitting(true);
         try {
+            const request: TableCheckPaymentRequest = {
+                mode: 'EQUAL_SPLIT',
+                splitPlanId: check.splitPlan.splitPlanId,
+                partNumber: part.partNumber,
+            };
             openCheckout(
-                await tableService.initializeSplitPayment(
-                    journey.qrToken,
-                    check.splitPlan.splitPlanId,
-                    part.partNumber,
-                ),
+                await tableService.initializeTableCheckPayment(journey.qrToken, request),
                 {
                     mode: 'EQUAL_SPLIT',
                     splitPlanId: check.splitPlan.splitPlanId,
                     partNumber: part.partNumber,
                 },
+                request,
             );
         } catch (error) {
+            await handleFailure(error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const resumePayment = async () => {
+        if (!pendingPayment || isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            const payment = await tableService.initializeTableCheckPayment(
+                pendingPayment.qrToken,
+                pendingPayment.request,
+            );
+            openCheckout(payment, pendingPayment.confirmation, pendingPayment.request);
+        } catch (error) {
+            const apiError = getApiErrorDetails(error);
+            if (
+                apiError.code === 'CHECK_ITEMS_UNAVAILABLE' ||
+                apiError.code === 'SPLIT_PART_ALREADY_PAID' ||
+                apiError.code === 'SPLIT_PLAN_BALANCE_CHANGED'
+            ) {
+                forgetTableCheckPayment();
+                setDismissedPendingPaymentId(pendingPayment.paymentId);
+            }
             await handleFailure(error);
         } finally {
             setIsSubmitting(false);
@@ -292,6 +355,26 @@ export function TableCheckPanel({
                         <Amount label={t('table.check.paid')} value={check.paidAmount} />
                         <Amount label={t('table.check.remaining')} value={check.remainingAmount} strong />
                     </div>
+
+                    {pendingPayment && (
+                        <div className="mb-5 flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm font-semibold text-amber-900">
+                                    {t('table.check.pendingPaymentTitle')}
+                                </p>
+                                <p className="mt-0.5 text-xs text-amber-700">
+                                    {t('table.check.pendingPaymentBody')}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => void resumePayment()}
+                                disabled={isSubmitting}
+                                className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
+                            >
+                                {isSubmitting ? t('table.check.startingPayment') : t('table.check.resumePayment')}
+                            </button>
+                        </div>
+                    )}
 
                     {check.splitPlan ? (
                         <div className="space-y-4">

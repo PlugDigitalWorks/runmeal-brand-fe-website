@@ -2,8 +2,8 @@ import { api } from '@/lib/axios';
 import { ApiResponse } from '@/types/auth';
 import {
     CustomerTableCheck,
-    TableCheckItemSelection,
     TableCheckPaymentInitialization,
+    TableCheckPaymentRequest,
     TableResolveResponse,
     TableSplitPlan,
 } from '@/types/table';
@@ -31,10 +31,10 @@ export const tableService = {
         return response.data.data;
     },
 
-    async initializeItemPayment(qrToken: string, selections: TableCheckItemSelection[]) {
+    async initializeTableCheckPayment(qrToken: string, request: TableCheckPaymentRequest) {
         const response = await api.post<ApiResponse<TableCheckPaymentInitialization>>(
             '/customer/table-checks/payments/initialize',
-            { qrToken, mode: 'ITEMS', selections },
+            { qrToken, ...request },
         );
         return response.data.data;
     },
@@ -43,14 +43,6 @@ export const tableService = {
         const response = await api.post<ApiResponse<TableSplitPlan>>(
             '/customer/table-checks/splits',
             { qrToken, partCount },
-        );
-        return response.data.data;
-    },
-
-    async initializeSplitPayment(qrToken: string, splitPlanId: string, partNumber: number) {
-        const response = await api.post<ApiResponse<TableCheckPaymentInitialization>>(
-            '/customer/table-checks/payments/initialize',
-            { qrToken, mode: 'EQUAL_SPLIT', splitPlanId, partNumber },
         );
         return response.data.data;
     },

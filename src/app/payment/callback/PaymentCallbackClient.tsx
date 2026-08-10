@@ -12,8 +12,12 @@ import { tableService } from "@/services/table.service";
 import {
   forgetTableCheckPayment,
   getTableCheckPaymentSnapshot,
+  isTableCheckPaymentActive,
   parseTableCheckPayment,
+  rememberTableCheckPayment,
 } from "@/lib/table-check-payment";
+import { resolveApiErrorMessage } from "@/lib/api-errors";
+import { toast } from "sonner";
 import { formatCurrency, resolveCurrencySymbol } from "@/lib/utils";
 import type { PendingTableCheckPayment } from "@/lib/table-check-payment";
 import type { CustomerTableCheck, TableOrderView } from "@/types/table";
@@ -74,6 +78,8 @@ export default function PaymentCallbackClient() {
   );
   const [refreshedCheck, setRefreshedCheck] = useState<CustomerTableCheck | null>(null);
   const [tablePaymentVerification, setTablePaymentVerification] = useState<"confirmed" | "pending" | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryCheckoutForm, setRetryCheckoutForm] = useState<string | null>(null);
 
   const paymentStatus = searchParams.get("status");
   const paymentId = searchParams.get("paymentId");
@@ -115,10 +121,9 @@ export default function PaymentCallbackClient() {
   useEffect(() => {
     if (!isTableCheckPayment || status === "loading" || !pendingTablePayment) return;
 
-    if (status === "failure") {
-      forgetTableCheckPayment();
-      return;
-    }
+    // Failure keeps the request marker. Retrying the exact request lets the
+    // backend return the provider URL of its matching in-flight payment.
+    if (status === "failure") return;
 
     let cancelled = false;
     (async () => {
@@ -192,9 +197,60 @@ export default function PaymentCallbackClient() {
     router.push(isGuest ? "/" : "/profile?tab=orders");
   };
 
-  const handleRetry = () => {
-    router.push(isTableCheckPayment && tableMenuHref ? tableMenuHref : tableMenuHref ? "/order/checkout" : "/checkout");
+  const handleRetry = async () => {
+    if (isTableCheckPayment && pendingTablePayment) {
+      if (!isTableCheckPaymentActive(pendingTablePayment)) {
+        forgetTableCheckPayment();
+        router.push(tableMenuHref ?? "/");
+        return;
+      }
+
+      setIsRetrying(true);
+      try {
+        const payment = await tableService.initializeTableCheckPayment(
+          pendingTablePayment.qrToken,
+          pendingTablePayment.request,
+        );
+        rememberTableCheckPayment(
+          pendingTablePayment.qrToken,
+          payment,
+          pendingTablePayment.confirmation,
+          pendingTablePayment.remainingAmount,
+          pendingTablePayment.request,
+        );
+
+        if (payment.paymentUrl) {
+          window.location.assign(payment.paymentUrl);
+        } else if (payment.checkoutFormContent) {
+          setRetryCheckoutForm(payment.checkoutFormContent);
+        } else {
+          toast.error(t("table.check.errors.paymentMissing"));
+        }
+      } catch (error) {
+        toast.error(resolveApiErrorMessage(error, t("table.check.errors.generic")));
+      } finally {
+        setIsRetrying(false);
+      }
+      return;
+    }
+
+    router.push(tableMenuHref ? "/order/checkout" : "/checkout");
   };
+
+  if (retryCheckoutForm) {
+    return (
+      <div className="min-h-screen bg-zinc-50 py-8">
+        <div className="container mx-auto max-w-2xl px-4">
+          <div className="rounded-lg bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-xl font-bold text-zinc-800">
+              {t("table.check.completePayment")}
+            </h2>
+            <div dangerouslySetInnerHTML={{ __html: retryCheckoutForm }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
@@ -318,10 +374,15 @@ export default function PaymentCallbackClient() {
             <p className="text-zinc-600 mb-6">{t("payment.failureBody")}</p>
             <div className="space-y-3">
               <button
-                onClick={handleRetry}
-                className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity"
+                onClick={() => void handleRetry()}
+                disabled={isRetrying}
+                className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {t("payment.tryAgain")}
+                {isRetrying
+                  ? t("table.check.startingPayment")
+                  : isTableCheckPayment
+                    ? t("table.check.resumePayment")
+                    : t("payment.tryAgain")}
               </button>
               <button
                 onClick={() => router.push(tableMenuHref ?? "/")}

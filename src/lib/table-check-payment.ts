@@ -1,4 +1,4 @@
-import type { TableCheckPaymentInitialization } from '@/types/table';
+import type { TableCheckPaymentInitialization, TableCheckPaymentRequest } from '@/types/table';
 
 const STORAGE_KEY = 'rm_table_check_payment';
 
@@ -7,7 +7,9 @@ export interface PendingTableCheckPayment {
     paymentId: string;
     tableCheckId: string;
     createdAt: number;
+    expiresAt: string;
     remainingAmount: number;
+    request: TableCheckPaymentRequest;
     confirmation:
         | {
             mode: 'ITEMS';
@@ -25,6 +27,7 @@ export function rememberTableCheckPayment(
     payment: TableCheckPaymentInitialization,
     confirmation: PendingTableCheckPayment['confirmation'],
     remainingAmount: number,
+    request: TableCheckPaymentRequest,
 ) {
     if (typeof window === 'undefined') return;
     window.sessionStorage.setItem(
@@ -34,7 +37,9 @@ export function rememberTableCheckPayment(
             paymentId: payment.paymentId,
             tableCheckId: payment.tableCheckId,
             createdAt: Date.now(),
+            expiresAt: payment.expiresAt,
             remainingAmount,
+            request,
             confirmation,
         } satisfies PendingTableCheckPayment),
     );
@@ -53,14 +58,23 @@ export function getTableCheckPaymentSnapshot() {
 export function parseTableCheckPayment(raw: string | null): PendingTableCheckPayment | null {
     try {
         const parsed = JSON.parse(raw || 'null');
-        const isRecent = typeof parsed?.createdAt === 'number' && Date.now() - parsed.createdAt < 40 * 60 * 1000;
+        // Keep callback identity longer than the provider reservation itself;
+        // an expired failure return is still a table-check payment, it just
+        // must not expose the resume action anymore.
+        const isRecent = typeof parsed?.createdAt === 'number' && Date.now() - parsed.createdAt < 2 * 60 * 60 * 1000;
         return parsed?.qrToken && parsed?.paymentId && parsed?.tableCheckId && parsed?.confirmation &&
+            typeof parsed?.expiresAt === 'string' && parsed?.request &&
             typeof parsed?.remainingAmount === 'number' && isRecent
             ? parsed
             : null;
     } catch {
         return null;
     }
+}
+
+export function isTableCheckPaymentActive(payment: PendingTableCheckPayment) {
+    const expiresAt = new Date(payment.expiresAt).getTime();
+    return Number.isFinite(expiresAt) && expiresAt > Date.now();
 }
 
 export function forgetTableCheckPayment() {
