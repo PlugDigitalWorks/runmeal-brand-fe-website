@@ -117,7 +117,10 @@ export function TableProvider({ children }: { children: React.ReactNode }) {
     const [phase, setPhase] = useState<TableJourneyStatus>('idle');
     const [error, setError] = useState<TableJourneyError | null>(null);
 
-    const isTableMode = pathname === '/order' || pathname.startsWith('/order/');
+    const isTableMode =
+        pathname === '/order' ||
+        pathname.startsWith('/order/') ||
+        (pathname === '/payment/callback' && !!journey);
     // A journey rehydrated from storage is ready even though no resolve ran in
     // this mount.
     const status: TableJourneyStatus = phase === 'idle' && journey ? 'ready' : phase;

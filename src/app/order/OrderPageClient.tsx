@@ -9,6 +9,7 @@ import { ProductList } from '@/components/features/ProductList';
 import { CartSidebar } from '@/components/features/CartSidebar';
 import { MobileCartFab } from '@/components/features/MobileCartFab';
 import { TableInfoPanel } from '@/components/features/TableInfoPanel';
+import { TableCheckPanel } from '@/components/features/TableCheckPanel';
 import { TableJourneyError } from '@/components/features/TableJourneyError';
 
 /**
@@ -24,21 +25,25 @@ export function OrderPageClient() {
     const qrToken = searchParams.get('qr')?.trim() ?? '';
     const { journey, status, error, resolveFromToken } = useTable();
     const { ensureSession } = useAuth();
+    const [sessionReady, setSessionReady] = React.useState(false);
 
     // Re-resolve on every fresh journey, and open the session the branch
     // details and the cart both need. The menu itself is public, so it starts
     // loading in parallel without waiting for either.
     React.useEffect(() => {
         if (!qrToken) {
+            setSessionReady(false);
             resolveFromToken('');
             return;
         }
 
+        setSessionReady(false);
         let cancelled = false;
         (async () => {
             const resolved = await resolveFromToken(qrToken);
             if (cancelled || !resolved) return;
-            await ensureSession();
+            const session = await ensureSession();
+            if (!cancelled && session) setSessionReady(true);
         })();
 
         return () => {
@@ -65,6 +70,7 @@ export function OrderPageClient() {
         <div className="flex flex-col lg:flex-row gap-6">
             <div className="flex-1 min-w-0">
                 <TableInfoPanel journey={journey} />
+                <TableCheckPanel journey={journey} sessionReady={sessionReady} />
                 <ProductList />
             </div>
 

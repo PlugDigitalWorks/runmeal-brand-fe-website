@@ -65,3 +65,81 @@ export interface TableOrderView {
     currencySymbol?: string;
     createdAt?: string;
 }
+
+/** One line on an order that belongs to the table's shared open check. */
+export interface CustomerTableCheckItem {
+    orderItemId: string;
+    productId: string;
+    productName: string;
+    quantity: number;
+    payableAmount: number;
+    paidQuantity: number;
+    paidAmount: number;
+    remainingQuantity: number;
+    remainingAmount: number;
+    reservedQuantity: number;
+    reservedAmount: number;
+    availableQuantity: number;
+    availableAmount: number;
+}
+
+export interface CustomerTableCheckOrder {
+    orderId: string;
+    createdAt: string;
+    status: string;
+    totalAmount: number;
+    paidAmount: number;
+    remainingAmount: number;
+    isOwnOrder: boolean;
+    items: CustomerTableCheckItem[];
+}
+
+export type TableSplitPartStatus = 'AVAILABLE' | 'RESERVED' | 'PAID';
+
+export interface TableSplitPart {
+    partNumber: number;
+    amount: number;
+    status: TableSplitPartStatus;
+    isOwnReservation: boolean;
+    reservationExpiresAt: string | null;
+}
+
+export interface TableSplitPlan {
+    splitPlanId: string;
+    partCount: number;
+    originalAmount: number;
+    status: string;
+    paidAmount: number;
+    reservedAmount: number;
+    remainingAmount: number;
+    parts: TableSplitPart[];
+}
+
+export interface CustomerTableCheck {
+    checkId: string;
+    tableId: string;
+    tableLabel: string;
+    branchId: string;
+    status: string;
+    openedAt: string;
+    closedAt: string | null;
+    totalAmount: number;
+    paidAmount: number;
+    remainingAmount: number;
+    checkoutOptions: Pick<TableCheckoutOptions, 'payNow'>;
+    splitPlan: TableSplitPlan | null;
+    orders: CustomerTableCheckOrder[];
+}
+
+export interface TableCheckItemSelection {
+    orderItemId: string;
+    quantity: number;
+}
+
+export interface TableCheckPaymentInitialization {
+    paymentId: string;
+    tableCheckId: string;
+    expiresAt: string;
+    paymentUrl?: string;
+    checkoutFormContent?: string;
+}

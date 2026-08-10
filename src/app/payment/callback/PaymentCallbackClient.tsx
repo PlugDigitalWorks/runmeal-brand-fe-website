@@ -1,15 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Clock3, XCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useTable } from "@/context/TableContext";
 import { orderService } from "@/services/order.service";
+import { tableService } from "@/services/table.service";
+import {
+  forgetTableCheckPayment,
+  getTableCheckPaymentSnapshot,
+  parseTableCheckPayment,
+} from "@/lib/table-check-payment";
 import { formatCurrency, resolveCurrencySymbol } from "@/lib/utils";
-import type { TableOrderView } from "@/types/table";
+import type { PendingTableCheckPayment } from "@/lib/table-check-payment";
+import type { CustomerTableCheck, TableOrderView } from "@/types/table";
+
+const subscribeToPaymentContext = () => () => undefined;
+const getServerPaymentContext = () => null;
+const getClientHydrated = () => true;
+const getServerHydrated = () => false;
+
+function isTablePaymentReflected(
+  pending: PendingTableCheckPayment,
+  current: CustomerTableCheck,
+) {
+  if (current.remainingAmount >= pending.remainingAmount) return false;
+
+  if (pending.confirmation.mode === "ITEMS") {
+    const paidQuantities = new Map(
+      current.orders.flatMap((order) =>
+        order.items.map((item) => [item.orderItemId, item.paidQuantity] as const),
+      ),
+    );
+    return pending.confirmation.items.every(
+      (item) => (paidQuantities.get(item.orderItemId) ?? 0) >= item.paidQuantity,
+    );
+  }
+
+  // A completed plan may no longer be returned as active. In that case the
+  // reduced remaining balance above is the authoritative confirmation.
+  const confirmation = pending.confirmation;
+  if (!current.splitPlan) return true;
+  if (current.splitPlan.splitPlanId !== confirmation.splitPlanId) return false;
+  return current.splitPlan.parts.some(
+    (part) => part.partNumber === confirmation.partNumber && part.status === "PAID",
+  );
+}
 
 export default function PaymentCallbackClient() {
   const searchParams = useSearchParams();
@@ -19,15 +58,38 @@ export default function PaymentCallbackClient() {
   const { journey } = useTable();
   const { resetCartState } = useCart();
   const [order, setOrder] = useState<TableOrderView | null>(null);
+  const paymentContextSnapshot = useSyncExternalStore(
+    subscribeToPaymentContext,
+    getTableCheckPaymentSnapshot,
+    getServerPaymentContext,
+  );
+  const hasReadPaymentContext = useSyncExternalStore(
+    subscribeToPaymentContext,
+    getClientHydrated,
+    getServerHydrated,
+  );
+  const pendingTablePayment = useMemo(
+    () => parseTableCheckPayment(paymentContextSnapshot),
+    [paymentContextSnapshot],
+  );
+  const [refreshedCheck, setRefreshedCheck] = useState<CustomerTableCheck | null>(null);
+  const [tablePaymentVerification, setTablePaymentVerification] = useState<"confirmed" | "pending" | null>(null);
 
   const paymentStatus = searchParams.get("status");
   const paymentId = searchParams.get("paymentId");
   const orderId = searchParams.get("orderId");
+  const isTableCheckPayment = !!(
+    pendingTablePayment &&
+    journey &&
+    pendingTablePayment.qrToken === journey.qrToken &&
+    (!paymentId || paymentId === pendingTablePayment.paymentId)
+  );
 
   // Nothing to hold in state: what we render is a pure function of the status
   // the backend redirected us with.
-  const status =
-    paymentStatus === "success"
+  const status = !hasReadPaymentContext
+    ? "loading"
+    : paymentStatus === "success"
       ? "success"
       : paymentStatus === "failure"
         ? "failure"
@@ -41,18 +103,62 @@ export default function PaymentCallbackClient() {
   // render from — and it only happens on success. A failure/cancel URL
   // deliberately keeps the cart so the customer can retry.
   useEffect(() => {
-    if (status !== "success") return;
+    if (status !== "success" || isTableCheckPayment) return;
     // The backend callback/webhook is what actually marks the payment done;
     // reaching this URL only tells us the cart is no longer ours to reuse.
     resetCartState();
-  }, [status, resetCartState]);
+  }, [status, isTableCheckPayment, resetCartState]);
+
+  // Existing-item payments do not consume the cart or create an order. Read
+  // the shared check back before presenting the result, so paid quantities and
+  // totals always come from the backend callback/webhook state.
+  useEffect(() => {
+    if (!isTableCheckPayment || status === "loading" || !pendingTablePayment) return;
+
+    if (status === "failure") {
+      forgetTableCheckPayment();
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      let latest: CustomerTableCheck | null = null;
+      for (let attempt = 0; attempt < 4 && !cancelled; attempt += 1) {
+        try {
+          latest = await tableService.getCurrentCheck(pendingTablePayment.qrToken);
+          if (isTablePaymentReflected(pendingTablePayment, latest)) {
+            setRefreshedCheck(latest);
+            setTablePaymentVerification("confirmed");
+            forgetTableCheckPayment();
+            return;
+          }
+        } catch (error) {
+          console.error("Failed to refresh the table bill after payment", error);
+        }
+
+        if (attempt < 3) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        }
+      }
+
+      if (!cancelled) {
+        setRefreshedCheck(latest);
+        setTablePaymentVerification("pending");
+        forgetTableCheckPayment();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isTableCheckPayment, status, pendingTablePayment]);
 
   // The success URL alone proves nothing — the backend callback/webhook is
   // what marks a payment done. Reading the order back is the only way to show
   // an authoritative result, and it needs the branch/brand context a table
   // journey carries.
   useEffect(() => {
-    if (status !== "success" || !orderId || !journey) return;
+    if (status !== "success" || isTableCheckPayment || !orderId || !journey) return;
 
     let cancelled = false;
     orderService
@@ -69,7 +175,7 @@ export default function PaymentCallbackClient() {
     return () => {
       cancelled = true;
     };
-  }, [status, orderId, journey]);
+  }, [status, isTableCheckPayment, orderId, journey]);
 
   const handleContinue = () => {
     if (status !== "success") {
@@ -87,13 +193,13 @@ export default function PaymentCallbackClient() {
   };
 
   const handleRetry = () => {
-    router.push(tableMenuHref ? "/order/checkout" : "/checkout");
+    router.push(isTableCheckPayment && tableMenuHref ? tableMenuHref : tableMenuHref ? "/order/checkout" : "/checkout");
   };
 
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
-        {status === "loading" && (
+        {(status === "loading" || (status === "success" && isTableCheckPayment && !tablePaymentVerification)) && (
           <>
             <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Loader2 size={32} className="text-primary animate-spin" />
@@ -105,21 +211,36 @@ export default function PaymentCallbackClient() {
           </>
         )}
 
-        {status === "success" && (
+        {status === "success" && (!isTableCheckPayment || tablePaymentVerification === "confirmed") && (
           <>
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle size={32} className="text-green-600" />
             </div>
             <h1 className="text-2xl font-bold text-zinc-800 mb-2">
-              {t("payment.successTitle")}
+              {isTableCheckPayment ? t("table.check.paymentSuccessTitle") : t("payment.successTitle")}
             </h1>
             {/* Fulfillment is not carried through the provider round trip, and
                 a pickup order can also start from the table page — so the copy
                 stays neutral instead of promising table service. */}
             <p className="text-zinc-600 mb-2">
-              {tableMenuHref ? t("payment.successTableBody") : t("payment.successBody")}
+              {isTableCheckPayment
+                ? t("table.check.paymentSuccessBody")
+                : tableMenuHref
+                  ? t("payment.successTableBody")
+                  : t("payment.successBody")}
             </p>
-            {order ? (
+            {isTableCheckPayment && refreshedCheck ? (
+              <dl className="mb-6 mt-4 space-y-2 rounded-lg border border-zinc-100 bg-zinc-50 p-4 text-left text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-zinc-500">{t("table.check.paid")}</dt>
+                  <dd className="font-semibold text-zinc-800">{formatCurrency(refreshedCheck.paidAmount)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-zinc-500">{t("table.check.remaining")}</dt>
+                  <dd className="font-bold text-zinc-800">{formatCurrency(refreshedCheck.remainingAmount)}</dd>
+                </div>
+              </dl>
+            ) : order ? (
               <dl className="mb-6 mt-4 space-y-2 rounded-lg border border-zinc-100 bg-zinc-50 p-4 text-left text-sm">
                 {order.tableLabel && (
                   <div className="flex justify-between gap-3">
@@ -142,7 +263,7 @@ export default function PaymentCallbackClient() {
                 </div>
               </dl>
             ) : (
-              orderId && (
+              !isTableCheckPayment && orderId && (
                 <p className="text-sm text-zinc-500 mb-6">
                   {t("payment.orderId")}: {orderId}
                 </p>
@@ -153,10 +274,35 @@ export default function PaymentCallbackClient() {
               className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity"
             >
               {tableMenuHref
-                ? t("table.success.orderMore")
+                ? isTableCheckPayment
+                  ? t("table.check.viewBill")
+                  : t("table.success.orderMore")
                 : orderId
                   ? t("payment.viewOrder")
                   : t("payment.continueShopping")}
+            </button>
+          </>
+        )}
+
+        {status === "success" && isTableCheckPayment && tablePaymentVerification === "pending" && (
+          <>
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Clock3 size={32} className="text-amber-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-zinc-800 mb-2">
+              {t("table.check.paymentPendingTitle")}
+            </h1>
+            <p className="text-zinc-600 mb-6">{t("table.check.paymentPendingBody")}</p>
+            {refreshedCheck && (
+              <p className="mb-6 rounded-lg bg-zinc-50 p-3 text-sm text-zinc-600">
+                {t("table.check.remainingSummary", { amount: formatCurrency(refreshedCheck.remainingAmount) })}
+              </p>
+            )}
+            <button
+              onClick={handleContinue}
+              className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity"
+            >
+              {t("table.check.viewBill")}
             </button>
           </>
         )}
