@@ -8,6 +8,8 @@ import type { Branch } from '@/types/branch';
 export interface ResolvedBranchDetails {
     /** Today's opening window, or null when the branch is closed today. */
     workingHours: string | null;
+    /** An open day without a configured time slot means the branch is open all day. */
+    isOpen24Hours: boolean;
     minimumDeliveryAmount: number;
     paymentMethodKeys: string[];
     orderTypeKeys: string[];
@@ -39,6 +41,7 @@ export function resolveBranchDetails(branch: Branch | null | undefined): Resolve
 
     return {
         workingHours: slot ? `${slot.openTime} - ${slot.closeTime}` : null,
+        isOpen24Hours: todayHours?.isOpen === true && !slot,
         minimumDeliveryAmount: branch.minBasketPrice || 0,
         paymentMethodKeys,
         orderTypeKeys,

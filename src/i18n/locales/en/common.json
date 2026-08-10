@@ -248,6 +248,7 @@
     "payment": "Payment",
     "workingHours": "Working Hours",
     "today": "Today",
+    "open24Hours": "Open 24 hours",
     "closedToday": "Closed today",
     "phoneNumber": "Phone Number",
     "notProvided": "Not provided",

@@ -37,7 +37,8 @@ export function BranchInfoTabs({ branch, details }: { branch: Branch; details: R
                 {activeTab === 'workingHours' ? (
                     <>
                         <span className="block font-medium text-zinc-700 mb-1">{t('branch.today')}</span>
-                        {details.workingHours || t('branch.closedToday')}
+                        {details.workingHours
+                            || (details.isOpen24Hours ? t('branch.open24Hours') : t('branch.closedToday'))}
                     </>
                 ) : (
                     <>
