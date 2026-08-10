@@ -5,6 +5,62 @@
     "login": "Login",
     "register": "Register"
   },
+  "common": {
+    "errors": {
+      "requestFailed": "The request could not be completed. Please try again."
+    }
+  },
+  "apiErrors": {
+    "INTERNAL_SERVER_ERROR": "An internal server error occurred.",
+    "VALIDATION_FAILED": "Some of the submitted values are not valid.",
+    "TABLE_NOT_FOUND": "Table not found.",
+    "TABLE_PAY_NOW_DISABLED": "Pay now is not enabled for this table.",
+    "TABLE_PAY_LATER_DISABLED": "Pay later is not enabled for this table.",
+    "CHECK_ITEMS_UNAVAILABLE": "One or more selected items are no longer available. The bill has been refreshed.",
+    "CHECK_PAYMENT_IN_PROGRESS": "This table bill has a payment still in progress.",
+    "TABLE_CHECK_NOT_OPEN": "No open table bill was found.",
+    "TABLE_CHECK_NOT_FOUND": "Table bill not found.",
+    "TABLE_CHECK_ORDER_MISMATCH": "This order does not belong to the table bill.",
+    "TABLE_CHECK_ORDER_NO_PAYABLE_ITEMS": "This order has no items left to pay.",
+    "TABLE_CHECK_ITEMS_MISMATCH": "One or more selected items do not belong to this bill.",
+    "TABLE_CHECK_PAYMENT_IN_PROGRESS": "This table bill has a payment still in progress.",
+    "TABLE_CHECK_DUPLICATE_ITEM_SELECTION": "The same item was selected more than once.",
+    "TABLE_CHECK_PAYMENT_METHOD_UNAVAILABLE": "{{method}} payment is not available for this branch.",
+    "SPLIT_PLAN_ACTIVE": "This bill already has an active equal split.",
+    "SPLIT_PLAN_ALREADY_STARTED": "This split can no longer be changed because payment has started.",
+    "SPLIT_PART_RESERVED": "Someone else is currently paying this part.",
+    "SPLIT_PART_ALREADY_PAID": "This part has already been paid.",
+    "SPLIT_PLAN_BALANCE_CHANGED": "The bill changed. Review the refreshed split before paying.",
+    "INVALID_TABLE_PAYMENT_INPUT": "The payment selection is invalid. Please review it and try again.",
+    "CART_NOT_FOUND": "Your active cart could not be found.",
+    "CART_EMPTY": "Your cart is empty.",
+    "CART_ALREADY_SUBMITTED": "This cart has already been submitted.",
+    "CART_MIN_ORDER_AMOUNT": "The minimum order amount is {{amount}}.",
+    "CART_FETCH_FAILED": "Your cart could not be loaded.",
+    "ORDER_CART_BRANCH_MISMATCH": "This cart does not belong to the selected branch.",
+    "ORDER_PAY_LATER_FAILED": "The pay-later table order could not be placed.",
+    "PAYMENT_ADDRESS_REQUIRED": "Add a delivery address before placing this order.",
+    "PAYMENT_PHONE_REQUIRED": "A phone number is required to place an order.",
+    "PAYMENT_PRODUCT_UNAVAILABLE": "{{productName}} is not available right now.",
+    "PAYMENT_BRANCH_NOT_ACCEPTING_ORDERS": "This branch is not accepting orders right now.",
+    "PAYMENT_ORDER_TYPE_INVALID": "This order type is not available right now.",
+    "TABLE_ORDER_PAYMENT_METHOD_INVALID": "This payment method cannot be used for a table order.",
+    "PAYMENT_TABLE_ID_REQUIRED": "A table is required for table orders.",
+    "PAYMENT_ALREADY_COMPLETED_FOR_CART": "A payment has already been completed for this cart.",
+    "PAYMENT_CONTEXT_CHANGED": "This cart already has an active payment with different checkout details.",
+    "PAYMENT_ALREADY_IN_PROGRESS": "This cart already has a payment in progress.",
+    "PAYMENT_METHOD_NOT_ENABLED": "The {{method}} payment method is not enabled for this branch.",
+    "PAYMENT_ADDRESS_OUT_OF_DELIVERY_RANGE": "This branch does not deliver to your current address.",
+    "PAYMENT_PROVIDER_INVALID": "This payment provider is not supported.",
+    "PAYMENT_PROVIDER_CREDENTIALS_MISSING": "Online payment is not configured for this branch.",
+    "PAYMENT_INITIALIZATION_FAILED": "The payment could not be initialized.",
+    "PAYMENT_VERIFICATION_FAILED": "The payment could not be verified.",
+    "PAYMENT_CALLBACK_FAILED": "The payment could not be confirmed.",
+    "AUTH_SESSION_INVALID": "Your session has expired. Please sign in again.",
+    "AUTH_SESSION_MISSING": "No active session was found. Please sign in again.",
+    "AUTH_AUTHENTICATION_REQUIRED": "Sign in to continue.",
+    "AUTH_PERMISSION_DENIED": "You do not have permission to perform this action."
+  },
   "auth": {
     "validation": {
       "emailInvalid": "Please enter a valid email address",
@@ -270,16 +326,7 @@
       "errors": {
         "load": "The table bill could not be loaded.",
         "generic": "The table bill could not be updated. Please try again.",
-        "paymentMissing": "The payment provider did not return a checkout page.",
-        "CHECK_ITEMS_UNAVAILABLE": "Some selected items are no longer available. The bill has been refreshed.",
-        "CHECK_PAYMENT_IN_PROGRESS": "A payment is already in progress. Try again when it finishes or expires.",
-        "SPLIT_PLAN_ACTIVE": "This bill already has an active equal split.",
-        "SPLIT_PLAN_ALREADY_STARTED": "This split can no longer be changed because payment has started.",
-        "SPLIT_PART_RESERVED": "Someone else is currently paying this part.",
-        "SPLIT_PART_ALREADY_PAID": "This part has already been paid.",
-        "SPLIT_PLAN_BALANCE_CHANGED": "The bill changed. Review the refreshed split before paying.",
-        "TABLE_PAY_NOW_DISABLED": "Online payment is currently disabled for this table.",
-        "INVALID_TABLE_PAYMENT_INPUT": "The payment selection is invalid. Please review it and try again."
+        "paymentMissing": "The payment provider did not return a checkout page."
       }
     },
     "checkout": {

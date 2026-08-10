@@ -16,6 +16,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
+import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 import { rememberTableCheckPayment, type PendingTableCheckPayment } from '@/lib/table-check-payment';
 import { tableService } from '@/services/table.service';
 import type {
@@ -27,28 +28,16 @@ import type {
 
 type SelectionMap = Record<string, number>;
 
-interface ApiErrorLike {
-    response?: { status?: number; data?: { code?: string; message?: string } };
-}
-
 const REFRESH_ERROR_CODES = new Set([
     'CHECK_ITEMS_UNAVAILABLE',
     'CHECK_PAYMENT_IN_PROGRESS',
+    'TABLE_CHECK_PAYMENT_IN_PROGRESS',
     'SPLIT_PLAN_ACTIVE',
     'SPLIT_PLAN_ALREADY_STARTED',
     'SPLIT_PART_RESERVED',
     'SPLIT_PART_ALREADY_PAID',
     'SPLIT_PLAN_BALANCE_CHANGED',
 ]);
-
-function getError(error: unknown) {
-    const response = (error as ApiErrorLike)?.response;
-    return {
-        status: response?.status,
-        code: response?.data?.code,
-        message: response?.data?.message,
-    };
-}
 
 /** Renders provider HTML using the same handoff used by ordinary checkout. */
 function CheckoutForm({ html, onClose }: { html: string; onClose: () => void }) {
@@ -91,12 +80,16 @@ export function TableCheckPanel({
             setCheck(current);
             return current;
         } catch (error) {
-            if (getError(error).status === 404) {
+            const apiError = getApiErrorDetails(error);
+            const isMissingOpenCheck =
+                apiError.code === 'TABLE_CHECK_NOT_OPEN' ||
+                (apiError.statusCode === 404 && /open table check/i.test(apiError.message ?? ''));
+            if (isMissingOpenCheck) {
                 setCheck(null);
                 return null;
             }
             console.error('Failed to load the shared table check', error);
-            if (!quiet) toast.error(t('table.check.errors.load'));
+            if (!quiet) toast.error(resolveApiErrorMessage(error, t('table.check.errors.load')));
             return null;
         } finally {
             if (!quiet) setIsLoading(false);
@@ -144,11 +137,9 @@ export function TableCheckPanel({
     }, [nextReservationExpiry, loadCheck]);
 
     const handleFailure = async (error: unknown) => {
-        const apiError = getError(error);
-        const key = apiError.code ? `table.check.errors.${apiError.code}` : '';
-        const localized = key ? t(key) : '';
-        toast.error(localized && localized !== key ? localized : apiError.message || t('table.check.errors.generic'));
-        if (apiError.status === 409 || (apiError.code && REFRESH_ERROR_CODES.has(apiError.code))) {
+        const apiError = getApiErrorDetails(error);
+        toast.error(resolveApiErrorMessage(error, t('table.check.errors.generic')));
+        if (apiError.statusCode === 409 || (apiError.code && REFRESH_ERROR_CODES.has(apiError.code))) {
             await loadCheck(true);
         }
     };

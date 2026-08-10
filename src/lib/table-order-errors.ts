@@ -1,12 +1,11 @@
 import i18n from '@/i18n/config';
+import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 
 /**
  * Table checkout failures.
  *
- * Only some of them carry a machine `code` — the backend raises the rest as
- * plain `BadRequestException('...')`, which the global filter flattens into
- * `{ status:false, message }` with no code at all. So a code lookup alone is
- * not enough: the ones that matter for recovery are also matched on message.
+ * The API now returns a registry-backed machine `code` for every failure.
+ * Recovery branches on that code only; display copy is resolved centrally.
  */
 export type TableOrderErrorCode =
     | 'TABLE_PAY_NOW_DISABLED'
@@ -17,7 +16,13 @@ export type TableOrderErrorCode =
     | 'PAYMENT_ALREADY_IN_PROGRESS'
     | 'CART_ALREADY_SUBMITTED'
     | 'TABLE_INVALID_FOR_BRANCH'
-    | 'ORDER_TYPE_UNAVAILABLE';
+    | 'ORDER_TYPE_UNAVAILABLE'
+    | 'PAYMENT_ORDER_TYPE_INVALID'
+    | 'PAYMENT_TABLE_ID_REQUIRED'
+    | 'TABLE_NOT_FOUND'
+    | 'CART_NOT_FOUND'
+    | 'PAYMENT_ALREADY_COMPLETED_FOR_CART'
+    | 'ORDER_CART_BRANCH_MISMATCH';
 
 /** What the UI must do next; nothing here retries a checkout on its own. */
 export type TableOrderErrorAction =
@@ -38,68 +43,37 @@ export interface ResolvedTableOrderError {
     paymentId?: string;
 }
 
-interface TableApiErrorLike {
-    response?: {
-        status?: number;
-        data?: {
-            code?: string;
-            message?: string;
-            paymentId?: string;
-        };
-    };
-}
-
 const ACTION_BY_CODE: Record<TableOrderErrorCode, TableOrderErrorAction> = {
     TABLE_PAY_NOW_DISABLED: 'REFRESH_QR',
     TABLE_PAY_LATER_DISABLED: 'REFRESH_QR',
     TABLE_ORDER_PAYMENT_METHOD_INVALID: 'REFRESH_QR',
     PAY_AT_COUNTER_REQUIRES_TABLE_ORDER_ENDPOINT: 'REFRESH_QR',
     ORDER_TYPE_UNAVAILABLE: 'REFRESH_QR',
+    PAYMENT_ORDER_TYPE_INVALID: 'REFRESH_QR',
+    PAYMENT_TABLE_ID_REQUIRED: 'REFRESH_QR',
+    TABLE_NOT_FOUND: 'REFRESH_QR',
+    ORDER_CART_BRANCH_MISMATCH: 'REFRESH_QR',
     TABLE_INVALID_FOR_BRANCH: 'REFRESH_QR',
     PAYMENT_CONTEXT_CHANGED: 'KEEP_PAYMENT',
     PAYMENT_ALREADY_IN_PROGRESS: 'KEEP_PAYMENT',
     CART_ALREADY_SUBMITTED: 'RESET_CART',
+    CART_NOT_FOUND: 'RESET_CART',
+    PAYMENT_ALREADY_COMPLETED_FOR_CART: 'RESET_CART',
 };
-
-/**
- * Codeless backend messages we still have to react to. Matched on a stable
- * fragment of the English text the service throws — the table/order-type
- * guards never got a machine code, and silently treating them as generic
- * failures would leave the customer staring at a button that can't work.
- */
-const MESSAGE_PATTERNS: { pattern: RegExp; code: TableOrderErrorCode }[] = [
-    { pattern: /table not found for this branch/i, code: 'TABLE_INVALID_FOR_BRANCH' },
-    { pattern: /tableid is required for table orders/i, code: 'TABLE_INVALID_FOR_BRANCH' },
-    { pattern: /cannot (initialize payment|place table order)/i, code: 'ORDER_TYPE_UNAVAILABLE' },
-];
 
 const isKnownCode = (value: string | undefined): value is TableOrderErrorCode =>
     !!value && value in ACTION_BY_CODE;
 
-/** Localized copy when we have one, otherwise the backend's own message. */
-const resolveMessage = (code: TableOrderErrorCode | null, fallback: string | undefined) => {
-    if (code) {
-        const key = `table.errors.${code}`;
-        const translated = i18n.t(key);
-        if (translated !== key) return translated;
-    }
-    return fallback || i18n.t('table.errors.GENERIC');
-};
-
 export function resolveTableOrderError(error: unknown): ResolvedTableOrderError {
-    const data = (error as TableApiErrorLike)?.response?.data;
-    const rawMessage = data?.message;
-
-    let code: TableOrderErrorCode | null = isKnownCode(data?.code) ? data.code : null;
-
-    if (!code && rawMessage) {
-        code = MESSAGE_PATTERNS.find(({ pattern }) => pattern.test(rawMessage))?.code ?? null;
-    }
+    const details = getApiErrorDetails(error);
+    const rawCode = details.code ?? undefined;
+    const code: TableOrderErrorCode | null = isKnownCode(rawCode) ? rawCode : null;
+    const paymentId = typeof details.data.paymentId === 'string' ? details.data.paymentId : undefined;
 
     return {
         code,
         action: code ? ACTION_BY_CODE[code] : 'SHOW_MESSAGE',
-        message: resolveMessage(code, rawMessage),
-        paymentId: data?.paymentId,
+        message: resolveApiErrorMessage(error, i18n.t('table.errors.GENERIC')),
+        paymentId,
     };
 }

@@ -5,6 +5,62 @@
     "login": "Giriş Yap",
     "register": "Kayıt Ol"
   },
+  "common": {
+    "errors": {
+      "requestFailed": "İstek tamamlanamadı. Lütfen tekrar deneyin."
+    }
+  },
+  "apiErrors": {
+    "INTERNAL_SERVER_ERROR": "Sunucuda beklenmeyen bir hata oluştu.",
+    "VALIDATION_FAILED": "Gönderilen bazı değerler geçerli değil.",
+    "TABLE_NOT_FOUND": "Masa bulunamadı.",
+    "TABLE_PAY_NOW_DISABLED": "Bu masa için şimdi öde etkin değil.",
+    "TABLE_PAY_LATER_DISABLED": "Bu masa için sonra öde etkin değil.",
+    "CHECK_ITEMS_UNAVAILABLE": "Seçilen bazı ürünler artık müsait değil. Hesap yenilendi.",
+    "CHECK_PAYMENT_IN_PROGRESS": "Bu masa hesabında devam eden bir ödeme var.",
+    "TABLE_CHECK_NOT_OPEN": "Açık bir masa hesabı bulunamadı.",
+    "TABLE_CHECK_NOT_FOUND": "Masa hesabı bulunamadı.",
+    "TABLE_CHECK_ORDER_MISMATCH": "Bu sipariş masa hesabına ait değil.",
+    "TABLE_CHECK_ORDER_NO_PAYABLE_ITEMS": "Bu siparişte ödenecek ürün kalmadı.",
+    "TABLE_CHECK_ITEMS_MISMATCH": "Seçilen ürünlerden bir veya daha fazlası bu hesaba ait değil.",
+    "TABLE_CHECK_PAYMENT_IN_PROGRESS": "Bu masa hesabında devam eden bir ödeme var.",
+    "TABLE_CHECK_DUPLICATE_ITEM_SELECTION": "Aynı ürün birden fazla kez seçildi.",
+    "TABLE_CHECK_PAYMENT_METHOD_UNAVAILABLE": "{{method}} ile ödeme bu şube için kullanılamıyor.",
+    "SPLIT_PLAN_ACTIVE": "Bu hesap için eşit bölme zaten etkin.",
+    "SPLIT_PLAN_ALREADY_STARTED": "Ödeme başladığı için bu bölme artık değiştirilemez.",
+    "SPLIT_PART_RESERVED": "Bu parçayı şu anda başka biri ödüyor.",
+    "SPLIT_PART_ALREADY_PAID": "Bu parça zaten ödendi.",
+    "SPLIT_PLAN_BALANCE_CHANGED": "Hesap değişti. Ödemeden önce yenilenen bölmeyi kontrol edin.",
+    "INVALID_TABLE_PAYMENT_INPUT": "Ödeme seçimi geçersiz. Kontrol edip tekrar deneyin.",
+    "CART_NOT_FOUND": "Aktif sepetiniz bulunamadı.",
+    "CART_EMPTY": "Sepetiniz boş.",
+    "CART_ALREADY_SUBMITTED": "Bu sepet zaten gönderildi.",
+    "CART_MIN_ORDER_AMOUNT": "Minimum sipariş tutarı {{amount}}.",
+    "CART_FETCH_FAILED": "Sepetiniz yüklenemedi.",
+    "ORDER_CART_BRANCH_MISMATCH": "Bu sepet seçilen şubeye ait değil.",
+    "ORDER_PAY_LATER_FAILED": "Sonra ödemeli masa siparişi oluşturulamadı.",
+    "PAYMENT_ADDRESS_REQUIRED": "Sipariş vermeden önce bir teslimat adresi ekleyin.",
+    "PAYMENT_PHONE_REQUIRED": "Sipariş vermek için telefon numarası gereklidir.",
+    "PAYMENT_PRODUCT_UNAVAILABLE": "{{productName}} şu anda kullanılamıyor.",
+    "PAYMENT_BRANCH_NOT_ACCEPTING_ORDERS": "Bu şube şu anda sipariş kabul etmiyor.",
+    "PAYMENT_ORDER_TYPE_INVALID": "Bu sipariş türü şu anda kullanılamıyor.",
+    "TABLE_ORDER_PAYMENT_METHOD_INVALID": "Bu ödeme yöntemi masa siparişinde kullanılamaz.",
+    "PAYMENT_TABLE_ID_REQUIRED": "Masa siparişleri için masa bilgisi gereklidir.",
+    "PAYMENT_ALREADY_COMPLETED_FOR_CART": "Bu sepet için ödeme zaten tamamlandı.",
+    "PAYMENT_CONTEXT_CHANGED": "Bu sepet için farklı ödeme bilgileriyle etkin bir ödeme zaten var.",
+    "PAYMENT_ALREADY_IN_PROGRESS": "Bu sepet için devam eden bir ödeme var.",
+    "PAYMENT_METHOD_NOT_ENABLED": "{{method}} ödeme yöntemi bu şubede etkin değil.",
+    "PAYMENT_ADDRESS_OUT_OF_DELIVERY_RANGE": "Bu şube mevcut adresinize teslimat yapmıyor.",
+    "PAYMENT_PROVIDER_INVALID": "Bu ödeme sağlayıcısı desteklenmiyor.",
+    "PAYMENT_PROVIDER_CREDENTIALS_MISSING": "Bu şube için online ödeme yapılandırılmamış.",
+    "PAYMENT_INITIALIZATION_FAILED": "Ödeme başlatılamadı.",
+    "PAYMENT_VERIFICATION_FAILED": "Ödeme doğrulanamadı.",
+    "PAYMENT_CALLBACK_FAILED": "Ödeme onaylanamadı.",
+    "AUTH_SESSION_INVALID": "Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.",
+    "AUTH_SESSION_MISSING": "Aktif bir oturum bulunamadı. Lütfen tekrar giriş yapın.",
+    "AUTH_AUTHENTICATION_REQUIRED": "Devam etmek için giriş yapın.",
+    "AUTH_PERMISSION_DENIED": "Bu işlemi yapmak için yetkiniz yok."
+  },
   "auth": {
     "validation": {
       "emailInvalid": "Lütfen geçerli bir e-posta adresi girin",
@@ -270,16 +326,7 @@
       "errors": {
         "load": "Masa hesabı yüklenemedi.",
         "generic": "Masa hesabı güncellenemedi. Lütfen tekrar deneyin.",
-        "paymentMissing": "Ödeme sağlayıcısı bir ödeme sayfası döndürmedi.",
-        "CHECK_ITEMS_UNAVAILABLE": "Seçilen bazı ürünler artık müsait değil. Hesap yenilendi.",
-        "CHECK_PAYMENT_IN_PROGRESS": "Devam eden bir ödeme var. Tamamlandığında veya süresi dolduğunda tekrar deneyin.",
-        "SPLIT_PLAN_ACTIVE": "Bu hesap için eşit bölme zaten etkin.",
-        "SPLIT_PLAN_ALREADY_STARTED": "Ödeme başladığı için bu bölme artık değiştirilemez.",
-        "SPLIT_PART_RESERVED": "Bu parçayı şu anda başka biri ödüyor.",
-        "SPLIT_PART_ALREADY_PAID": "Bu parça zaten ödendi.",
-        "SPLIT_PLAN_BALANCE_CHANGED": "Hesap değişti. Ödemeden önce yenilenen bölmeyi kontrol edin.",
-        "TABLE_PAY_NOW_DISABLED": "Bu masa için online ödeme şu anda kapalı.",
-        "INVALID_TABLE_PAYMENT_INPUT": "Ödeme seçimi geçersiz. Kontrol edip tekrar deneyin."
+        "paymentMissing": "Ödeme sağlayıcısı bir ödeme sayfası döndürmedi."
       }
     },
     "checkout": {

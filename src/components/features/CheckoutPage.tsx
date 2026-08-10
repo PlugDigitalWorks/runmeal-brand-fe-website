@@ -14,6 +14,7 @@ import type { Address } from '@/types/address';
 import { cartService } from '@/services/cart.service';
 import { CartLoyaltyWallet, LoyaltyProviderType, promotionKey } from '@/types/cart';
 import { formatCurrency, resolveCurrencySymbol, sanitizePositiveNumber } from '@/lib/utils';
+import { resolveApiErrorMessage } from '@/lib/api-errors';
 import { resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
 import { useTranslation } from 'react-i18next';
 import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle, Banknote } from 'lucide-react';
@@ -21,19 +22,6 @@ import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
 import { walletService, WalletBalance } from '@/services/wallet.service';
 import { Wallet, Ticket, X } from 'lucide-react';
-
-interface ApiErrorLike {
-    response?: {
-        data?: {
-            message?: string;
-        };
-    };
-}
-
-const getApiErrorMessage = (error: unknown, fallback: string) => {
-    const apiError = error as ApiErrorLike;
-    return apiError.response?.data?.message || fallback;
-};
 
 export function CheckoutPage() {
     const router = useRouter();
@@ -339,7 +327,7 @@ export function CheckoutPage() {
                 await refreshCart();
                 toast.error(`${loyaltyError.message} ${t('loyalty.checkoutRecheck')}`);
             } else {
-                toast.error(getApiErrorMessage(error, 'Failed to initialize payment'));
+                toast.error(resolveApiErrorMessage(error, 'Failed to initialize payment'));
             }
         } finally {
             setIsProcessing(false);
@@ -372,7 +360,7 @@ export function CheckoutPage() {
             toast.success('Delivery address selected');
         } catch (error: unknown) {
             console.error('Failed to select delivery address', error);
-            toast.error(getApiErrorMessage(error, 'Failed to select delivery address'));
+            toast.error(resolveApiErrorMessage(error, 'Failed to select delivery address'));
         } finally {
             setIsChangingAddress(false);
         }
