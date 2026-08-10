@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useTable } from "@/context/TableContext";
 import { orderService } from "@/services/order.service";
+import { paymentService } from "@/services/payment.service";
 import { tableService } from "@/services/table.service";
 import {
   forgetTableCheckPayment,
@@ -15,6 +16,7 @@ import {
   isTableCheckPaymentActive,
   parseTableCheckPayment,
   rememberTableCheckPayment,
+  subscribeToTableCheckPayment,
 } from "@/lib/table-check-payment";
 import { resolveApiErrorMessage } from "@/lib/api-errors";
 import { toast } from "sonner";
@@ -22,7 +24,6 @@ import { formatCurrency, resolveCurrencySymbol } from "@/lib/utils";
 import type { PendingTableCheckPayment } from "@/lib/table-check-payment";
 import type { CustomerTableCheck, TableOrderView } from "@/types/table";
 
-const subscribeToPaymentContext = () => () => undefined;
 const getServerPaymentContext = () => null;
 const getClientHydrated = () => true;
 const getServerHydrated = () => false;
@@ -63,12 +64,12 @@ export default function PaymentCallbackClient() {
   const { resetCartState } = useCart();
   const [order, setOrder] = useState<TableOrderView | null>(null);
   const paymentContextSnapshot = useSyncExternalStore(
-    subscribeToPaymentContext,
+    subscribeToTableCheckPayment,
     getTableCheckPaymentSnapshot,
     getServerPaymentContext,
   );
   const hasReadPaymentContext = useSyncExternalStore(
-    subscribeToPaymentContext,
+    subscribeToTableCheckPayment,
     getClientHydrated,
     getServerHydrated,
   );
@@ -207,10 +208,26 @@ export default function PaymentCallbackClient() {
 
       setIsRetrying(true);
       try {
-        const payment = await tableService.initializeTableCheckPayment(
-          pendingTablePayment.qrToken,
-          pendingTablePayment.request,
+        if (pendingTablePayment.paymentUrl) {
+          window.location.assign(pendingTablePayment.paymentUrl);
+          return;
+        }
+        if (pendingTablePayment.checkoutFormContent) {
+          setRetryCheckoutForm(pendingTablePayment.checkoutFormContent);
+          return;
+        }
+
+        const existingPayment = await paymentService.getPaymentById(
+          pendingTablePayment.paymentId,
         );
+        const providerResponse = existingPayment.providerResponse;
+        const payment = {
+          paymentId: existingPayment.id,
+          tableCheckId: pendingTablePayment.tableCheckId,
+          expiresAt: pendingTablePayment.expiresAt,
+          paymentUrl: providerResponse?.paymentPageUrl ?? providerResponse?.paymentUrl,
+          checkoutFormContent: providerResponse?.checkoutFormContent,
+        };
         rememberTableCheckPayment(
           pendingTablePayment.qrToken,
           payment,

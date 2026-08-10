@@ -1,6 +1,9 @@
 import type { TableCheckPaymentInitialization, TableCheckPaymentRequest } from '@/types/table';
 
 const STORAGE_KEY = 'rm_table_check_payment';
+const listeners = new Set<() => void>();
+
+const publishPaymentChange = () => listeners.forEach((listener) => listener());
 
 export interface PendingTableCheckPayment {
     qrToken: string;
@@ -8,6 +11,8 @@ export interface PendingTableCheckPayment {
     tableCheckId: string;
     createdAt: number;
     expiresAt: string;
+    paymentUrl?: string;
+    checkoutFormContent?: string;
     remainingAmount: number;
     request: TableCheckPaymentRequest;
     confirmation:
@@ -38,11 +43,14 @@ export function rememberTableCheckPayment(
             tableCheckId: payment.tableCheckId,
             createdAt: Date.now(),
             expiresAt: payment.expiresAt,
+            paymentUrl: payment.paymentUrl,
+            checkoutFormContent: payment.checkoutFormContent,
             remainingAmount,
             request,
             confirmation,
         } satisfies PendingTableCheckPayment),
     );
+    publishPaymentChange();
 }
 
 export function readTableCheckPayment(): PendingTableCheckPayment | null {
@@ -53,6 +61,29 @@ export function readTableCheckPayment(): PendingTableCheckPayment | null {
 export function getTableCheckPaymentSnapshot() {
     if (typeof window === 'undefined') return null;
     return window.sessionStorage.getItem(STORAGE_KEY);
+}
+
+/** Re-read the pending checkout when a mobile browser restores this page from BFCache. */
+export function subscribeToTableCheckPayment(listener: () => void) {
+    if (typeof window === 'undefined') return () => undefined;
+
+    const refresh = () => listener();
+    const refreshWhenVisible = () => {
+        if (document.visibilityState === 'visible') listener();
+    };
+    listeners.add(listener);
+    window.addEventListener('pageshow', refresh);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('storage', refresh);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+        listeners.delete(listener);
+        window.removeEventListener('pageshow', refresh);
+        window.removeEventListener('focus', refresh);
+        window.removeEventListener('storage', refresh);
+        document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
 }
 
 export function parseTableCheckPayment(raw: string | null): PendingTableCheckPayment | null {
@@ -78,5 +109,8 @@ export function isTableCheckPaymentActive(payment: PendingTableCheckPayment) {
 }
 
 export function forgetTableCheckPayment() {
-    if (typeof window !== 'undefined') window.sessionStorage.removeItem(STORAGE_KEY);
+    if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem(STORAGE_KEY);
+        publishPaymentChange();
+    }
 }

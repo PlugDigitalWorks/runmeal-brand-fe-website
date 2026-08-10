@@ -23,8 +23,10 @@ import {
     isTableCheckPaymentActive,
     parseTableCheckPayment,
     rememberTableCheckPayment,
+    subscribeToTableCheckPayment,
     type PendingTableCheckPayment,
 } from '@/lib/table-check-payment';
+import { paymentService } from '@/services/payment.service';
 import { tableService } from '@/services/table.service';
 import type {
     CustomerTableCheck,
@@ -36,7 +38,6 @@ import type {
 
 type SelectionMap = Record<string, number>;
 
-const subscribeToPendingPayment = () => () => undefined;
 const getServerPendingPayment = () => null;
 
 const REFRESH_ERROR_CODES = new Set([
@@ -84,7 +85,7 @@ export function TableCheckPanel({
     const [clock, setClock] = React.useState(() => Date.now());
     const [dismissedPendingPaymentId, setDismissedPendingPaymentId] = React.useState<string | null>(null);
     const pendingPaymentSnapshot = React.useSyncExternalStore(
-        subscribeToPendingPayment,
+        subscribeToTableCheckPayment,
         getTableCheckPaymentSnapshot,
         getServerPendingPayment,
     );
@@ -266,10 +267,24 @@ export function TableCheckPanel({
         if (!pendingPayment || isSubmitting) return;
         setIsSubmitting(true);
         try {
-            const payment = await tableService.initializeTableCheckPayment(
-                pendingPayment.qrToken,
-                pendingPayment.request,
-            );
+            if (pendingPayment.paymentUrl) {
+                window.location.assign(pendingPayment.paymentUrl);
+                return;
+            }
+            if (pendingPayment.checkoutFormContent) {
+                setCheckoutForm(pendingPayment.checkoutFormContent);
+                return;
+            }
+
+            const existingPayment = await paymentService.getPaymentById(pendingPayment.paymentId);
+            const providerResponse = existingPayment.providerResponse;
+            const payment: TableCheckPaymentInitialization = {
+                paymentId: existingPayment.id,
+                tableCheckId: pendingPayment.tableCheckId,
+                expiresAt: pendingPayment.expiresAt,
+                paymentUrl: providerResponse?.paymentPageUrl ?? providerResponse?.paymentUrl,
+                checkoutFormContent: providerResponse?.checkoutFormContent,
+            };
             openCheckout(payment, pendingPayment.confirmation, pendingPayment.request);
         } catch (error) {
             const apiError = getApiErrorDetails(error);

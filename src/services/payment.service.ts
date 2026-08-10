@@ -11,6 +11,15 @@ export interface PaymentInitializationResponse {
     paymentUrl?: string;
 }
 
+export interface PaymentDetailsResponse {
+    id: string;
+    providerResponse: {
+        paymentPageUrl?: string;
+        paymentUrl?: string;
+        checkoutFormContent?: string;
+    } | null;
+}
+
 export interface InitializePaymentInput {
     cartId: string;
     /** Part of the protected-request contract; the backend re-derives it from the cart. */
@@ -27,6 +36,13 @@ export interface InitializePaymentInput {
 }
 
 export const paymentService = {
+    async getPaymentById(paymentId: string) {
+        const response = await api.get<ApiResponse<PaymentDetailsResponse>>(
+            `/payments/${encodeURIComponent(paymentId)}`,
+        );
+        return response.data.data;
+    },
+
     /**
      * Starts a payment for a cart. `TABLE_ORDER` here means "pay online now"
      * and only accepts `ONLINE_CARD` — an unpaid table order goes through
