@@ -1,6 +1,11 @@
 import { api } from '@/lib/axios';
 import { ApiResponse } from '@/types/auth';
-import { Branch } from '@/types/branch';
+import type {
+  Branch,
+  BranchAvailabilityResponse,
+  FulfillmentSlotsResponse,
+  ScheduledOrderType,
+} from '@/types/branch';
 
 export const branchService = {
   async getNearbyBranches(lat?: number, lng?: number) {
@@ -22,5 +27,20 @@ export const branchService = {
   async getBranchDetails(branchId: string) {
     const response = await api.get<ApiResponse<Branch>>(`/branches/${branchId}`);
     return response.data.data;
-  }
+  },
+
+  async getAvailability(branchId: string) {
+    const response = await api.get<ApiResponse<BranchAvailabilityResponse>>(
+      `/branches/${encodeURIComponent(branchId)}/availability`,
+    );
+    return response.data.data;
+  },
+
+  async getFulfillmentSlots(branchId: string, orderType: ScheduledOrderType) {
+    const response = await api.get<ApiResponse<FulfillmentSlotsResponse>>(
+      `/branches/${encodeURIComponent(branchId)}/fulfillment-slots`,
+      { params: { orderType } },
+    );
+    return response.data.data;
+  },
 };

@@ -44,6 +44,7 @@ export interface Branch {
     delivery?: { isActive: boolean };
     pickup?: { isActive: boolean };
     scheduledDelivery?: { isActive: boolean };
+    scheduledPickup?: { isActive: boolean };
     /** QR table ordering; the backend keys this `tableOrder`. */
     tableOrder?: { isActive: boolean };
   };
@@ -54,6 +55,34 @@ export interface Branch {
       CARD_ON_DELIVERY: number;
     }
   };
+}
+
+export type AvailabilityReason =
+  | 'BRANCH_INACTIVE'
+  | 'MANUALLY_CLOSED'
+  | 'OUTSIDE_BUSINESS_HOURS'
+  | null;
+
+export interface BranchAvailabilityResponse {
+  canAcceptOrders: boolean;
+  reason: AvailabilityReason;
+}
+
+export type ScheduledOrderType = 'SCHEDULED_DELIVERY' | 'SCHEDULED_PICKUP';
+
+export interface FulfillmentSlot {
+  label: string;
+  /** Opaque backend value. Never parse or normalize this in the browser. */
+  value: string;
+}
+
+export interface FulfillmentSlotsResponse {
+  orderType: ScheduledOrderType;
+  available: boolean;
+  dates: Array<{
+    date: string;
+    slots: FulfillmentSlot[];
+  }>;
 }
 
 export interface BranchDetails {

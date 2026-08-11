@@ -19,7 +19,14 @@ export function ProductList() {
     // `activeBranchId`, not `selectedBranch`: in a QR journey the branch is
     // known from the token immediately, while the full branch record needs a
     // session — and the branch menu endpoint is public either way.
-    const { activeBranchId, menuRevision } = useBranch();
+    const {
+        activeBranchId,
+        menuRevision,
+        availability,
+        isAvailabilityLoading,
+        hasAvailabilityError,
+        refreshAvailability,
+    } = useBranch();
     const { addToCart } = useCart();
     const { t } = useTranslation();
     const [categories, setCategories] = useState<Category[]>([]);
@@ -105,6 +112,10 @@ export function ProductList() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
+        if (!availability?.canAcceptOrders) {
+            toast.error(t('fulfillment.branchUnavailable'));
+            return;
+        }
         setSelectedProduct(product);
         setIsModalOpen(true);
     };
@@ -128,8 +139,28 @@ export function ProductList() {
 
     if (loading) return <div className="text-center py-10">Loading...</div>;
 
+    const canOrder = Boolean(activeBranchId && availability?.canAcceptOrders);
+
     return (
         <div className="bg-white rounded-lg shadow-sm border border-zinc-100 min-h-[500px]">
+            {activeBranchId && (isAvailabilityLoading || hasAvailabilityError || !availability?.canAcceptOrders) && (
+                <div className="m-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <div className="flex items-center justify-between gap-4">
+                        <span>
+                            {isAvailabilityLoading
+                                ? t('fulfillment.checkingAvailability')
+                                : hasAvailabilityError
+                                    ? t('fulfillment.availabilityError')
+                                    : t('fulfillment.branchUnavailable')}
+                        </span>
+                        {!isAvailabilityLoading && (
+                            <button type="button" onClick={() => void refreshAvailability()} className="font-semibold underline">
+                                {t('fulfillment.retry')}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
             {/* Category Tabs */}
             <div
                 ref={scrollContainerRef}
@@ -165,7 +196,7 @@ export function ProductList() {
                         title={categories.find(c => c.id === selectedCategory)?.name || 'Products'}
                         products={categories.find(c => c.id === selectedCategory)?.products || []}
                         onProductClick={handleProductClick}
-                        isBranchSelected={!!activeBranchId}
+                        isBranchSelected={canOrder}
                     />
                 ) : categories.length > 0 ? (
                     categories.map(cat => {
@@ -177,7 +208,7 @@ export function ProductList() {
                                 title={cat.name}
                                 products={catProducts}
                                 onProductClick={handleProductClick}
-                                isBranchSelected={!!activeBranchId}
+                                isBranchSelected={canOrder}
                             />
                         );
                     })
@@ -191,6 +222,7 @@ export function ProductList() {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onAddToCart={handleAddToCartFromModal}
+                canAddToCart={canOrder}
             />
         </div>
     );
@@ -207,6 +239,7 @@ function ProductSection({ title, products, onProductClick, isBranchSelected }: {
                             <div className="flex items-center gap-2 shrink-0">
                                 <button
                                     onClick={() => onProductClick(product)}
+                                    disabled={!isBranchSelected}
                                     className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${!isBranchSelected ? 'bg-zinc-300 text-zinc-500 cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
                                 >
                                     <Plus size={18} />

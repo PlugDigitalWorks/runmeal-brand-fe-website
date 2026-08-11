@@ -257,6 +257,11 @@ function ProfileContent() {
                                                                 <div className="text-xs text-zinc-500 mt-0.5">
                                                                     Order #{order.id.slice(-8)}
                                                                 </div>
+                                                                {order.scheduledDate && order.scheduledTime && (
+                                                                    <div className="mt-1 text-xs font-medium text-primary">
+                                                                        Scheduled: {order.scheduledDate} {order.scheduledTime}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
@@ -282,6 +287,12 @@ function ProfileContent() {
                                                                     </div>
                                                                 ) : orderDetails[order.id] ? (
                                                                     <div className="space-y-2">
+                                                                        {orderDetails[order.id].scheduledDate && orderDetails[order.id].scheduledTime && (
+                                                                            <div className="mb-3 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
+                                                                                <span className="font-semibold">Scheduled for:</span>{' '}
+                                                                                {orderDetails[order.id].scheduledDate} {orderDetails[order.id].scheduledTime}
+                                                                            </div>
+                                                                        )}
                                                                         {orderDetails[order.id].items.map((item) => (
                                                                             <div key={item.id} className="flex justify-between text-sm">
                                                                                 <div className="text-zinc-600 flex items-center gap-2">

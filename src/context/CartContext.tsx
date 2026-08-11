@@ -18,6 +18,7 @@ import { useBranch } from './BranchContext';
 import { useTable } from './TableContext';
 import { useUser } from './UserContext';
 import { toast } from 'sonner';
+import { getApiErrorDetails } from '@/lib/api-errors';
 
 // Simplified Cart Item for Guest (Local Storage)
 interface GuestCartItem {
@@ -88,7 +89,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, ensureSession } = useAuth();
-  const { selectedBranch, activeBranchId, invalidateMenu } = useBranch();
+  const { selectedBranch, activeBranchId, invalidateMenu, refreshAvailability } = useBranch();
   const { isTableMode } = useTable();
   const { refreshAddresses } = useUser();
   const [cart, setCart] = useState<Cart | null>(null);
@@ -337,6 +338,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     notes?: string,
     productDetails?: any
   ) => {
+    // Guests also keep a local cart, so this public check belongs before the
+    // authenticated/local split rather than relying only on the cart API.
+    if (activeBranchId) {
+      const liveAvailability = await refreshAvailability();
+      if (!liveAvailability?.canAcceptOrders) {
+        toast.error(i18n.t('fulfillment.branchUnavailable'));
+        return;
+      }
+    }
+
     const addToBackendCart = async (branchId: string) => {
       const activeCartId = cart?.id || cart?.cartId;
       setIsLoading(true);
@@ -388,6 +399,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // The rejection means our view of the product or the cart is stale —
         // resync both so the customer is not staring at what caused it.
         invalidateMenu();
+        if (getApiErrorDetails(e).code === 'CART_BRANCH_NOT_ACCEPTING_ORDERS') {
+          await refreshAvailability();
+        }
         await refreshUserCart(branchId).catch(() => undefined);
       } finally {
         setIsLoading(false);

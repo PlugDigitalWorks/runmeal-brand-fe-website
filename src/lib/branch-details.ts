@@ -37,6 +37,7 @@ export function resolveBranchDetails(branch: Branch | null | undefined): Resolve
     if (orderTypeSettings?.delivery?.isActive) orderTypeKeys.push('delivery');
     if (orderTypeSettings?.pickup?.isActive) orderTypeKeys.push('pickup');
     if (orderTypeSettings?.scheduledDelivery?.isActive) orderTypeKeys.push('scheduledDelivery');
+    if (orderTypeSettings?.scheduledPickup?.isActive) orderTypeKeys.push('scheduledPickup');
     if (orderTypeSettings?.tableOrder?.isActive) orderTypeKeys.push('tableOrder');
 
     return {

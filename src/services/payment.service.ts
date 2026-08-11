@@ -2,7 +2,7 @@ import { api } from '@/lib/axios';
 import { ApiResponse } from '@/types/auth';
 
 export type PaymentMethod = 'ONLINE_CARD' | 'CASH' | 'CARD_ON_DELIVERY';
-export type OrderType = 'DELIVERY' | 'SCHEDULED_DELIVERY' | 'PICKUP' | 'TABLE_ORDER';
+export type OrderType = 'DELIVERY' | 'SCHEDULED_DELIVERY' | 'PICKUP' | 'SCHEDULED_PICKUP' | 'TABLE_ORDER';
 
 export interface PaymentInitializationResponse {
     paymentId: string;
@@ -31,6 +31,8 @@ export interface InitializePaymentInput {
      * order type, so a pickup order can never join a table check.
      */
     tableId?: string;
+    /** Opaque backend-issued slot value, valid only for scheduled order types. */
+    scheduledFor?: string;
     creditUsedAmount?: number;
     note?: string;
 }
@@ -57,6 +59,7 @@ export const paymentService = {
         paymentMethod = 'ONLINE_CARD',
         orderType = 'DELIVERY',
         tableId,
+        scheduledFor,
         creditUsedAmount,
         note,
     }: InitializePaymentInput) {
@@ -67,6 +70,9 @@ export const paymentService = {
                 paymentMethod,
                 orderType,
                 ...(orderType === 'TABLE_ORDER' && tableId ? { tableId } : {}),
+                ...((orderType === 'SCHEDULED_DELIVERY' || orderType === 'SCHEDULED_PICKUP') && scheduledFor
+                    ? { scheduledFor }
+                    : {}),
                 creditUsedAmount: creditUsedAmount && creditUsedAmount > 0 ? creditUsedAmount : 0,
                 ...(note?.trim() ? { note: note.trim() } : {}),
             },

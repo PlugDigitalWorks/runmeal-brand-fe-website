@@ -8,7 +8,7 @@ import {
     isSameDeliveryLocation,
 } from '@/lib/address-parsing';
 import type { DeliveryAddressSelection } from '@/lib/address-parsing';
-import type { Branch } from '@/types/branch';
+import type { Branch, BranchAvailabilityResponse } from '@/types/branch';
 import { useAuth } from './AuthContext';
 import { useTable } from './TableContext';
 import { useUser } from './UserContext';
@@ -33,6 +33,10 @@ interface BranchContextType {
      * availability or price we showed. Menu consumers refetch on change.
      */
     menuRevision: number;
+    availability: BranchAvailabilityResponse | null;
+    isAvailabilityLoading: boolean;
+    hasAvailabilityError: boolean;
+    refreshAvailability: () => Promise<BranchAvailabilityResponse | null>;
     invalidateMenu: () => void;
     selectBranch: (branch: Branch) => void;
     searchBranches: (address: DeliveryAddressSelection) => Promise<void>;
@@ -49,11 +53,41 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(false);
     const [searchedAddress, setSearchedAddress] = useState<DeliveryAddressSelection | null>(null);
     const [menuRevision, setMenuRevision] = useState(0);
+    const [availability, setAvailability] = useState<BranchAvailabilityResponse | null>(null);
+    const [isAvailabilityLoading, setIsAvailabilityLoading] = useState(false);
+    const [hasAvailabilityError, setHasAvailabilityError] = useState(false);
 
     const invalidateMenu = useCallback(() => setMenuRevision((revision) => revision + 1), []);
 
     const tableBranchId = isTableMode ? journey?.branchId ?? null : null;
     const activeBranchId = tableBranchId ?? selectedBranch?.id ?? null;
+
+    const refreshAvailability = useCallback(async () => {
+        if (!activeBranchId) {
+            setAvailability(null);
+            setHasAvailabilityError(false);
+            return null;
+        }
+
+        setIsAvailabilityLoading(true);
+        setHasAvailabilityError(false);
+        try {
+            const nextAvailability = await branchService.getAvailability(activeBranchId);
+            setAvailability(nextAvailability);
+            return nextAvailability;
+        } catch (error) {
+            console.error('Failed to load branch availability', error);
+            setHasAvailabilityError(true);
+            return null;
+        } finally {
+            setIsAvailabilityLoading(false);
+        }
+    }, [activeBranchId]);
+
+    useEffect(() => {
+        setAvailability(null);
+        void refreshAvailability();
+    }, [refreshAvailability]);
 
     /**
      * QR journeys pin the branch to the scanned table — no address search, no
@@ -232,7 +266,21 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <BranchContext.Provider value={{ selectedBranch, branches, isLoading, searchedAddress, activeBranchId, menuRevision, invalidateMenu, selectBranch, searchBranches }}>
+        <BranchContext.Provider value={{
+            selectedBranch,
+            branches,
+            isLoading,
+            searchedAddress,
+            activeBranchId,
+            menuRevision,
+            invalidateMenu,
+            selectBranch,
+            searchBranches,
+            availability,
+            isAvailabilityLoading,
+            hasAvailabilityError,
+            refreshAvailability,
+        }}>
             {children}
         </BranchContext.Provider>
     );

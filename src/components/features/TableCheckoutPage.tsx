@@ -23,6 +23,7 @@ import { formatCurrency } from '@/lib/utils';
 import { TableJourneyError } from '@/components/features/TableJourneyError';
 import { TableOrderSuccess } from '@/components/features/TableOrderSuccess';
 import type { TableFulfillment, TableOrderView, TablePaymentChoice } from '@/types/table';
+import { getApiErrorDetails } from '@/lib/api-errors';
 
 /**
  * Checkout for a QR table journey.
@@ -37,7 +38,7 @@ export function TableCheckoutPage() {
     const router = useRouter();
     const { t } = useTranslation();
     const { journey, status, error, refreshOptions } = useTable();
-    const { selectedBranch } = useBranch();
+    const { selectedBranch, availability, isAvailabilityLoading, refreshAvailability } = useBranch();
     const { cart, cartTotal, isLoading: isCartLoading, resetCartState, refreshCart } = useCart();
 
     const [fulfillment, setFulfillment] = React.useState<TableFulfillment>('TABLE');
@@ -122,6 +123,11 @@ export function TableCheckoutPage() {
 
         setIsSubmitting(true);
         try {
+            const liveAvailability = await refreshAvailability();
+            if (!liveAvailability?.canAcceptOrders) {
+                toast.error(t('fulfillment.branchUnavailable'));
+                return;
+            }
             if (fulfillment === 'PICKUP') {
                 const response = await paymentService.initializePayment({
                     cartId,
@@ -177,6 +183,9 @@ export function TableCheckoutPage() {
             toast.error(t('table.errors.GENERIC'));
         } catch (submitError) {
             console.error('Table checkout failed', submitError);
+            if (getApiErrorDetails(submitError).code === 'PAYMENT_BRANCH_NOT_ACCEPTING_ORDERS') {
+                await refreshAvailability();
+            }
             await handleCheckoutError(submitError, cartId);
         } finally {
             setIsSubmitting(false);
@@ -223,6 +232,8 @@ export function TableCheckoutPage() {
         !!cartId &&
         cartItems.length > 0 &&
         !isSubmitting &&
+        !isAvailabilityLoading &&
+        availability?.canAcceptOrders === true &&
         (fulfillment === 'PICKUP' ? pickupAvailable : paymentChoice !== null);
 
     return (
@@ -252,6 +263,7 @@ export function TableCheckoutPage() {
                                 description={t('table.checkout.serveToTableHint')}
                                 isSelected={fulfillment === 'TABLE'}
                                 onSelect={() => setFulfillment('TABLE')}
+                                disabled={!availability?.canAcceptOrders}
                             />
                         )}
                         {pickupAvailable && (
@@ -261,6 +273,7 @@ export function TableCheckoutPage() {
                                 description={t('table.checkout.pickupHint')}
                                 isSelected={fulfillment === 'PICKUP'}
                                 onSelect={() => setFulfillment('PICKUP')}
+                                disabled={!availability?.canAcceptOrders}
                             />
                         )}
                         {!canOrderToTable && !pickupAvailable && (
@@ -289,6 +302,7 @@ export function TableCheckoutPage() {
                                         description={t('table.checkout.payNowHint')}
                                         isSelected={paymentChoice === 'PAY_NOW'}
                                         onSelect={() => setPaymentChoice('PAY_NOW')}
+                                        disabled={!availability?.canAcceptOrders}
                                     />
                                 )}
                                 {payLater && (
@@ -298,6 +312,7 @@ export function TableCheckoutPage() {
                                         description={t('table.checkout.payLaterHint')}
                                         isSelected={paymentChoice === 'PAY_LATER'}
                                         onSelect={() => setPaymentChoice('PAY_LATER')}
+                                        disabled={!availability?.canAcceptOrders}
                                     />
                                 )}
                             </div>
@@ -402,22 +417,25 @@ function ChoiceCard({
     description,
     isSelected,
     onSelect,
+    disabled = false,
 }: {
     icon: React.ComponentType<{ size?: number; className?: string }>;
     title: string;
     description: string;
     isSelected: boolean;
     onSelect: () => void;
+    disabled?: boolean;
 }) {
     return (
         <button
             type="button"
             aria-pressed={isSelected}
             onClick={onSelect}
+            disabled={disabled}
             className={`flex min-h-28 flex-col rounded-lg border p-4 text-left transition-colors ${isSelected
                 ? 'border-primary bg-orange-50/60'
                 : 'border-zinc-200 bg-white hover:border-primary/50 hover:bg-orange-50/30'
-                }`}
+                } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
         >
             <div className="flex items-start justify-between gap-3">
                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${isSelected ? 'bg-primary text-white' : 'bg-orange-50 text-primary'}`}>

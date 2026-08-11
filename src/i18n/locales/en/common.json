@@ -261,8 +261,15 @@
       "delivery": "Delivery",
       "pickup": "Pickup",
       "scheduledDelivery": "Scheduled",
+      "scheduledPickup": "Scheduled Pickup",
       "tableOrder": "Table Ordering"
     }
+  },
+  "fulfillment": {
+    "checkingAvailability": "Checking whether this branch can accept orders…",
+    "availabilityError": "Branch availability could not be loaded.",
+    "branchUnavailable": "This branch is not accepting orders right now. The menu is still available to browse.",
+    "retry": "Try again"
   },
   "cart": {
     "itemAdded": "Item added to cart",

@@ -25,9 +25,10 @@ interface ProductDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     onAddToCart: (product: Product, quantity: number, options: SelectedProductOption[], addons: SelectedProductAddon[], note?: string) => void;
+    canAddToCart?: boolean;
 }
 
-export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: ProductDetailModalProps) {
+export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canAddToCart = true }: ProductDetailModalProps) {
     const { selectedBranch } = useBranch();
     const [quantity, setQuantity] = useState(1);
     const [selectedAddons, setSelectedAddons] = useState<Record<string, boolean>>({});
@@ -406,10 +407,10 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
 
                     <button
                         onClick={handleAddToCart}
-                        disabled={loadingDetails}
+                        disabled={loadingDetails || !canAddToCart}
                         className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary/25 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loadingDetails ? 'Loading...' : 'Add to Cart'}
+                        {loadingDetails ? 'Loading...' : canAddToCart ? 'Add to Cart' : 'Branch unavailable'}
                     </button>
                 </div>
 

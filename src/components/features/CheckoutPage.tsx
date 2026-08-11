@@ -7,14 +7,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
 import { useCart } from '@/context/CartContext';
 import { useBranch } from '@/context/BranchContext';
-import { paymentService, type PaymentMethod } from '@/services/payment.service';
+import { paymentService, type OrderType, type PaymentMethod } from '@/services/payment.service';
 import { branchService } from '@/services/branch.service';
 import { userService } from '@/services/user.service';
 import type { Address } from '@/types/address';
 import { cartService } from '@/services/cart.service';
 import { CartLoyaltyWallet, LoyaltyProviderType, promotionKey } from '@/types/cart';
 import { formatCurrency, resolveCurrencySymbol, sanitizePositiveNumber } from '@/lib/utils';
-import { resolveApiErrorMessage } from '@/lib/api-errors';
+import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 import { resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
 import { useTranslation } from 'react-i18next';
 import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle, Banknote } from 'lucide-react';
@@ -22,6 +22,8 @@ import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
 import { walletService, WalletBalance } from '@/services/wallet.service';
 import { Wallet, Ticket, X } from 'lucide-react';
+import { FulfillmentSlotPicker } from './FulfillmentSlotPicker';
+import type { ScheduledOrderType } from '@/types/branch';
 
 export function CheckoutPage() {
     const router = useRouter();
@@ -35,7 +37,13 @@ export function CheckoutPage() {
         applyPromotion,
         refreshCart,
     } = useCart();
-    const { selectedBranch } = useBranch();
+    const {
+        selectedBranch,
+        availability,
+        isAvailabilityLoading,
+        hasAvailabilityError,
+        refreshAvailability,
+    } = useBranch();
 
     const [isProcessing, setIsProcessing] = useState(false);
     const [showAddressModal, setShowAddressModal] = useState(false);
@@ -43,6 +51,10 @@ export function CheckoutPage() {
     const [checkoutFormHtml, setCheckoutFormHtml] = useState<string | null>(null);
     const [hasInitialized, setHasInitialized] = useState(false);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('ONLINE_CARD');
+    const [orderType, setOrderType] = useState<OrderType>('DELIVERY');
+    const [scheduledFor, setScheduledFor] = useState<string | null>(null);
+    const [slotRefreshKey, setSlotRefreshKey] = useState(0);
+    const [slotStatus, setSlotStatus] = useState({ isLoading: false, hasSlots: false });
     const [orderNote, setOrderNote] = useState('');
 
     // New States
@@ -60,6 +72,15 @@ export function CheckoutPage() {
     const cartItems = cart?.items || [];
     const targetBranchId = cart?.branchId || selectedBranch?.id;
     const paymentSettings = selectedBranch?.payment_settings;
+    const orderTypeSettings = selectedBranch?.order_type_settings;
+    const orderTypeOptions = React.useMemo(() => [
+        { value: 'DELIVERY' as OrderType, label: 'Delivery', isAvailable: orderTypeSettings?.delivery?.isActive ?? true },
+        { value: 'PICKUP' as OrderType, label: 'Pickup', isAvailable: orderTypeSettings?.pickup?.isActive ?? false },
+        { value: 'SCHEDULED_DELIVERY' as OrderType, label: 'Scheduled delivery', isAvailable: orderTypeSettings?.scheduledDelivery?.isActive ?? false },
+        { value: 'SCHEDULED_PICKUP' as OrderType, label: 'Scheduled pickup', isAvailable: orderTypeSettings?.scheduledPickup?.isActive ?? false },
+    ].filter((option) => option.isAvailable), [orderTypeSettings]);
+    const isPickup = orderType === 'PICKUP' || orderType === 'SCHEDULED_PICKUP';
+    const isScheduled = orderType === 'SCHEDULED_DELIVERY' || orderType === 'SCHEDULED_PICKUP';
     const paymentOptions = React.useMemo(() => [
         {
             value: 'ONLINE_CARD' as PaymentMethod,
@@ -82,9 +103,9 @@ export function CheckoutPage() {
             icon: Wallet,
             isAvailable: paymentSettings?.offlineMethods?.cardOnDelivery?.isActive ?? true,
         },
-    ], [paymentSettings]);
+    ].filter((option) => orderType !== 'SCHEDULED_PICKUP' || option.value === 'ONLINE_CARD'), [paymentSettings, orderType]);
     const selectedPaymentOption = paymentOptions.find(option => option.value === selectedPaymentMethod);
-    const isSelectedPaymentAvailable = selectedPaymentOption?.isAvailable ?? true;
+    const isSelectedPaymentAvailable = selectedPaymentOption?.isAvailable ?? false;
     const deliverableAddresses = React.useMemo(
         () => addresses.filter((address) => deliverableAddressIds.has(address.id)),
         [addresses, deliverableAddressIds],
@@ -92,6 +113,8 @@ export function CheckoutPage() {
     const isActiveAddressDeliverable = activeAddress
         ? deliverableAddressIds.has(activeAddress.id)
         : false;
+    const branchCanAcceptOrders = availability?.canAcceptOrders === true;
+    const scheduledCheckoutReady = !isScheduled || (!slotStatus.isLoading && slotStatus.hasSlots && Boolean(scheduledFor));
 
     // Redirect if not authenticated. A QR guest counts as unauthenticated
     // here: this screen needs a delivery address they will never have, and
@@ -124,6 +147,15 @@ export function CheckoutPage() {
             setSelectedPaymentMethod(nextAvailablePaymentMethod);
         }
     }, [isSelectedPaymentAvailable, paymentOptions]);
+
+    React.useEffect(() => {
+        if (orderTypeOptions.some((option) => option.value === orderType)) return;
+        setOrderType(orderTypeOptions[0]?.value ?? 'DELIVERY');
+    }, [orderType, orderTypeOptions]);
+
+    React.useEffect(() => {
+        if (!isScheduled) setScheduledFor(null);
+    }, [isScheduled]);
 
     // Account-wide Runmeal balance; only the fallback for the amount shown below.
     React.useEffect(() => {
@@ -279,8 +311,13 @@ export function CheckoutPage() {
             return;
         }
 
-        if (!activeAddress || !isActiveAddressDeliverable) {
+        if (!isPickup && (!activeAddress || !isActiveAddressDeliverable)) {
             toast.error('Please select a delivery address served by this branch');
+            return;
+        }
+
+        if (isScheduled && (!scheduledFor || !slotStatus.hasSlots)) {
+            toast.error('Please select an available fulfillment time');
             return;
         }
 
@@ -291,11 +328,18 @@ export function CheckoutPage() {
 
         setIsProcessing(true);
         try {
+            const liveAvailability = await refreshAvailability();
+            if (!liveAvailability?.canAcceptOrders) {
+                toast.error(t('fulfillment.branchUnavailable'));
+                return;
+            }
+
             const response = await paymentService.initializePayment({
                 cartId,
                 branchId: targetBranchId,
                 paymentMethod: selectedPaymentMethod,
-                orderType: 'DELIVERY',
+                orderType,
+                ...(isScheduled && scheduledFor ? { scheduledFor } : {}),
                 creditUsedAmount: walletAppliedAmount > 0 ? walletAppliedAmount : undefined,
                 note: orderNote.trim() || undefined,
             });
@@ -320,6 +364,25 @@ export function CheckoutPage() {
             }
         } catch (error: unknown) {
             console.error('Checkout error:', error);
+            const apiError = getApiErrorDetails(error);
+            if (apiError.code === 'PAYMENT_BRANCH_NOT_ACCEPTING_ORDERS') {
+                await refreshAvailability();
+                toast.error(resolveApiErrorMessage(error, t('fulfillment.branchUnavailable')));
+                return;
+            }
+            if (apiError.code === 'PAYMENT_ORDER_TYPE_INVALID') {
+                if (isScheduled) {
+                    setScheduledFor(null);
+                    setSlotRefreshKey((key) => key + 1);
+                }
+                toast.error('That fulfillment selection is no longer available. Please select again.');
+                return;
+            }
+            if (apiError.code === 'SCHEDULED_PICKUP_PAYMENT_METHOD_INVALID') {
+                setSelectedPaymentMethod('ONLINE_CARD');
+                toast.error('Scheduled pickup can only be paid by online card.');
+                return;
+            }
             const loyaltyError = resolveLoyaltyError(error);
             if (loyaltyError.isLoyaltyError) {
                 // Checkout revalidation changed the applied campaigns: re-sync
@@ -432,8 +495,62 @@ export function CheckoutPage() {
                         </div>
                     </div>
 
+                    {/* Fulfillment */}
+                    <div className="overflow-hidden rounded-lg border border-zinc-100 bg-white shadow-sm">
+                        <div className="bg-primary p-4 text-white">
+                            <h2 className="text-lg font-bold">Fulfillment</h2>
+                        </div>
+                        <div className="space-y-5 p-5">
+                            {(isAvailabilityLoading || hasAvailabilityError || !branchCanAcceptOrders) && (
+                                <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                                    <span>
+                                        {isAvailabilityLoading
+                                            ? t('fulfillment.checkingAvailability')
+                                            : hasAvailabilityError
+                                                ? t('fulfillment.availabilityError')
+                                                : t('fulfillment.branchUnavailable')}
+                                    </span>
+                                    {!isAvailabilityLoading && (
+                                        <button type="button" onClick={() => void refreshAvailability()} className="font-semibold underline">
+                                            {t('fulfillment.retry')}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {orderTypeOptions.map((option) => (
+                                    <label
+                                        key={option.value}
+                                        className={`rounded-lg border p-4 ${orderType === option.value ? 'border-primary bg-orange-50/60' : 'border-zinc-200'} ${!branchCanAcceptOrders ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="orderType"
+                                            value={option.value}
+                                            checked={orderType === option.value}
+                                            disabled={!branchCanAcceptOrders}
+                                            onChange={() => setOrderType(option.value)}
+                                            className="mr-2 accent-primary"
+                                        />
+                                        <span className="font-semibold text-zinc-800">{option.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                            {isScheduled && targetBranchId && branchCanAcceptOrders && (
+                                <FulfillmentSlotPicker
+                                    branchId={targetBranchId}
+                                    orderType={orderType as ScheduledOrderType}
+                                    selectedValue={scheduledFor}
+                                    onChange={setScheduledFor}
+                                    onStatusChange={setSlotStatus}
+                                    refreshKey={slotRefreshKey}
+                                />
+                            )}
+                        </div>
+                    </div>
+
                     {/* Address Card */}
-                    <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
+                    {!isPickup && <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
                         <div className="bg-primary p-4 flex flex-col gap-3 text-white sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-3">
                                 <MapPin size={20} />
@@ -521,7 +638,7 @@ export function CheckoutPage() {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </div>}
 
                     {/* Coupons & Wallet */}
                     <div className="grid gap-6 sm:grid-cols-2">
@@ -644,14 +761,14 @@ export function CheckoutPage() {
                                             className={`flex min-h-28 cursor-pointer flex-col rounded-lg border p-4 transition-colors ${isSelected
                                                 ? 'border-primary bg-orange-50/60'
                                                 : 'border-zinc-200 bg-white hover:border-primary/50 hover:bg-orange-50/30'
-                                                } ${!option.isAvailable ? 'cursor-not-allowed opacity-50' : ''}`}
+                                                } ${!option.isAvailable || !branchCanAcceptOrders ? 'cursor-not-allowed opacity-50' : ''}`}
                                         >
                                             <input
                                                 type="radio"
                                                 name="paymentMethod"
                                                 value={option.value}
                                                 checked={isSelected}
-                                                disabled={!option.isAvailable}
+                                                disabled={!option.isAvailable || !branchCanAcceptOrders}
                                                 onChange={() => setSelectedPaymentMethod(option.value)}
                                                 className="sr-only"
                                             />
@@ -779,7 +896,14 @@ export function CheckoutPage() {
                     {/* Checkout Button */}
                     <button
                         onClick={handleCheckout}
-                        disabled={isProcessing || isCheckingAddresses || !activeAddress || !isActiveAddressDeliverable || !isSelectedPaymentAvailable}
+                        disabled={
+                            isProcessing
+                            || isAvailabilityLoading
+                            || !branchCanAcceptOrders
+                            || (!isPickup && (isCheckingAddresses || !activeAddress || !isActiveAddressDeliverable))
+                            || !isSelectedPaymentAvailable
+                            || !scheduledCheckoutReady
+                        }
                         className="w-full bg-primary text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isProcessing ? (

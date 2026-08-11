@@ -8,6 +8,7 @@ import { ShoppingCart, Trash2, Minus, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTable } from '@/context/TableContext';
 import { formatCurrency } from '@/lib/utils';
+import { useBranch } from '@/context/BranchContext';
 
 type CartContentItem = {
     id?: string;
@@ -35,6 +36,7 @@ export function CartContent() {
     const { cart, guestCartItems, cartTotal, removeFromCart, updateQuantity } = useCart();
     const { isAuthenticated, openAuthModal } = useAuth();
     const { isTableMode } = useTable();
+    const { availability, isAvailabilityLoading } = useBranch();
     const { t } = useTranslation();
     const router = useRouter();
 
@@ -147,7 +149,8 @@ export function CartContent() {
                                                 </span>
                                                 <button
                                                     onClick={() => updateQuantity(itemId, itemQuantity + 1)}
-                                                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 transition-colors"
+                                                    disabled={isAvailabilityLoading || !availability?.canAcceptOrders}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                                                 >
                                                     <Plus size={14} />
                                                 </button>
@@ -181,7 +184,8 @@ export function CartContent() {
 
                             <button
                                 onClick={handleCheckout}
-                                className="w-full bg-primary text-white font-bold py-3 rounded mt-4 hover:opacity-90 transition-opacity uppercase"
+                                disabled={isAvailabilityLoading || !availability?.canAcceptOrders}
+                                className="w-full bg-primary text-white font-bold py-3 rounded mt-4 hover:opacity-90 transition-opacity uppercase disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {t('cart.confirmOrder')}
                             </button>

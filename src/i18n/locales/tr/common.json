@@ -261,8 +261,15 @@
       "delivery": "Teslimat",
       "pickup": "Gel-Al",
       "scheduledDelivery": "İleri Tarihli",
+      "scheduledPickup": "İleri Tarihli Gel-Al",
       "tableOrder": "Masadan Sipariş"
     }
+  },
+  "fulfillment": {
+    "checkingAvailability": "Şubenin sipariş durumu kontrol ediliyor…",
+    "availabilityError": "Şube müsaitliği yüklenemedi.",
+    "branchUnavailable": "Bu şube şu anda sipariş kabul etmiyor. Menüyü incelemeye devam edebilirsiniz.",
+    "retry": "Tekrar dene"
   },
   "cart": {
     "itemAdded": "Ürün sepete eklendi",
