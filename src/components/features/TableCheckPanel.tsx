@@ -574,11 +574,12 @@ function QuantityPicker({
     maximum: number;
     onChange: (value: number) => void;
 }) {
+    const { t } = useTranslation();
     return (
         <div className="flex shrink-0 items-center gap-1 rounded-lg border border-zinc-200 p-1">
             <button
                 type="button"
-                aria-label="Decrease"
+                aria-label={t('common.decrease')}
                 onClick={() => onChange(value - 1)}
                 disabled={value === 0}
                 className="rounded p-1 text-zinc-600 hover:bg-zinc-100 disabled:opacity-30"
@@ -588,7 +589,7 @@ function QuantityPicker({
             <span className="w-5 text-center text-sm font-semibold">{value}</span>
             <button
                 type="button"
-                aria-label="Increase"
+                aria-label={t('common.increase')}
                 onClick={() => onChange(value + 1)}
                 disabled={value >= maximum}
                 className="rounded p-1 text-zinc-600 hover:bg-zinc-100 disabled:opacity-30"

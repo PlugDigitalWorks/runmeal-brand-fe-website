@@ -9,6 +9,7 @@ import { userService } from '@/services/user.service';
 import { toast } from 'sonner';
 import { LocationPicker, GeocodedAddress, Location } from '@/components/features/address/LocationPicker';
 import { extractStreetAndBuilding, getAddressComponent } from '@/lib/address-parsing';
+import { useTranslation } from 'react-i18next';
 
 interface AddressEditModalProps {
     address?: Address;
@@ -17,6 +18,7 @@ interface AddressEditModalProps {
 }
 
 export function AddressEditModal({ address, onClose, onSave }: AddressEditModalProps) {
+    const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         street: address?.street || '',
@@ -86,17 +88,17 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
         e.preventDefault();
 
         if (!formData.phoneE164.trim()) {
-            toast.error('Phone is required');
+            toast.error(t('address.validation.phoneRequired'));
             return;
         }
 
         if (!/^\+[1-9]\d{7,14}$/.test(formData.phoneE164.trim())) {
-            toast.error('Use E.164 format, e.g. +905551112233');
+            toast.error(t('address.validation.phoneFormat'));
             return;
         }
 
         if (!formData.apartmentNumber.trim()) {
-            toast.error('Apartment No is required');
+            toast.error(t('address.validation.apartmentRequired'));
             return;
         }
 
@@ -122,7 +124,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
         } catch (error) {
             const axiosError = error as AxiosError<ApiResponse<unknown>>;
             console.error('Save address error:', error);
-            toast.error(axiosError.response?.data?.message || 'Failed to save address');
+            toast.error(axiosError.response?.data?.message || t('address.saveFailed'));
         } finally {
             setIsLoading(false);
         }
@@ -134,7 +136,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-zinc-100 flex-shrink-0">
                     <h2 className="text-lg font-bold text-zinc-800">
-                        {address?.id ? 'Edit Delivery Address' : 'Add New Address'}
+                        {address?.id ? t('address.editDeliveryAddress') : t('address.addNewAddress')}
                     </h2>
                     <button
                         onClick={onClose}
@@ -157,7 +159,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
 
                     <div>
                         <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Street / Neighborhood
+                            {t('address.streetNeighborhood')}
                         </label>
                         <input
                             type="text"
@@ -172,7 +174,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-zinc-700 mb-1">
-                                Building No
+                                {t('address.buildingNo')}
                             </label>
                             <input
                                 type="text"
@@ -185,7 +187,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-zinc-700 mb-1">
-                                Apartment No
+                                {t('address.apartmentNo')}
                             </label>
                             <input
                                 type="text"
@@ -193,7 +195,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                                 value={formData.apartmentNumber}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-zinc-900 placeholder:text-zinc-400"
-                                placeholder="Apartment No"
+                                placeholder={t('address.apartmentNo')}
                                 required
                             />
                         </div>
@@ -202,7 +204,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-zinc-700 mb-1">
-                                District
+                                {t('address.district')}
                             </label>
                             <input
                                 type="text"
@@ -215,7 +217,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-zinc-700 mb-1">
-                                Province / City
+                                {t('address.provinceCity')}
                             </label>
                             <input
                                 type="text"
@@ -230,7 +232,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
 
                     <div>
                         <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Phone
+                            {t('address.phone')}
                         </label>
                         <input
                             type="tel"
@@ -245,7 +247,7 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
 
                     <div>
                         <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Postal Code
+                            {t('address.postalCode')}
                         </label>
                         <input
                             type="text"
@@ -263,14 +265,14 @@ export function AddressEditModal({ address, onClose, onSave }: AddressEditModalP
                             onClick={onClose}
                             className="flex-1 px-4 py-2.5 border border-zinc-200 text-zinc-700 rounded-lg hover:bg-zinc-50 transition-colors"
                         >
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
                             disabled={isLoading}
                             className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
                         >
-                            {isLoading ? 'Saving...' : 'Save Address'}
+                            {isLoading ? t('common.saving') : t('address.saveAddress')}
                         </button>
                     </div>
                 </form>

@@ -5,16 +5,20 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { ShoppingCart, X } from 'lucide-react';
 import { CartContent } from './CartContent';
-import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
 export function MobileCartFab() {
     const [isOpen, setIsOpen] = useState(false);
     const { cart, guestCartItems } = useCart();
     const { isAuthenticated } = useAuth();
+    const { t } = useTranslation();
 
     // Calculate total items
     const items = isAuthenticated ? cart?.items || [] : guestCartItems;
-    const totalItems = items.reduce((acc: number, item: any) => acc + (item.qty || item.quantity || 0), 0);
+    const totalItems = items.reduce(
+        (acc: number, item: { qty?: number; quantity?: number }) => acc + (item.qty || item.quantity || 0),
+        0,
+    );
 
     const toggleCart = () => setIsOpen(!isOpen);
 
@@ -27,7 +31,7 @@ export function MobileCartFab() {
             <button
                 onClick={toggleCart}
                 className="fixed bottom-6 right-6 z-40 bg-primary text-white p-4 rounded-full shadow-lg lg:hidden hover:bg-orange-600 transition-colors flex items-center justify-center"
-                aria-label="Open Cart"
+                aria-label={t('cart.openCart')}
             >
                 <div className="relative">
                     <ShoppingCart size={24} />
@@ -52,7 +56,7 @@ export function MobileCartFab() {
                     <div className="absolute bottom-0 right-0 left-0 bg-zinc-50 rounded-t-2xl shadow-xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300">
                         {/* Handle / Header */}
                         <div className="flex justify-between items-center p-4 border-b border-zinc-200 bg-white rounded-t-2xl shrink-0">
-                            <h2 className="font-bold text-lg text-zinc-800">Your Cart</h2>
+                            <h2 className="font-bold text-lg text-zinc-800">{t('cart.yourCart')}</h2>
                             <button
                                 onClick={() => setIsOpen(false)}
                                 className="p-2 text-zinc-500 hover:bg-zinc-100 rounded-full"

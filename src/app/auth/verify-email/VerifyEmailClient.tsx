@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle, Loader2, MailCheck, XCircle } from 'lucide-react';
 
 import { authService } from '@/services/auth.service';
+import { useTranslation } from 'react-i18next';
 
 type VerificationStatus = 'verifying' | 'success' | 'error' | 'missing-token';
 
@@ -18,6 +19,7 @@ const getErrorMessage = (error: unknown) => {
 };
 
 export function VerifyEmailClient() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -37,7 +39,7 @@ export function VerifyEmailClient() {
         const response = await authService.verifyEmail(token);
         if (!isActive) return;
 
-        setMessage(response.data?.message || response.message || 'Email verified successfully.');
+        setMessage(response.data?.message || response.message || t('auth.verify.successDescription'));
         setStatus('success');
         redirectTimer = window.setTimeout(() => {
           router.push('/login');
@@ -45,7 +47,7 @@ export function VerifyEmailClient() {
       } catch (error) {
         if (!isActive) return;
 
-        setMessage(getErrorMessage(error) || 'Invalid or expired verification token.');
+        setMessage(getErrorMessage(error) || t('auth.verify.errorDescription'));
         setStatus('error');
       }
     };
@@ -56,31 +58,31 @@ export function VerifyEmailClient() {
       isActive = false;
       if (redirectTimer) window.clearTimeout(redirectTimer);
     };
-  }, [router, token]);
+  }, [router, t, token]);
 
   const content = {
     verifying: {
       icon: <Loader2 className="h-8 w-8 animate-spin text-primary" />,
-      title: 'Verifying Email',
-      description: 'Please wait while we verify your email address.',
+      title: t('auth.verify.verifyingTitle'),
+      description: t('auth.verify.verifyingDescription'),
       tone: 'bg-primary/10',
     },
     success: {
       icon: <CheckCircle className="h-8 w-8 text-green-600" />,
-      title: 'Email Verified',
-      description: message || 'Your email has been verified. You can now log in.',
+      title: t('auth.verify.successTitle'),
+      description: message || t('auth.verify.successDescription'),
       tone: 'bg-green-50',
     },
     error: {
       icon: <XCircle className="h-8 w-8 text-red-600" />,
-      title: 'Verification Failed',
-      description: message || 'This verification link is invalid or expired.',
+      title: t('auth.verify.errorTitle'),
+      description: message || t('auth.verify.errorDescription'),
       tone: 'bg-red-50',
     },
     'missing-token': {
       icon: <MailCheck className="h-8 w-8 text-zinc-600" />,
-      title: 'Verification Link Missing',
-      description: 'Open the verification link from your email to verify your account.',
+      title: t('auth.verify.missingTitle'),
+      description: t('auth.verify.missingDescription'),
       tone: 'bg-zinc-100',
     },
   }[status];
@@ -104,13 +106,13 @@ export function VerifyEmailClient() {
             href="/login"
             className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-opacity hover:opacity-90"
           >
-            Go to Login
+            {t('auth.verify.goToLogin')}
           </Link>
           <Link
             href="/register"
             className="inline-flex w-full items-center justify-center rounded-md border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:border-primary hover:text-primary"
           >
-            Create Another Account
+            {t('auth.verify.createAccount')}
           </Link>
         </div>
       </div>

@@ -10,7 +10,7 @@ const LABELS: Record<SupportedLanguage, string> = {
 };
 
 export function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const current = (i18n.resolvedLanguage || i18n.language || 'tr').slice(0, 2);
 
   const next = () => {
@@ -24,7 +24,7 @@ export function LanguageSwitcher() {
       type="button"
       onClick={next}
       className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 sm:gap-1.5 sm:px-2.5 sm:py-1.5 sm:text-sm"
-      aria-label="Change language"
+      aria-label={t('common.changeLanguage')}
     >
       <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       <span>{LABELS[current as SupportedLanguage] ?? current.toUpperCase()}</span>

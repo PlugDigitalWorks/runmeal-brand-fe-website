@@ -29,7 +29,7 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 const PAGE_SIZE = 10;
 
 export function PendingSurveys() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [surveys, setSurveys] = useState<PendingSurvey[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
@@ -157,7 +157,7 @@ export function PendingSurveys() {
                                     {t('survey.orderNo', { id: survey.orderId.slice(-8) })}
                                 </p>
                                 <p className="mt-0.5 text-xs text-zinc-500">
-                                    {new Date(survey.orderDate).toLocaleDateString('tr-TR', {
+                                    {new Date(survey.orderDate).toLocaleDateString(i18n.resolvedLanguage === 'en' ? 'en-US' : 'tr-TR', {
                                         day: '2-digit',
                                         month: 'long',
                                         year: 'numeric',

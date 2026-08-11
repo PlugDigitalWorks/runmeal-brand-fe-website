@@ -15,6 +15,16 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     return () => i18n.off('initialized', onInit);
   }, []);
 
+  useEffect(() => {
+    if (!ready) return;
+    const syncDocumentLanguage = (language?: string) => {
+      document.documentElement.lang = (language || i18n.resolvedLanguage || i18n.language || 'tr').slice(0, 2);
+    };
+    syncDocumentLanguage();
+    i18n.on('languageChanged', syncDocumentLanguage);
+    return () => i18n.off('languageChanged', syncDocumentLanguage);
+  }, [ready]);
+
   if (!ready) return null;
 
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>;

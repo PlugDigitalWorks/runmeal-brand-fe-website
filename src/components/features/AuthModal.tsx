@@ -5,10 +5,12 @@ import { useAuth } from '@/context/AuthContext';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { RecaptchaWidget } from './RecaptchaWidget';
+import { useTranslation } from 'react-i18next';
 
 type Tab = 'LOGIN' | 'REGISTER';
 
 export function AuthModal() {
+    const { t } = useTranslation();
     const { isAuthModalOpen, closeAuthModal, login, register } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>('LOGIN');
     const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +60,7 @@ export function AuthModal() {
         e.preventDefault();
 
         if (activeTab === 'LOGIN' && isRecaptchaEnabled && !recaptchaToken) {
-            toast.error('Please complete the security check.');
+            toast.error(t('auth.validation.securityCheck'));
             return;
         }
 
@@ -67,7 +69,7 @@ export function AuthModal() {
         try {
             if (activeTab === 'LOGIN') {
                 await login({ email, password, recaptchaToken: recaptchaToken ?? undefined });
-                toast.success('Welcome back!');
+                toast.success(t('auth.login.success'));
                 handleClose();
             } else {
                 await register({
@@ -77,7 +79,7 @@ export function AuthModal() {
                     lastName: name.split(' ').slice(1).join(' ') || '',
                     phoneNumber: phone
                 });
-                toast.success('Registration successful! Please login.');
+                toast.success(t('auth.register.success'));
                 changeTab('LOGIN');
                 // Don't close, let them login or auto-login if logic changes
             }
@@ -87,7 +89,7 @@ export function AuthModal() {
                 setRecaptchaToken(null);
                 setRecaptchaResetKey((key) => key + 1);
             }
-            toast.error(getErrorMessage(error) || 'Authentication failed');
+            toast.error(getErrorMessage(error) || t('auth.authenticationFailed'));
         } finally {
             setIsLoading(false);
         }
@@ -113,43 +115,43 @@ export function AuthModal() {
                         onClick={() => changeTab('LOGIN')}
                         className={`flex-1 py-4 text-sm font-semibold transition-colors ${activeTab === 'LOGIN' ? 'text-primary border-b-2 border-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
                     >
-                        Login
+                        {t('auth.login.submit')}
                     </button>
                     <button
                         onClick={() => changeTab('REGISTER')}
                         className={`flex-1 py-4 text-sm font-semibold transition-colors ${activeTab === 'REGISTER' ? 'text-primary border-b-2 border-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
                     >
-                        Register
+                        {t('auth.register.submit')}
                     </button>
                 </div>
 
                 {/* Content */}
                 <div className="p-6">
                     <h2 className="text-xl font-bold text-zinc-800 mb-2">
-                        {activeTab === 'LOGIN' ? 'Welcome Back' : 'Create Account'}
+                        {activeTab === 'LOGIN' ? t('auth.login.title') : t('auth.register.title')}
                     </h2>
                     <p className="text-sm text-zinc-500 mb-6">
                         {activeTab === 'LOGIN'
-                            ? 'Enter your credentials to access your account.'
-                            : 'Join us to order food from your favorite restaurants.'}
+                            ? t('auth.login.modalSubtitle')
+                            : t('auth.register.modalSubtitle')}
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {activeTab === 'REGISTER' && (
                             <>
                                 <div className="space-y-1">
-                                    <label className="text-xs font-medium text-zinc-700">Full Name</label>
+                                    <label className="text-xs font-medium text-zinc-700">{t('auth.fullName')}</label>
                                     <input
                                         type="text"
                                         required
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
-                                        placeholder="John Doe"
+                                        placeholder={t('auth.fullNamePlaceholder')}
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-xs font-medium text-zinc-700">Phone</label>
+                                    <label className="text-xs font-medium text-zinc-700">{t('auth.phone')}</label>
                                     <input
                                         type="tel"
                                         required
@@ -163,19 +165,19 @@ export function AuthModal() {
                         )}
 
                         <div className="space-y-1">
-                            <label className="text-xs font-medium text-zinc-700">Email Address</label>
+                            <label className="text-xs font-medium text-zinc-700">{t('auth.email')}</label>
                             <input
                                 type="email"
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
-                                placeholder="you@example.com"
+                                placeholder={t('auth.emailPlaceholder')}
                             />
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-xs font-medium text-zinc-700">Password</label>
+                            <label className="text-xs font-medium text-zinc-700">{t('auth.password')}</label>
                             <input
                                 type="password"
                                 required
@@ -199,7 +201,7 @@ export function AuthModal() {
                             disabled={isLoading || (activeTab === 'LOGIN' && isRecaptchaEnabled && !recaptchaToken)}
                             className="w-full bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                         >
-                            {isLoading ? 'Processing...' : (activeTab === 'LOGIN' ? 'Login' : 'Sign Up')}
+                            {isLoading ? t('common.processing') : (activeTab === 'LOGIN' ? t('auth.login.submit') : t('auth.register.submit'))}
                         </button>
                     </form>
                 </div>

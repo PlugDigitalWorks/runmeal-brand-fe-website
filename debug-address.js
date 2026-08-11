@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { Country, State, City } = require('country-state-city');
 
 console.log('--- TURKEY ---');

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface GoogleAuthButtonProps {
     label?: string;
@@ -17,7 +18,8 @@ const getErrorMessage = (error: unknown) => {
     return undefined;
 };
 
-export function GoogleAuthButton({ label = 'Continue with Google' }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ label }: GoogleAuthButtonProps) {
+    const { t } = useTranslation();
     const { loginWithGoogle } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -27,7 +29,7 @@ export function GoogleAuthButton({ label = 'Continue with Google' }: GoogleAuthB
             await loginWithGoogle();
         } catch (error) {
             console.error(error);
-            toast.error(getErrorMessage(error) || 'Google login could not be started.');
+            toast.error(getErrorMessage(error) || t('auth.googleStartFailed'));
             setIsLoading(false);
         }
     };
@@ -46,7 +48,7 @@ export function GoogleAuthButton({ label = 'Continue with Google' }: GoogleAuthB
                     G
                 </span>
             )}
-            {isLoading ? 'Redirecting...' : label}
+            {isLoading ? t('auth.redirecting') : label || t('auth.continueWithGoogle')}
         </button>
     );
 }

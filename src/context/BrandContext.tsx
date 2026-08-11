@@ -7,6 +7,7 @@ import {
   getFallbackBrandId,
   type ResolvedBrand,
 } from '@/lib/brand-store';
+import { useTranslation } from 'react-i18next';
 
 type BrandStatus = 'loading' | 'ready' | 'error';
 
@@ -80,12 +81,13 @@ function BrandBootScreen() {
 }
 
 function BrandUnavailableScreen() {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-bold text-zinc-800">Brand bulunamadı</h1>
+        <h1 className="text-xl font-bold text-zinc-800">{t('common.brandNotFound')}</h1>
         <p className="mt-2 text-sm text-zinc-500">
-          Bu domain aktif değil. Lütfen adresi kontrol edin veya daha sonra tekrar deneyin.
+          {t('common.brandUnavailable')}
         </p>
       </div>
     </div>

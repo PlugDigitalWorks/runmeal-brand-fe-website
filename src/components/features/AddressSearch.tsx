@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
 import { Search, MapPin } from 'lucide-react';
 import type { AddressComponentLike, DeliveryAddressSelection } from '@/lib/address-parsing';
+import { useTranslation } from 'react-i18next';
 
 interface AddressSearchProps {
     className?: string;
@@ -12,6 +13,7 @@ interface AddressSearchProps {
 }
 
 export function AddressSearch({ className, onAddressSelect, initialValue }: AddressSearchProps) {
+    const { t } = useTranslation();
     const [inputValue, setInputValue] = useState(initialValue || '');
     const placesLib = useMapsLibrary('places');
     const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
@@ -130,7 +132,7 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                 <input
-                    placeholder="Search for a delivery address..."
+                    placeholder={t('address.searchPlaceholder')}
                     className="w-full h-11 pl-10 pr-4 bg-white border border-zinc-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all rounded-lg text-sm text-zinc-900 placeholder:text-zinc-400 shadow-sm"
                     value={inputValue}
                     onChange={handleInputChange}
@@ -160,7 +162,7 @@ export function AddressSearch({ className, onAddressSelect, initialValue }: Addr
 
                     <div className="px-4 py-2 border-t border-zinc-100 mt-1 bg-zinc-50">
                         <div className="flex items-center justify-end gap-1">
-                            <span className="text-[10px] text-zinc-400">Powered by</span>
+                            <span className="text-[10px] text-zinc-400">{t('address.poweredBy')}</span>
                             <span className="text-[10px] font-bold text-zinc-500">Google</span>
                         </div>
                     </div>

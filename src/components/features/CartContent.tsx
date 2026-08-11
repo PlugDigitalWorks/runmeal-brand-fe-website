@@ -75,14 +75,14 @@ export function CartContent() {
             {/* Carts */}
             <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">
                 <div className="bg-primary p-3 flex justify-between items-center text-white">
-                    <h3 className="font-bold text-lg">My Cart</h3>
+                    <h3 className="font-bold text-lg">{t('cart.myCart')}</h3>
                     <ShoppingCart size={20} />
                 </div>
 
                 <div className="p-4">
                     {items.length === 0 ? (
                         <div className="text-center py-8 text-zinc-400 text-sm">
-                            Your cart is empty.
+                            {t('cart.empty')}
                         </div>
                     ) : (
                         <div className="space-y-4 mb-4">
@@ -94,7 +94,7 @@ export function CartContent() {
                                 return (
                                     <div key={itemId} className="pb-4 border-b border-zinc-100 last:border-0">
                                         <div>
-                                            <h4 className="font-bold text-sm text-zinc-800">{item.productName || item.name || 'Product'}</h4>
+                                            <h4 className="font-bold text-sm text-zinc-800">{item.productName || item.name || t('product.product')}</h4>
                                             {/* Options */}
                                             {item.options && item.options.length > 0 && (
                                                 <div className="text-xs text-zinc-500 mt-1 space-y-0.5">
@@ -119,7 +119,7 @@ export function CartContent() {
                                             )}
                                             {itemNote && (
                                                 <p className="mt-1 text-xs text-zinc-500 break-words">
-                                                    <span className="font-medium">Note:</span> {itemNote}
+                                                    <span className="font-medium">{t('cart.note')}:</span> {itemNote}
                                                 </p>
                                             )}
                                         </div>
@@ -168,17 +168,17 @@ export function CartContent() {
                     {hasItems && (
                         <div className="space-y-2 text-sm text-zinc-600 pt-2 border-t border-zinc-100">
                             <div className="flex justify-between">
-                                <span>Subtotal</span>
+                                <span>{t('cart.subtotal')}</span>
                                 <span>{formatCurrency(cartTotal)}</span>
                             </div>
                             {discount > 0 && (
                                 <div className="flex justify-between text-green-600">
-                                    <span>Total Discounts</span>
+                                    <span>{t('cart.totalDiscounts')}</span>
                                     <span>{formatCurrency(-discount)}</span>
                                 </div>
                             )}
                             <div className="flex justify-between text-lg font-bold text-zinc-800 pt-2 border-t border-zinc-100 mt-2">
-                                <span>Cart Total</span>
+                                <span>{t('cart.total')}</span>
                                 <span>{formatCurrency(finalTotal)}</span>
                             </div>
 

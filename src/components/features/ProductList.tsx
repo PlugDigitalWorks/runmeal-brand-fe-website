@@ -137,7 +137,7 @@ export function ProductList() {
         );
     };
 
-    if (loading) return <div className="text-center py-10">Loading...</div>;
+    if (loading) return <div className="text-center py-10">{t('common.loading')}</div>;
 
     const canOrder = Boolean(activeBranchId && availability?.canAcceptOrders);
 
@@ -175,7 +175,7 @@ export function ProductList() {
                         onClick={() => setSelectedCategory(null)}
                         className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${!selectedCategory ? 'bg-primary text-white' : 'bg-white border border-zinc-200 text-zinc-600 hover:border-primary hover:text-primary'}`}
                     >
-                        All
+                        {t('product.all')}
                     </button>
                     {categories.map(cat => (
                         <button
@@ -193,7 +193,7 @@ export function ProductList() {
             <div className="p-6 space-y-8">
                 {selectedCategory ? (
                     <ProductSection
-                        title={categories.find(c => c.id === selectedCategory)?.name || 'Products'}
+                        title={categories.find(c => c.id === selectedCategory)?.name || t('product.products')}
                         products={categories.find(c => c.id === selectedCategory)?.products || []}
                         onProductClick={handleProductClick}
                         isBranchSelected={canOrder}
@@ -213,7 +213,7 @@ export function ProductList() {
                         );
                     })
                 ) : (
-                    <div className="text-center py-10 text-zinc-400">No products found.</div>
+                    <div className="text-center py-10 text-zinc-400">{t('product.noProducts')}</div>
                 )}
             </div>
 

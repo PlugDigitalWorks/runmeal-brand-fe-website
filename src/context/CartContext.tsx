@@ -5,12 +5,14 @@ import { cartService } from '@/services/cart.service';
 import { userService } from '@/services/user.service';
 import {
   ApplyPromotionInput,
+  AddItemDto,
   Cart,
   CartItemOptionGroup,
   CartPromotion,
   promotionKey,
   RemovePromotionInput,
 } from '@/types/cart';
+import type { Product } from '@/types/product';
 import { resolveLoyaltyError } from '@/lib/loyalty-errors';
 import i18n from '@/i18n/config';
 import { useAuth } from './AuthContext';
@@ -18,7 +20,7 @@ import { useBranch } from './BranchContext';
 import { useTable } from './TableContext';
 import { useUser } from './UserContext';
 import { toast } from 'sonner';
-import { getApiErrorDetails } from '@/lib/api-errors';
+import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 
 // Simplified Cart Item for Guest (Local Storage)
 interface GuestCartItem {
@@ -62,7 +64,7 @@ interface CartContextType {
     options?: { optionId: string; valueId: string; name?: string; valueName?: string; price?: number }[],
     addons?: { id: string; name?: string; price?: number }[],
     notes?: string,
-    productDetails?: any
+    productDetails?: Product
   ) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>; // ItemId for user, ProductId for guest
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
@@ -88,7 +90,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, ensureSession } = useAuth();
+  const { isAuthenticated, ensureSession } = useAuth();
   const { selectedBranch, activeBranchId, invalidateMenu, refreshAvailability } = useBranch();
   const { isTableMode } = useTable();
   const { refreshAddresses } = useUser();
@@ -114,8 +116,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     pendingPromotionKeysRef.current.delete(key);
     setPendingPromotionKeys(new Set(pendingPromotionKeysRef.current));
   };
-  const hasSyncedRef = useRef(false); // Track if cart has been synced to prevent duplicate syncs
-
   const getPreferredCartId = useCallback(
     (carts: Cart[], branchId?: string | null) => {
       const preferredCart = branchId
@@ -327,7 +327,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
 
     syncCart();
-  }, [isAuthenticated, guestCartItems, selectedBranch, isTableMode]);
+  }, [isAuthenticated, guestCartItems, selectedBranch, isTableMode, refreshAddresses, refreshUserCart]);
 
 
   const addToCart = async (
@@ -336,7 +336,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     options?: { groupId?: string; optionId?: string; optionIds?: string[]; valueId?: string; name?: string; valueName?: string; price?: number }[],
     addons?: { id: string; name?: string; price?: number }[],
     notes?: string,
-    productDetails?: any
+    productDetails?: Product
   ) => {
     // Guests also keep a local cart, so this public check belongs before the
     // authenticated/local split rather than relying only on the cart API.
@@ -352,18 +352,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const activeCartId = cart?.id || cart?.cartId;
       setIsLoading(true);
       try {
-        let optionsDto: any[] | undefined;
+        let optionsDto: AddItemDto['options'];
 
         if (options && options.length > 0 && 'groupId' in options[0]) {
           // New format: { groupId, optionId, optionIds }
-          // Pass strict passthrough for backend
-          optionsDto = options;
+          optionsDto = options.flatMap(({ groupId, optionId, optionIds }) =>
+            groupId ? [{ groupId, optionId, optionIds }] : [],
+          );
         } else {
           // Legacy mapping
-          optionsDto = options?.map(o => ({
-            groupId: o.optionId,
-            optionId: o.valueId
-          }));
+          optionsDto = options?.flatMap(o =>
+            o.optionId ? [{ groupId: o.optionId, optionId: o.valueId }] : [],
+          );
         }
 
         const payload = {
@@ -383,8 +383,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             { ...payload, ...(activeCartId ? { cartId: activeCartId } : {}) },
             branchId,
           );
-        } catch (error: any) {
-          if (!activeCartId || error?.response?.status !== 404) throw error;
+        } catch (error: unknown) {
+          if (!activeCartId || getApiErrorDetails(error).statusCode !== 404) throw error;
           updatedCart = await cartService.addItem(payload, branchId);
         }
 
@@ -393,9 +393,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (!applyCartResponse(updatedCart)) {
           await refreshUserCart(branchId);
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error("Add to cart failed", e);
-        toast.error(e.response?.data?.message || i18n.t('cart.itemAddFailed'));
+        toast.error(resolveApiErrorMessage(e, i18n.t('cart.itemAddFailed')));
         // The rejection means our view of the product or the cart is stale —
         // resync both so the customer is not staring at what caused it.
         invalidateMenu();
@@ -443,8 +443,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
           if ('groupId' in opt) {
             groupId = opt.groupId as string;
-            groupName = opt.name || 'Option Group';
-            optionName = opt.valueName || 'Option Value';
+            groupName = opt.name || i18n.t('product.optionGroup');
+            optionName = opt.valueName || i18n.t('product.optionValue');
             priceDelta = opt.price || 0;
 
             if (!groups[groupId]) {
@@ -478,11 +478,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
           } else {
             // Legacy Format
-            const legacyOpt = opt as any;
+            const legacyOpt = opt;
+            if (!legacyOpt.optionId || !legacyOpt.valueId) return;
             groupId = legacyOpt.optionId;
             const singleOptionId = legacyOpt.valueId;
-            groupName = legacyOpt.name || 'Option';
-            optionName = legacyOpt.valueName || 'Value';
+            groupName = legacyOpt.name || i18n.t('product.option');
+            optionName = legacyOpt.valueName || i18n.t('product.value');
             priceDelta = legacyOpt.price || 0;
 
             if (!groups[groupId]) {

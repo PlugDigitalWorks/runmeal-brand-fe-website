@@ -3,6 +3,7 @@
 import React from 'react';
 import { branchService } from '@/services/branch.service';
 import type { FulfillmentSlotsResponse, ScheduledOrderType } from '@/types/branch';
+import { useTranslation } from 'react-i18next';
 
 interface FulfillmentSlotPickerProps {
     branchId: string;
@@ -21,6 +22,7 @@ export function FulfillmentSlotPicker({
     onStatusChange,
     refreshKey = 0,
 }: FulfillmentSlotPickerProps) {
+    const { t } = useTranslation();
     const [data, setData] = React.useState<FulfillmentSlotsResponse | null>(null);
     const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
@@ -84,29 +86,29 @@ export function FulfillmentSlotPicker({
     }, [branchId, orderType, refreshKey, localRefreshKey]);
 
     if (isLoading) {
-        return <p className="text-sm text-zinc-500">Loading available times…</p>;
+        return <p className="text-sm text-zinc-500">{t('fulfillment.loadingSlots')}</p>;
     }
 
     if (hasError) {
         return (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                <p>Available times could not be loaded.</p>
+                <p>{t('fulfillment.slotsError')}</p>
                 <button type="button" onClick={() => setLocalRefreshKey((key) => key + 1)} className="mt-2 font-semibold underline">
-                    Try again
+                    {t('fulfillment.retry')}
                 </button>
             </div>
         );
     }
 
     if (!data?.available || !data.dates.some((entry) => entry.slots.length > 0)) {
-        return <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">No fulfillment times are currently available.</p>;
+        return <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{t('fulfillment.noSlots')}</p>;
     }
 
     const slots = data.dates.find((entry) => entry.date === selectedDate)?.slots ?? [];
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap gap-2" aria-label="Fulfillment date">
+            <div className="flex flex-wrap gap-2" aria-label={t('fulfillment.dateLabel')}>
                 {data.dates.filter((entry) => entry.slots.length > 0).map((entry) => (
                     <button
                         type="button"
@@ -123,7 +125,7 @@ export function FulfillmentSlotPicker({
                     </button>
                 ))}
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="Fulfillment time">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label={t('fulfillment.timeLabel')}>
                 {slots.map((slot) => (
                     <button
                         type="button"
