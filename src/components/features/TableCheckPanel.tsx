@@ -84,6 +84,14 @@ export function TableCheckPanel({
     const [checkoutForm, setCheckoutForm] = React.useState<string | null>(null);
     const [clock, setClock] = React.useState(() => Date.now());
     const [dismissedPendingPaymentId, setDismissedPendingPaymentId] = React.useState<string | null>(null);
+    const handoffPaymentIdRef = React.useRef<string | null>(null);
+    const [, setHandoffPaymentId] = React.useState<string | null>(null);
+    const updateHandoffPaymentId = React.useCallback((paymentId: string | null) => {
+        // The ref changes synchronously, before sessionStorage notifies its
+        // subscribers; state makes later clears visible without another event.
+        handoffPaymentIdRef.current = paymentId;
+        setHandoffPaymentId(paymentId);
+    }, []);
     const pendingPaymentSnapshot = React.useSyncExternalStore(
         subscribeToTableCheckPayment,
         getTableCheckPaymentSnapshot,
@@ -96,6 +104,7 @@ export function TableCheckPanel({
     const pendingPayment =
         storedPendingPayment?.qrToken === journey.qrToken &&
         isTableCheckPaymentActive(storedPendingPayment) &&
+        storedPendingPayment.paymentId !== handoffPaymentIdRef.current &&
         storedPendingPayment.paymentId !== dismissedPendingPaymentId
             ? storedPendingPayment
             : null;
@@ -128,8 +137,21 @@ export function TableCheckPanel({
         setCheck(null);
         setSelection({});
         setCheckoutForm(null);
+        updateHandoffPaymentId(null);
         if (sessionReady) void loadCheck();
-    }, [journey.qrToken, sessionReady, loadCheck]);
+    }, [journey.qrToken, sessionReady, loadCheck, updateHandoffPaymentId]);
+
+    // A provider redirect can leave this page visible briefly after the payment
+    // is persisted. Do not present that just-created payment as something the
+    // customer needs to resume. If the browser restores this page from BFCache,
+    // the handoff is over and the existing payment should be resumable again.
+    React.useEffect(() => {
+        const handlePageShow = (event: PageTransitionEvent) => {
+            if (event.persisted) updateHandoffPaymentId(null);
+        };
+        window.addEventListener('pageshow', handlePageShow);
+        return () => window.removeEventListener('pageshow', handlePageShow);
+    }, [updateHandoffPaymentId]);
 
     // A refreshed response is authoritative. Keep valid quantities and only
     // trim selections after that response says availability changed.
@@ -177,6 +199,7 @@ export function TableCheckPanel({
         confirmation: PendingTableCheckPayment['confirmation'],
         request: TableCheckPaymentRequest,
     ) => {
+        updateHandoffPaymentId(payment.paymentId);
         rememberTableCheckPayment(
             journey.qrToken,
             payment,
@@ -185,10 +208,16 @@ export function TableCheckPanel({
             request,
         );
         if (payment.paymentUrl) {
-            window.location.assign(payment.paymentUrl);
+            try {
+                window.location.assign(payment.paymentUrl);
+            } catch (error) {
+                updateHandoffPaymentId(null);
+                throw error;
+            }
         } else if (payment.checkoutFormContent) {
             setCheckoutForm(payment.checkoutFormContent);
         } else {
+            updateHandoffPaymentId(null);
             toast.error(t('table.check.errors.paymentMissing'));
         }
     };
@@ -339,7 +368,17 @@ export function TableCheckPanel({
     // A freshly scanned table legitimately has no visit yet. The menu remains
     // the primary UI until its first order opens a check.
     if (!check) return null;
-    if (checkoutForm) return <CheckoutForm html={checkoutForm} onClose={() => setCheckoutForm(null)} />;
+    if (checkoutForm) {
+        return (
+            <CheckoutForm
+                html={checkoutForm}
+                onClose={() => {
+                    setCheckoutForm(null);
+                    updateHandoffPaymentId(null);
+                }}
+            />
+        );
+    }
 
     const splitStarted = !!check.splitPlan?.parts.some((part) => part.status !== 'AVAILABLE');
 
