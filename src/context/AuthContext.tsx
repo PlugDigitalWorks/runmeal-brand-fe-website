@@ -17,6 +17,9 @@ interface AuthContextType {
      */
     ensureSession: () => Promise<User | null>;
     login: (data: LoginDto) => Promise<void>;
+    requestOtpLogin: (email: string, recaptchaToken?: string) => Promise<void>;
+    registerWithOtp: (data: Omit<RegisterDto, 'password'>) => Promise<void>;
+    verifyOtp: (email: string, code: string) => Promise<void>;
     loginWithGoogle: () => Promise<void>;
     completeGoogleLogin: () => Promise<User>;
     register: (data: RegisterDto) => Promise<void>;
@@ -110,6 +113,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const requestOtpLogin = async (email: string, recaptchaToken?: string) => {
+        await authService.requestOtpLogin(email, recaptchaToken);
+    };
+
+    const registerWithOtp = async (data: Omit<RegisterDto, 'password'>) => {
+        await authService.registerWithOtp(data);
+    };
+
+    const verifyOtp = async (email: string, code: string) => {
+        setIsLoading(true);
+        try {
+            const response = await authService.verifyOtp({ email, code });
+            setUser(response.user);
+            setIsAuthenticated(true);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const loginWithGoogle = async () => {
         setIsLoading(true);
         try {
@@ -165,6 +187,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading,
             ensureSession,
             login,
+            requestOtpLogin,
+            registerWithOtp,
+            verifyOtp,
             loginWithGoogle,
             completeGoogleLogin,
             register,

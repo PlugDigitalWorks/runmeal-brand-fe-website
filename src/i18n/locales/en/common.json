@@ -69,7 +69,15 @@
     "AUTH_SESSION_INVALID": "Your session has expired. Please sign in again.",
     "AUTH_SESSION_MISSING": "No active session was found. Please sign in again.",
     "AUTH_AUTHENTICATION_REQUIRED": "Sign in to continue.",
-    "AUTH_PERMISSION_DENIED": "You do not have permission to perform this action."
+    "AUTH_PERMISSION_DENIED": "You do not have permission to perform this action.",
+    "AUTH_EMAIL_ALREADY_REGISTERED": "An account already exists with this email address.",
+    "AUTH_OTP_SEND_RATE_LIMITED": "Too many codes were requested. Please try again later.",
+    "AUTH_OTP_DELIVERY_FAILED": "The verification code could not be sent to your email.",
+    "AUTH_IDENTITY_INVALID": "No customer account was found for these details.",
+    "AUTH_LOGIN_RATE_LIMITED": "Too many login attempts were made. Please try again later.",
+    "AUTH_RECAPTCHA_INVALID": "The security check could not be verified. Please try again.",
+    "AUTH_OTP_INVALID": "The verification code is incorrect, used, or expired.",
+    "AUTH_OTP_VERIFY_RATE_LIMITED": "Too many verification attempts were made. Please try again later."
   },
   "auth": {
     "validation": {
@@ -77,7 +85,8 @@
       "passwordMin": "Password must be at least 6 characters",
       "firstNameMin": "First name must be at least 2 characters",
       "lastNameMin": "Last name must be at least 2 characters",
-      "securityCheck": "Please complete the security check."
+      "securityCheck": "Please complete the security check.",
+      "securityCheckLoad": "The security check could not be loaded."
     },
     "email": "Email Address",
     "emailPlaceholder": "example@email.com",
@@ -105,6 +114,24 @@
       "googleRestoreError": "Google login completed, but the session could not be restored.",
       "googleFailed": "Google login failed. Please try again.",
       "error": "An error occurred during login. Please check your credentials."
+    },
+    "otp": {
+      "title": "Verify Your Email",
+      "sentTo": "Enter the 6-digit code sent to {{email}}.",
+      "code": "Verification Code",
+      "placeholder": "6-digit code",
+      "expires": "The code is valid for 5 minutes.",
+      "verify": "Verify Code",
+      "verifying": "Verifying...",
+      "resend": "Resend Code",
+      "changeEmail": "Change Email",
+      "sendCode": "Send Code",
+      "sendingCode": "Sending code...",
+      "usePassword": "Continue with password",
+      "useCode": "Continue with email code",
+      "sent": "A verification code was sent to your email.",
+      "resent": "A new verification code was sent.",
+      "success": "Verification successful!"
     },
     "register": {
       "title": "Create Account",
@@ -156,6 +183,7 @@
     "loyaltyTitle": "Runmeal Points",
     "loyaltySubtitle": "Your wallet balance",
     "loyaltyNote": "This balance belongs to your general Runmeal account. The balance you can actually spend may differ at checkout, depending on the restaurant’s loyalty system.",
+    "loyaltyInfoLabel": "About your Runmeal Points balance",
     "tabs": { "addresses": "Addresses", "orders": "Orders" },
     "orderHistory": "Order History",
     "noOrders": "No orders yet.",

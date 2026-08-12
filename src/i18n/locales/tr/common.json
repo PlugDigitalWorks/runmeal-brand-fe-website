@@ -69,7 +69,15 @@
     "AUTH_SESSION_INVALID": "Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.",
     "AUTH_SESSION_MISSING": "Aktif bir oturum bulunamadı. Lütfen tekrar giriş yapın.",
     "AUTH_AUTHENTICATION_REQUIRED": "Devam etmek için giriş yapın.",
-    "AUTH_PERMISSION_DENIED": "Bu işlemi yapmak için yetkiniz yok."
+    "AUTH_PERMISSION_DENIED": "Bu işlemi yapmak için yetkiniz yok.",
+    "AUTH_EMAIL_ALREADY_REGISTERED": "Bu e-posta adresiyle zaten bir hesap var.",
+    "AUTH_OTP_SEND_RATE_LIMITED": "Çok fazla kod istediniz. Lütfen daha sonra tekrar deneyin.",
+    "AUTH_OTP_DELIVERY_FAILED": "Doğrulama kodu e-posta adresinize gönderilemedi.",
+    "AUTH_IDENTITY_INVALID": "Bu bilgilerle eşleşen bir müşteri hesabı bulunamadı.",
+    "AUTH_LOGIN_RATE_LIMITED": "Çok fazla giriş denemesi yapıldı. Lütfen daha sonra tekrar deneyin.",
+    "AUTH_RECAPTCHA_INVALID": "Güvenlik kontrolü doğrulanamadı. Lütfen tekrar deneyin.",
+    "AUTH_OTP_INVALID": "Doğrulama kodu hatalı, kullanılmış veya süresi dolmuş.",
+    "AUTH_OTP_VERIFY_RATE_LIMITED": "Çok fazla doğrulama denemesi yapıldı. Lütfen daha sonra tekrar deneyin."
   },
   "auth": {
     "validation": {
@@ -77,7 +85,8 @@
       "passwordMin": "Şifre en az 6 karakter olmalıdır",
       "firstNameMin": "Ad en az 2 karakter olmalıdır",
       "lastNameMin": "Soyad en az 2 karakter olmalıdır",
-      "securityCheck": "Lütfen güvenlik kontrolünü tamamlayın."
+      "securityCheck": "Lütfen güvenlik kontrolünü tamamlayın.",
+      "securityCheckLoad": "Güvenlik kontrolü yüklenemedi."
     },
     "email": "E-posta Adresi",
     "emailPlaceholder": "ornek@email.com",
@@ -105,6 +114,24 @@
       "googleRestoreError": "Google girişi tamamlandı, ancak oturum geri yüklenemedi.",
       "googleFailed": "Google girişi başarısız oldu. Lütfen tekrar deneyin.",
       "error": "Giriş sırasında bir hata oluştu. Lütfen bilgilerinizi kontrol edin."
+    },
+    "otp": {
+      "title": "E-postanızı Doğrulayın",
+      "sentTo": "{{email}} adresine gönderilen 6 haneli kodu girin.",
+      "code": "Doğrulama Kodu",
+      "placeholder": "6 haneli kod",
+      "expires": "Kod 5 dakika boyunca geçerlidir.",
+      "verify": "Kodu Doğrula",
+      "verifying": "Doğrulanıyor...",
+      "resend": "Kodu Tekrar Gönder",
+      "changeEmail": "E-postayı Değiştir",
+      "sendCode": "Kod Gönder",
+      "sendingCode": "Kod gönderiliyor...",
+      "usePassword": "Şifre ile devam et",
+      "useCode": "E-posta kodu ile devam et",
+      "sent": "Doğrulama kodu e-posta adresinize gönderildi.",
+      "resent": "Yeni doğrulama kodu gönderildi.",
+      "success": "Doğrulama başarılı!"
     },
     "register": {
       "title": "Hesap Oluştur",
@@ -153,9 +180,10 @@
     "name": "Ad Soyad",
     "email": "E-posta",
     "role": "Rol",
-    "loyaltyTitle": "Runmeal Para Puanı",
+    "loyaltyTitle": "Para Puan",
     "loyaltySubtitle": "Cüzdan bakiyeniz",
     "loyaltyNote": "Bu bakiye Runmeal genel hesabınıza aittir. Kullanılabilir ödeme bakiyesi, restoranın sadakat sistemine göre ödeme ekranında farklılık gösterebilir.",
+    "loyaltyInfoLabel": "Para Puan bakiyesi hakkında bilgi",
     "tabs": { "addresses": "Adresler", "orders": "Siparişler" },
     "orderHistory": "Sipariş Geçmişi",
     "noOrders": "Henüz sipariş yok.",

@@ -5,7 +5,13 @@ import { getBrandId } from './brand-store';
 import { getDeviceId } from './device-id';
 
 /** Auth endpoints that must never be decorated or retried by the interceptors. */
-const AUTH_BYPASS_PATHS = ['/auth/refresh', '/auth/login', '/auth/guest-session'];
+const AUTH_BYPASS_PATHS = [
+  '/auth/refresh',
+  '/auth/login',
+  '/auth/register',
+  '/auth/verify-otp',
+  '/auth/guest-session',
+];
 
 const isAuthBypassUrl = (url?: string) =>
   !!url && AUTH_BYPASS_PATHS.some((path) => url.includes(path));
