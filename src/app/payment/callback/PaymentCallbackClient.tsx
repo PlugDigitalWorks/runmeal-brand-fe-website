@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useTable } from "@/context/TableContext";
 import { orderService } from "@/services/order.service";
+import { ReceiptAccountPanel } from "@/components/features/ReceiptAccountPanel";
 import { paymentService } from "@/services/payment.service";
 import { tableService } from "@/services/table.service";
 import {
@@ -341,6 +342,9 @@ export default function PaymentCallbackClient() {
                   {t("payment.orderId")}: {orderId}
                 </p>
               )
+            )}
+            {journey && order?.orderType === "TABLE_ORDER" && orderId && (
+              <ReceiptAccountPanel orderId={orderId} />
             )}
             <button
               onClick={handleContinue}

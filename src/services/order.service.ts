@@ -58,6 +58,15 @@ export interface OrderDetails extends Order {
     items: OrderItem[];
 }
 
+export type ReceiptDeliveryStatus = 'sent' | 'already_sent' | 'queued';
+export type ReceiptOtpStatus = 'sent' | 'not_required' | 'failed';
+
+export interface ReceiptAccountResponse {
+    receiptStatus: ReceiptDeliveryStatus;
+    otpStatus: ReceiptOtpStatus;
+    otpExpiresInSeconds: number | null;
+}
+
 export const orderService = {
     async getMyOrders(branchId?: string | null) {
         const response = await api.get<ApiResponse<PaginatedResponse<Order>>>('/orders/customer', {
@@ -111,6 +120,14 @@ export const orderService = {
                 'x-brand-id': brandId
             }
         });
+        return response.data.data;
+    },
+
+    async requestReceiptAccount(orderId: string, email: string) {
+        const response = await api.post<ApiResponse<ReceiptAccountResponse>>(
+            `/customer/orders/${orderId}/receipt-account`,
+            { email, acceptReceiptAndAccount: true },
+        );
         return response.data.data;
     }
 };

@@ -77,7 +77,10 @@
     "AUTH_LOGIN_RATE_LIMITED": "Çok fazla giriş denemesi yapıldı. Lütfen daha sonra tekrar deneyin.",
     "AUTH_RECAPTCHA_INVALID": "Güvenlik kontrolü doğrulanamadı. Lütfen tekrar deneyin.",
     "AUTH_OTP_INVALID": "Doğrulama kodu hatalı, kullanılmış veya süresi dolmuş.",
-    "AUTH_OTP_VERIFY_RATE_LIMITED": "Çok fazla doğrulama denemesi yapıldı. Lütfen daha sonra tekrar deneyin."
+    "AUTH_OTP_VERIFY_RATE_LIMITED": "Çok fazla doğrulama denemesi yapıldı. Lütfen daha sonra tekrar deneyin.",
+    "ORDER_NOT_FOUND": "Bu sipariş artık kullanılamıyor veya bağlantının süresi dolmuş.",
+    "ORDER_RECEIPT_UNAVAILABLE": "Bu sipariş için online fiş oluşturulamıyor.",
+    "ORDER_RECEIPT_EMAIL_CHANGE_FORBIDDEN": "Fiş için hesabınızdaki e-posta adresini kullanın."
   },
   "auth": {
     "validation": {
@@ -526,7 +529,30 @@
     "continueShopping": "Alışverişe Devam Et",
     "orderId": "Sipariş No",
     "paymentId": "Ödeme No",
-    "table": "Masa"
+    "table": "Masa",
+    "receipt": {
+      "title": "Fişinizi e-postayla alın",
+      "disclaimer": "E-postayla gönderilen belge sipariş özetidir; resmi e-Fatura veya e-Arşiv Fatura değildir.",
+      "consent": "Fişi e-postama gönder ve hesabımı oluştur",
+      "submit": "Fişi Gönder",
+      "submitting": "Gönderiliyor...",
+      "status": {
+        "sent": "Fişiniz e-posta adresinize gönderildi",
+        "already_sent": "Fişiniz daha önce gönderildi",
+        "queued": "Fiş gönderimi sıraya alındı; tekrar deneyebilirsiniz"
+      },
+      "retryReceipt": "Fiş gönderimini tekrar dene",
+      "accountReady": "Hesabınız hazır; ek doğrulama gerekmiyor.",
+      "otpFailed": "Fiş işlemi tamamlandı ancak doğrulama kodu gönderilemedi. Kodu tekrar isteyebilirsiniz.",
+      "otpOptional": "Hesap doğrulamasını şimdi yapmanız zorunlu değildir; bu adımı kapatabilirsiniz.",
+      "otpExpires": "Kod yaklaşık {{minutes}} dakika geçerlidir.",
+      "dismissOtp": "Doğrulama adımını kapat",
+      "errors": {
+        "generic": "Fiş isteği tamamlanamadı. Lütfen tekrar deneyin.",
+        "otpResend": "Doğrulama kodu yeniden gönderilemedi.",
+        "otpVerify": "Doğrulama kodu onaylanamadı."
+      }
+    }
   },
   "table": {
     "resolving": "Masa bilgileri yükleniyor...",

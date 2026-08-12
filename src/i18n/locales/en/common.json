@@ -77,7 +77,10 @@
     "AUTH_LOGIN_RATE_LIMITED": "Too many login attempts were made. Please try again later.",
     "AUTH_RECAPTCHA_INVALID": "The security check could not be verified. Please try again.",
     "AUTH_OTP_INVALID": "The verification code is incorrect, used, or expired.",
-    "AUTH_OTP_VERIFY_RATE_LIMITED": "Too many verification attempts were made. Please try again later."
+    "AUTH_OTP_VERIFY_RATE_LIMITED": "Too many verification attempts were made. Please try again later.",
+    "ORDER_NOT_FOUND": "This order is unavailable or the link has expired.",
+    "ORDER_RECEIPT_UNAVAILABLE": "An online receipt cannot be created for this order.",
+    "ORDER_RECEIPT_EMAIL_CHANGE_FORBIDDEN": "Use the email address on your account for the receipt."
   },
   "auth": {
     "validation": {
@@ -526,7 +529,30 @@
     "continueShopping": "Continue Shopping",
     "orderId": "Order ID",
     "paymentId": "Payment ID",
-    "table": "Table"
+    "table": "Table",
+    "receipt": {
+      "title": "Receive your receipt by email",
+      "disclaimer": "The emailed document is an order summary, not an official e-Invoice or e-Archive Invoice.",
+      "consent": "Email my receipt and create my account",
+      "submit": "Send Receipt",
+      "submitting": "Sending...",
+      "status": {
+        "sent": "Your receipt was sent to your email address",
+        "already_sent": "Your receipt was already sent",
+        "queued": "Receipt delivery was queued; you can try again"
+      },
+      "retryReceipt": "Retry receipt delivery",
+      "accountReady": "Your account is ready; no additional verification is required.",
+      "otpFailed": "Receipt handling succeeded, but the verification code could not be delivered. You can request another code.",
+      "otpOptional": "Account verification is optional right now; you may dismiss this step.",
+      "otpExpires": "The code is valid for approximately {{minutes}} minutes.",
+      "dismissOtp": "Dismiss verification",
+      "errors": {
+        "generic": "The receipt request could not be completed. Please try again.",
+        "otpResend": "The verification code could not be resent.",
+        "otpVerify": "The verification code could not be confirmed."
+      }
+    }
   },
   "table": {
     "resolving": "Loading table details...",
