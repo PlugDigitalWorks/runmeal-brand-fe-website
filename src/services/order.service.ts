@@ -1,5 +1,6 @@
 import { api } from '@/lib/axios';
 import { ApiResponse } from '@/types/auth';
+import { CartProductReward } from '@/types/cart';
 import { TableOrderView } from '@/types/table';
 
 export interface CreateOrderDto {
@@ -52,11 +53,41 @@ export interface OrderItem {
     unitPrice?: string;
     totalPrice?: string;
     price?: number | string;
+    /**
+     * What a promotion took off this line, and what is left to pay. A product
+     * reward discounts one unit's base price on a single line, so these are
+     * absent on every other item of the order.
+     */
+    discountAmount?: number | string | null;
+    finalLineTotal?: number | string | null;
+}
+
+/**
+ * The internal promotion the order was placed with, frozen at order time. The
+ * campaign it came from may have ended or changed since, which is exactly why
+ * the order carries its own copy.
+ */
+export interface OrderInternalPromotionSnapshot {
+    promotionCode?: string | null;
+    name?: string | null;
+    description?: string | null;
+    discountAmount?: number | string | null;
+    productReward?: CartProductReward | null;
 }
 
 export interface OrderDetails extends Order {
     items: OrderItem[];
+    /** Sent as a single snapshot; tolerated as a list for forward compatibility. */
+    internalPromotionSnapshot?: OrderInternalPromotionSnapshot | OrderInternalPromotionSnapshot[] | null;
 }
+
+/** Normalizes the snapshot field into the list the order detail view renders. */
+export const toPromotionSnapshots = (
+    snapshot: OrderDetails['internalPromotionSnapshot'],
+): OrderInternalPromotionSnapshot[] => {
+    if (!snapshot) return [];
+    return Array.isArray(snapshot) ? snapshot.filter(Boolean) : [snapshot];
+};
 
 export type ReceiptDeliveryStatus = 'sent' | 'already_sent' | 'queued';
 export type ReceiptOtpStatus = 'sent' | 'not_required' | 'failed';

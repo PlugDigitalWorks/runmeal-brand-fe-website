@@ -15,7 +15,10 @@ import { cartService } from '@/services/cart.service';
 import { CartLoyaltyWallet, LoyaltyProviderType, promotionKey } from '@/types/cart';
 import { formatCurrency, resolveCurrencySymbol, sanitizePositiveNumber } from '@/lib/utils';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
-import { resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
+import { isProductRewardCheckoutError, resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
+import { getProductReward } from '@/lib/loyalty-rewards';
+import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
+import { ProductRewardProgress } from './ProductRewardProgress';
 import { useTranslation } from 'react-i18next';
 import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
@@ -36,6 +39,7 @@ export function CheckoutPage() {
         isLoading: isCartLoading,
         applyPromotion,
         refreshCart,
+        refreshAvailablePromotions,
     } = useCart();
     const {
         selectedBranch,
@@ -384,7 +388,15 @@ export function CheckoutPage() {
                 return;
             }
             const loyaltyError = resolveLoyaltyError(error);
-            if (loyaltyError.isLoyaltyError) {
+            if (isProductRewardCheckoutError(loyaltyError.code)) {
+                // The free item was not reserved, or someone else spent it while
+                // this order was being paid for. Payment is never retried on its
+                // own here: the cart and the campaign list are refetched and the
+                // customer applies the reward again if it is still there.
+                await refreshCart();
+                await refreshAvailablePromotions();
+                toast.error(`${loyaltyError.message} ${t('loyalty.productReward.reapplyNeeded')}`);
+            } else if (loyaltyError.isLoyaltyError) {
                 // Checkout revalidation changed the applied campaigns: re-sync
                 // the cart and ask the user to confirm the updated total.
                 await refreshCart();
@@ -846,9 +858,13 @@ export function CheckoutPage() {
                                                 </p>
                                             )}
                                         </div>
-                                        <p className="font-medium text-zinc-800 text-sm">
-                                            {formatCurrency((item.price || 0) * item.qty)}
-                                        </p>
+                                        <DiscountedLinePrice
+                                            lineTotal={item.lineTotal}
+                                            discountAmount={item.discountAmount}
+                                            finalLineTotal={item.finalLineTotal}
+                                            fallbackTotal={(item.price || 0) * item.qty}
+                                            className="font-medium text-zinc-800 text-sm shrink-0 text-right"
+                                        />
                                     </div>
                                 ))}
                             </div>
@@ -961,14 +977,35 @@ function PromotionsList() {
         () => new Set(appliedPromotions.map(promotionKey)),
         [appliedPromotions],
     );
+    const cartItems = React.useMemo(() => cart?.items ?? [], [cart?.items]);
+    const availableByKey = React.useMemo(
+        () => new Map(availablePromotions.map((promotion) => [promotionKey(promotion), promotion])),
+        [availablePromotions],
+    );
     // Applied ones first, then the candidates that are not applied yet. An
     // applied promotion that drops out of the candidate list stays removable.
+    //
+    // The two lists describe a product reward from different sides: the cart
+    // says which line it landed on, the available list says how far the customer
+    // is toward the next one. Merging keeps both halves on the applied row —
+    // the cart's values win wherever they overlap.
     const rows = React.useMemo(
-        () => [
-            ...appliedPromotions,
-            ...availablePromotions.filter((promotion) => !appliedKeys.has(promotionKey(promotion))),
-        ],
-        [appliedPromotions, availablePromotions, appliedKeys],
+        () =>
+            [
+                ...appliedPromotions.map((applied) => {
+                    const candidate = availableByKey.get(promotionKey(applied));
+                    if (!candidate) return applied;
+                    return {
+                        ...candidate,
+                        ...applied,
+                        productReward: (candidate.productReward || applied.productReward)
+                            ? { ...candidate.productReward, ...applied.productReward }
+                            : null,
+                    };
+                }),
+                ...availablePromotions.filter((promotion) => !appliedKeys.has(promotionKey(promotion))),
+            ],
+        [appliedPromotions, availablePromotions, availableByKey, appliedKeys],
     );
 
     if (isPromotionsLoading && rows.length === 0) {
@@ -1002,9 +1039,12 @@ function PromotionsList() {
         <div className="space-y-2">
             {rows.map((promotion) => {
                 const isApplied = appliedKeys.has(promotionKey(promotion));
+                const productReward = getProductReward(promotion);
                 // A Rekonect campaign is removed by its own code — several can be
-                // applied at once. Internal coupons are removed per provider.
-                const removeInput = promotion.type === LoyaltyProviderType.REKONECT
+                // applied at once. So is a product reward, which can sit next to a
+                // regular coupon and must not take it down with it. Plain internal
+                // coupons keep being removed per provider.
+                const removeInput = promotion.type === LoyaltyProviderType.REKONECT || productReward
                     ? { type: promotion.type, promotionCode: promotion.promotionCode }
                     : { type: promotion.type };
                 const isPending = isPromotionPending(isApplied ? removeInput : promotion);
@@ -1048,6 +1088,15 @@ function PromotionsList() {
                                 )}
                                 {!isApplied && !promotion.applicable && reason && (
                                     <p className="text-xs text-amber-600 break-words">{reason}</p>
+                                )}
+                                {productReward && (
+                                    <ProductRewardProgress
+                                        reward={productReward}
+                                        isApplied={isApplied}
+                                        applicable={promotion.applicable}
+                                        unapplicableReason={promotion.unapplicableReason}
+                                        cartItems={cartItems}
+                                    />
                                 )}
                             </div>
                         </div>

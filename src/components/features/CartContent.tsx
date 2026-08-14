@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTable } from '@/context/TableContext';
 import { formatCurrency } from '@/lib/utils';
 import { useBranch } from '@/context/BranchContext';
+import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 
 type CartContentItem = {
     id?: string;
@@ -21,6 +22,10 @@ type CartContentItem = {
     currencySymbol?: string;
     qty?: number;
     quantity?: number;
+    // Backend line pricing; a guest cart never has any, so all three stay optional.
+    lineTotal?: number;
+    discountAmount?: number;
+    finalLineTotal?: number;
     options?: {
         groupName?: string;
         selections?: {
@@ -155,9 +160,14 @@ export function CartContent() {
                                                     <Plus size={14} />
                                                 </button>
                                             </div>
-                                            <div className="font-bold text-zinc-800 text-sm">
-                                                {formatCurrency((item.price || 0) * itemQuantity, item.currencySymbol)}
-                                            </div>
+                                            <DiscountedLinePrice
+                                                lineTotal={item.lineTotal}
+                                                discountAmount={item.discountAmount}
+                                                finalLineTotal={item.finalLineTotal}
+                                                fallbackTotal={(item.price || 0) * itemQuantity}
+                                                currencySymbol={item.currencySymbol}
+                                                className="font-bold text-zinc-800 text-sm shrink-0 text-right"
+                                            />
                                         </div>
                                     </div>
                                 );

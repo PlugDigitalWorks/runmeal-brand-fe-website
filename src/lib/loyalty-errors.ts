@@ -11,7 +11,23 @@ const LOYALTY_ERROR_CODES = new Set([
   'LOYALTY_PROMOTION_NOT_FOUND_ON_CART',
   'LOYALTY_PROMOTION_NO_LONGER_APPLICABLE',
   'LOYALTY_EXTERNAL_PROVIDER_NOT_ACTIVE',
+  'LOYALTY_PRODUCT_REWARD_RESERVATION_MISSING',
+  'LOYALTY_PRODUCT_REWARD_UNAVAILABLE',
 ]);
+
+/**
+ * The product reward the customer checked out with is gone: its reservation
+ * expired, or another order spent it first. Payment must never be retried on
+ * these — the cart and the campaign list have to be refetched and the reward
+ * applied again by hand.
+ */
+const PRODUCT_REWARD_CHECKOUT_CODES = new Set([
+  'LOYALTY_PRODUCT_REWARD_RESERVATION_MISSING',
+  'LOYALTY_PRODUCT_REWARD_UNAVAILABLE',
+]);
+
+export const isProductRewardCheckoutError = (code: string | null | undefined) =>
+  !!code && PRODUCT_REWARD_CHECKOUT_CODES.has(code);
 
 interface LoyaltyApiErrorLike {
   response?: {

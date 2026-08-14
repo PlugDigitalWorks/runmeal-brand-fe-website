@@ -13,7 +13,7 @@ import {
   RemovePromotionInput,
 } from '@/types/cart';
 import type { Product } from '@/types/product';
-import { resolveLoyaltyError } from '@/lib/loyalty-errors';
+import { isProductRewardCheckoutError, resolveLoyaltyError } from '@/lib/loyalty-errors';
 import i18n from '@/i18n/config';
 import { useAuth } from './AuthContext';
 import { useBranch } from './BranchContext';
@@ -159,7 +159,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       ('items' in updated || 'cartId' in updated || 'id' in updated)
     ) {
       const updatedCart = updated as Cart;
-      setCart(prev => (prev ? { ...prev, ...updatedCart } : updatedCart));
+      setCart(prev => {
+        if (!prev) return updatedCart;
+        // A response that carries the item list is a fully re-priced cart, so
+        // the promotion-derived fields replace the previous ones instead of
+        // merging over them. A quantity change that made the backend drop a
+        // product reward answers without it, and a merge would keep painting
+        // the stale discount on a line that is no longer free.
+        if ('items' in updatedCart) {
+          return {
+            ...prev,
+            ...updatedCart,
+            appliedPromotions: updatedCart.appliedPromotions ?? [],
+            discountAmount: updatedCart.discountAmount ?? 0,
+            finalPrice: updatedCart.finalPrice ?? updatedCart.totalCartPrice ?? 0,
+          };
+        }
+        return { ...prev, ...updatedCart };
+      });
       return true;
     }
     return false;
@@ -650,8 +667,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const { code, message } = resolveLoyaltyError(error);
     toast.error(message || i18n.t(fallbackKey));
 
-    if (code === 'LOYALTY_PROMOTION_NO_LONGER_APPLICABLE' || code === 'LOYALTY_PROMOTION_NOT_FOUND_ON_CART') {
+    if (
+      code === 'LOYALTY_PROMOTION_NO_LONGER_APPLICABLE' ||
+      code === 'LOYALTY_PROMOTION_NOT_FOUND_ON_CART' ||
+      // A product reward can be spent by another order between listing it and
+      // applying it, so the progress counters we are showing are stale too.
+      isProductRewardCheckoutError(code)
+    ) {
       await refreshCart();
+      await refreshAvailablePromotions();
     }
   };
 

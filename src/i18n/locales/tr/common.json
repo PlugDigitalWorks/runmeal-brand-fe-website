@@ -187,7 +187,10 @@
     "loyaltySubtitle": "Cüzdan bakiyeniz",
     "loyaltyNote": "Bu bakiye Runmeal genel hesabınıza aittir. Kullanılabilir ödeme bakiyesi, restoranın sadakat sistemine göre ödeme ekranında farklılık gösterebilir.",
     "loyaltyInfoLabel": "Para Puan bakiyesi hakkında bilgi",
-    "tabs": { "addresses": "Adresler", "orders": "Siparişler" },
+    "tabs": {
+      "addresses": "Adresler",
+      "orders": "Siparişler"
+    },
     "orderHistory": "Sipariş Geçmişi",
     "noOrders": "Henüz sipariş yok.",
     "loadingDetails": "Detaylar yükleniyor...",
@@ -230,7 +233,9 @@
     },
     "unapplicableReasons": {
       "ALREADY_USED": "Bu kupon daha önce kullanılmış.",
-      "NOT_APPLICABLE": "Bu kampanyanın sepet koşulları henüz sağlanmıyor."
+      "NOT_APPLICABLE": "Bu kampanyanın sepet koşulları henüz sağlanmıyor.",
+      "PRODUCT_REWARD_NOT_EARNED": "Devam edin — henüz bir ikram hakkı kazanmadınız.",
+      "PRODUCT_REWARD_ITEM_REQUIRED": "Bu ödülü kullanmak için sepetinize uygun bir ürün ekleyin."
     },
     "availableBalance": "Kullanılabilir bakiye",
     "balanceNotUsable": "Bu bakiye bu sipariş için kullanılamıyor.",
@@ -246,7 +251,28 @@
       "LOYALTY_PROMOTIONS_NOT_COMBINABLE": "Seçtiğiniz kampanyalar birlikte kullanılamıyor.",
       "LOYALTY_PROMOTION_NOT_FOUND_ON_CART": "Bu kampanya sepette uygulanmış görünmüyor.",
       "LOYALTY_PROMOTION_NO_LONGER_APPLICABLE": "Sepet değiştiği için bir veya daha fazla kampanya kaldırıldı.",
-      "LOYALTY_EXTERNAL_PROVIDER_NOT_ACTIVE": "Bu restoran için harici kampanyalar kullanılamıyor."
+      "LOYALTY_EXTERNAL_PROVIDER_NOT_ACTIVE": "Bu restoran için harici kampanyalar kullanılamıyor.",
+      "LOYALTY_PRODUCT_REWARD_RESERVATION_MISSING": "İkram ürününüz bu sipariş için artık ayrılmış değil.",
+      "LOYALTY_PRODUCT_REWARD_UNAVAILABLE": "Bu ikram ürün ödülü artık kullanılamıyor."
+    },
+    "productReward": {
+      "label": "Ödül ilerlemesi",
+      "scopeLabel": "{{name}} ödülü",
+      "count": "{{earned}} / {{target}}",
+      "remaining_one": "Sonraki ödülünüze {{count}} ürün kaldı.",
+      "remaining_other": "Sonraki ödülünüze {{count}} ürün kaldı.",
+      "ready": "Sonraki ödülünüz hazır.",
+      "available_one": "{{count}} ikram ürün hakkınız var.",
+      "available_other": "{{count}} ikram ürün hakkınız var.",
+      "applied": "Siparişinize ikram ürün uygulandı.",
+      "appliedTo": "{{name}} ürününe ikram uygulandı.",
+      "basePriceOnly": "Bir ürünün taban fiyatı ikramdır; seçenekler, boy yükseltmeleri ve ekstralar ücretlendirilir.",
+      "addItem": "Uygun bir ürün ekleyin",
+      "addItemNamed": "{{name}} ürünlerinden ekleyin",
+      "lineDiscount": "İkram ürün −{{amount}}",
+      "reapplyNeeded": "Ödemeden önce lütfen ödülü tekrar uygulayın.",
+      "orderSummary": "İkram ürün ödülü kullanıldı.",
+      "orderSummaryNamed": "{{name}} için ikram ürün ödülü kullanıldı."
     }
   },
   "contact": {

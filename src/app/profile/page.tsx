@@ -10,10 +10,12 @@ import { userService } from '@/services/user.service';
 import { walletService } from '@/services/wallet.service';
 import { AddressForm } from '@/components/features/address/AddressForm';
 import { PendingSurveys } from '@/components/features/PendingSurveys';
-import { orderService } from '@/services/order.service';
+import { orderService, toPromotionSnapshots } from '@/services/order.service';
 import { Order, OrderDetails } from '@/services/order.service';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
+import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
+import { resolveRewardTargetName } from '@/lib/loyalty-rewards';
 
 function ProfileContent() {
     const router = useRouter();
@@ -306,11 +308,20 @@ function ProfileContent() {
                                                                                     <span className="font-semibold text-zinc-900 bg-white border border-zinc-200 px-1.5 rounded text-xs min-w-[1.5rem] text-center">{item.quantity || 1}x</span>
                                                                                     <span>{item.productName}</span>
                                                                                 </div>
-                                                                                <div className="text-zinc-900 font-medium whitespace-nowrap">
-                                                                                    {formatCurrency(item.totalPrice || item.price || 0)}
-                                                                                </div>
+                                                                                <DiscountedLinePrice
+                                                                                    lineTotal={item.totalPrice ?? item.price}
+                                                                                    discountAmount={item.discountAmount}
+                                                                                    finalLineTotal={item.finalLineTotal}
+                                                                                    fallbackTotal={Number(item.totalPrice ?? item.price ?? 0)}
+                                                                                    currencySymbol={order.currencySymbol}
+                                                                                    className="text-zinc-900 font-medium whitespace-nowrap text-right"
+                                                                                />
                                                                             </div>
                                                                         ))}
+                                                                        <OrderPromotionSnapshots
+                                                                            snapshot={orderDetails[order.id].internalPromotionSnapshot}
+                                                                            currencySymbol={order.currencySymbol}
+                                                                        />
                                                                         <div className="border-t border-zinc-200 mt-3 pt-3 flex justify-between items-center">
                                                                             <span className="text-sm font-medium text-zinc-900">{t('profile.total')}</span>
                                                                             <span className="text-base font-bold text-primary">{formatCurrency(orderDetails[order.id].totalPrice)}</span>
@@ -413,6 +424,58 @@ function ProfileContent() {
                     )}
                 </div>
             </div>
+        </div>
+    );
+}
+
+/**
+ * The internal promotions the order was placed with, as the order recorded
+ * them. A product reward names the free item it paid for; the campaign itself
+ * may no longer exist, so nothing here is looked up live.
+ */
+function OrderPromotionSnapshots({
+    snapshot,
+    currencySymbol,
+}: {
+    snapshot: OrderDetails['internalPromotionSnapshot'];
+    currencySymbol?: string | null;
+}) {
+    const { t } = useTranslation();
+    const snapshots = toPromotionSnapshots(snapshot);
+    if (snapshots.length === 0) return null;
+
+    return (
+        <div className="space-y-1.5 pt-2">
+            {snapshots.map((entry, index) => {
+                const reward = entry.productReward;
+                const rewardName = resolveRewardTargetName(reward);
+                const amount = Number(reward?.appliedAmount ?? entry.discountAmount ?? 0);
+
+                return (
+                    <div
+                        key={entry.promotionCode || index}
+                        className="flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700"
+                    >
+                        <div className="min-w-0">
+                            <p className="font-semibold break-words">
+                                {entry.name || entry.promotionCode || t('loyalty.campaignsTitle')}
+                            </p>
+                            {reward && (
+                                <p className="break-words">
+                                    {rewardName
+                                        ? t('loyalty.productReward.orderSummaryNamed', { name: rewardName })
+                                        : t('loyalty.productReward.orderSummary')}
+                                </p>
+                            )}
+                        </div>
+                        {amount > 0 && (
+                            <span className="shrink-0 font-semibold whitespace-nowrap">
+                                {formatCurrency(-amount, currencySymbol)}
+                            </span>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }

@@ -20,6 +20,7 @@ import { paymentService } from '@/services/payment.service';
 import { isPickupAvailable } from '@/lib/branch-details';
 import { resolveTableOrderError } from '@/lib/table-order-errors';
 import { formatCurrency } from '@/lib/utils';
+import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 import { TableJourneyError } from '@/components/features/TableJourneyError';
 import { TableOrderSuccess } from '@/components/features/TableOrderSuccess';
 import type { TableFulfillment, TableOrderView, TablePaymentChoice } from '@/types/table';
@@ -358,9 +359,13 @@ export function TableCheckoutPage() {
                                     <p className="text-sm font-medium text-zinc-800">
                                         {item.qty}x {item.productName}
                                     </p>
-                                    <p className="text-sm font-medium text-zinc-800">
-                                        {formatCurrency((item.price || 0) * item.qty)}
-                                    </p>
+                                    <DiscountedLinePrice
+                                        lineTotal={item.lineTotal}
+                                        discountAmount={item.discountAmount}
+                                        finalLineTotal={item.finalLineTotal}
+                                        fallbackTotal={(item.price || 0) * item.qty}
+                                        className="shrink-0 text-right text-sm font-medium text-zinc-800"
+                                    />
                                 </div>
                             ))}
                         </div>

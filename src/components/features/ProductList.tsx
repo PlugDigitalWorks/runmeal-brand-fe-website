@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { useBranch } from '@/context/BranchContext';
 import { catalogService } from '@/services/catalog.service';
 import { Category } from '@/types/category';
@@ -37,6 +38,14 @@ export function ProductList() {
     // Modal State
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // A loyalty reward that needs an eligible item in the cart links here as
+    // `?category=<id>` or `?product=<id>`. Applied once per value so the
+    // customer can still browse away from it without the link snapping back.
+    const searchParams = useSearchParams();
+    const requestedCategoryId = searchParams.get('category');
+    const requestedProductId = searchParams.get('product');
+    const appliedDeepLinkRef = React.useRef<string | null>(null);
 
     // Drag to scroll refs
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -105,6 +114,31 @@ export function ProductList() {
         const walk = (x - startX.current) * 2; // Scroll-fast
         scrollContainerRef.current.scrollLeft = scrollLeft.current - walk;
     };
+
+    // Focus the category the reward can be spent in, and open the fixed reward
+    // product outright — the customer arrived here to add exactly that item.
+    useEffect(() => {
+        if (categories.length === 0) return;
+
+        const deepLinkKey = `${requestedCategoryId ?? ''}:${requestedProductId ?? ''}`;
+        if (deepLinkKey === ':' || appliedDeepLinkRef.current === deepLinkKey) return;
+
+        const targetProduct = requestedProductId
+            ? categories.flatMap(cat => cat.products || []).find(p => p.id === requestedProductId)
+            : undefined;
+        const targetCategoryId = requestedProductId
+            ? categories.find(cat => (cat.products || []).some(p => p.id === requestedProductId))?.id
+            : categories.find(cat => cat.id === requestedCategoryId)?.id;
+
+        if (!targetCategoryId && !targetProduct) return;
+
+        appliedDeepLinkRef.current = deepLinkKey;
+        if (targetCategoryId) setSelectedCategory(targetCategoryId);
+        if (targetProduct) {
+            setSelectedProduct(targetProduct);
+            setIsModalOpen(true);
+        }
+    }, [categories, requestedCategoryId, requestedProductId]);
 
     const handleProductClick = (product: Product) => {
         if (!activeBranchId) {

@@ -187,7 +187,10 @@
     "loyaltySubtitle": "Your wallet balance",
     "loyaltyNote": "This balance belongs to your general Runmeal account. The balance you can actually spend may differ at checkout, depending on the restaurant’s loyalty system.",
     "loyaltyInfoLabel": "About your Runmeal Points balance",
-    "tabs": { "addresses": "Addresses", "orders": "Orders" },
+    "tabs": {
+      "addresses": "Addresses",
+      "orders": "Orders"
+    },
     "orderHistory": "Order History",
     "noOrders": "No orders yet.",
     "loadingDetails": "Loading details...",
@@ -230,7 +233,9 @@
     },
     "unapplicableReasons": {
       "ALREADY_USED": "This coupon has already been used.",
-      "NOT_APPLICABLE": "This campaign does not meet the cart conditions yet."
+      "NOT_APPLICABLE": "This campaign does not meet the cart conditions yet.",
+      "PRODUCT_REWARD_NOT_EARNED": "Keep going — you have not earned a free item yet.",
+      "PRODUCT_REWARD_ITEM_REQUIRED": "Add an eligible item to your cart to use this reward."
     },
     "availableBalance": "Available balance",
     "balanceNotUsable": "This balance cannot be used for this order.",
@@ -246,7 +251,28 @@
       "LOYALTY_PROMOTIONS_NOT_COMBINABLE": "The selected campaigns cannot be used together.",
       "LOYALTY_PROMOTION_NOT_FOUND_ON_CART": "This campaign does not appear to be applied to the cart.",
       "LOYALTY_PROMOTION_NO_LONGER_APPLICABLE": "One or more campaigns were removed because the cart changed.",
-      "LOYALTY_EXTERNAL_PROVIDER_NOT_ACTIVE": "External campaigns are not available for this restaurant."
+      "LOYALTY_EXTERNAL_PROVIDER_NOT_ACTIVE": "External campaigns are not available for this restaurant.",
+      "LOYALTY_PRODUCT_REWARD_RESERVATION_MISSING": "Your free item was no longer reserved for this order.",
+      "LOYALTY_PRODUCT_REWARD_UNAVAILABLE": "This free item reward is no longer available."
+    },
+    "productReward": {
+      "label": "Reward progress",
+      "scopeLabel": "{{name}} reward",
+      "count": "{{earned}} / {{target}}",
+      "remaining_one": "{{count}} more to your next reward.",
+      "remaining_other": "{{count}} more to your next reward.",
+      "ready": "Your next reward is ready.",
+      "available_one": "You have {{count}} free item reward.",
+      "available_other": "You have {{count}} free item rewards.",
+      "applied": "Free item applied to your order.",
+      "appliedTo": "Free item applied to {{name}}.",
+      "basePriceOnly": "The base price of one item is free; options, size upgrades and extras are still charged.",
+      "addItem": "Add an eligible item",
+      "addItemNamed": "Add a {{name}} item",
+      "lineDiscount": "Free item −{{amount}}",
+      "reapplyNeeded": "Please apply the reward again before paying.",
+      "orderSummary": "Free item reward used.",
+      "orderSummaryNamed": "Free item reward used on {{name}}."
     }
   },
   "contact": {
