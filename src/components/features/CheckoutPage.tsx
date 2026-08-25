@@ -12,19 +12,26 @@ import { branchService } from '@/services/branch.service';
 import { userService } from '@/services/user.service';
 import type { Address } from '@/types/address';
 import { cartService } from '@/services/cart.service';
-import { CartLoyaltyWallet, LoyaltyProviderType, promotionKey } from '@/types/cart';
+import { CartItem, CartLoyaltyWallet, CartProductReward, CartPromotion, LoyaltyProviderType, promotionKey } from '@/types/cart';
 import { formatCurrency, resolveCurrencySymbol, sanitizePositiveNumber } from '@/lib/utils';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 import { isProductRewardCheckoutError, resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
-import { getProductReward, resolveProductRewardProgress } from '@/lib/loyalty-rewards';
+import {
+    getProductReward,
+    requiresRewardSelection,
+    resolveEligibleRewardItems,
+    resolveProductRewardProgress,
+    resolveRewardItemPrice,
+    resolveRewardTargetName,
+} from '@/lib/loyalty-rewards';
 import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 import { ProductRewardProgress } from './ProductRewardProgress';
 import { useTranslation } from 'react-i18next';
-import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, Plus, CheckCircle, Banknote } from 'lucide-react';
+import { User, MapPin, ShoppingBag, CreditCard, Edit2, Mail, ChevronLeft, ChevronRight, Plus, CheckCircle, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddressEditModal } from './AddressEditModal';
 import { walletService, WalletBalance } from '@/services/wallet.service';
-import { Wallet, Ticket, X } from 'lucide-react';
+import { Wallet, Ticket, X, Gift } from 'lucide-react';
 import { FulfillmentSlotPicker } from './FulfillmentSlotPicker';
 import type { ScheduledOrderType } from '@/types/branch';
 
@@ -967,17 +974,14 @@ function PromotionsList() {
         isPromotionsLoading,
         hasPromotionsError,
         refreshAvailablePromotions,
-        applyPromotion,
-        removePromotion,
-        isPromotionPending,
     } = useCart();
+    const [isAllOpen, setIsAllOpen] = React.useState(false);
 
     const appliedPromotions = React.useMemo(() => cart?.appliedPromotions ?? [], [cart?.appliedPromotions]);
     const appliedKeys = React.useMemo(
         () => new Set(appliedPromotions.map(promotionKey)),
         [appliedPromotions],
     );
-    const cartItems = React.useMemo(() => cart?.items ?? [], [cart?.items]);
     const availableByKey = React.useMemo(
         () => new Map(availablePromotions.map((promotion) => [promotionKey(promotion), promotion])),
         [availablePromotions],
@@ -1035,96 +1039,396 @@ function PromotionsList() {
         );
     }
 
+    // A brand with a dozen campaigns turned the checkout column into a wall of
+    // rows. Only the first few are inlined — applied promotions sort first, so
+    // whatever is actually on the cart stays visible — and the rest live in a
+    // scrollable modal.
+    const visibleRows = rows.slice(0, INLINE_PROMOTION_COUNT);
+    const hiddenCount = rows.length - visibleRows.length;
+
     return (
         <div className="space-y-2">
-            {rows.map((promotion) => {
-                const isApplied = appliedKeys.has(promotionKey(promotion));
-                const productReward = getProductReward(promotion);
-                // A Rekonect campaign is removed by its own code — several can be
-                // applied at once. So is a product reward, which can sit next to a
-                // regular coupon and must not take it down with it. Plain internal
-                // coupons keep being removed per provider.
-                const removeInput = promotion.type === LoyaltyProviderType.REKONECT || productReward
-                    ? { type: promotion.type, promotionCode: promotion.promotionCode }
-                    : { type: promotion.type };
-                const isPending = isPromotionPending(isApplied ? removeInput : promotion);
-                const reason = resolveUnapplicableReason(promotion.unapplicableReason);
-                const progress = resolveProductRewardProgress(productReward);
+            {visibleRows.map((promotion) => (
+                <PromotionRow
+                    key={promotionKey(promotion)}
+                    promotion={promotion}
+                    isApplied={appliedKeys.has(promotionKey(promotion))}
+                />
+            ))}
 
-                return (
-                    <div
-                        key={promotionKey(promotion)}
-                        className={`flex items-start justify-between gap-3 p-3 rounded-lg border ${isApplied ? 'bg-green-50 border-green-200 text-green-700' : 'bg-zinc-50 border-zinc-200'
-                            }`}
+            {hiddenCount > 0 && (
+                <button
+                    type="button"
+                    onClick={() => setIsAllOpen(true)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-zinc-300 px-3 py-2.5 text-xs font-semibold text-zinc-600 transition-colors hover:border-primary hover:text-primary"
+                >
+                    {t('loyalty.showAll', { hiddenCount, total: rows.length })}
+                    <ChevronRight size={14} className="shrink-0" />
+                </button>
+            )}
+
+            {isAllOpen && (
+                <AllPromotionsModal rows={rows} appliedKeys={appliedKeys} onClose={() => setIsAllOpen(false)} />
+            )}
+        </div>
+    );
+}
+
+/** How many rows stay inline before the rest move into the modal. */
+const INLINE_PROMOTION_COUNT = 3;
+
+/**
+ * The full campaign list. Everything stays interactive here — applying from the
+ * modal re-prices the cart the same way the inline rows do, and the list keeps
+ * itself open so several campaigns can be tried in one go.
+ */
+function AllPromotionsModal({
+    rows,
+    appliedKeys,
+    onClose,
+}: {
+    rows: CartPromotion[];
+    appliedKeys: Set<string>;
+    onClose: () => void;
+}) {
+    const { t } = useTranslation();
+
+    React.useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [onClose]);
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('loyalty.campaignsTitle')}
+        >
+            <div
+                className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-lg"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <div className="flex items-center gap-3 bg-primary p-4 text-white">
+                    <Ticket size={20} />
+                    <h2 className="flex-1 font-bold text-lg">{t('loyalty.campaignsTitle')}</h2>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label={t('common.close')}
+                        className="rounded-full p-1.5 transition-colors hover:bg-white/20"
                     >
-                        <div className="flex items-start gap-2 min-w-0">
-                            {promotion.imageUrl ? (
-                                <Image
-                                    src={promotion.imageUrl}
-                                    alt=""
-                                    width={40}
-                                    height={40}
-                                    unoptimized
-                                    className="h-10 w-10 shrink-0 rounded-lg object-cover"
-                                />
-                            ) : (
-                                <Ticket size={16} className="mt-0.5 shrink-0" />
-                            )}
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <p className={`font-bold text-sm break-words ${isApplied ? '' : 'text-zinc-800'}`}>
-                                        {promotion.name}
-                                    </p>
-                                    <span className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 border ${isApplied
-                                        ? 'border-green-300 bg-green-100 text-green-700'
-                                        : 'border-zinc-300 bg-white text-zinc-500'
-                                        }`}>
-                                        {t(`loyalty.providers.${promotion.type}`)}
-                                    </span>
-                                </div>
-                                {promotion.description && (
-                                    <p className={`text-xs break-words line-clamp-2 ${isApplied ? '' : 'text-zinc-600'}`}>
-                                        {promotion.description}
-                                    </p>
-                                )}
-                                {/* "Not earned yet" is exactly what the progress bar below already
-                                    shows, so the row keeps the bar and drops the sentence. */}
-                                {!isApplied && !promotion.applicable && reason && !(productReward && progress) && (
-                                    <p className="text-xs text-amber-600 break-words">{reason}</p>
-                                )}
-                                {productReward && (
-                                    <ProductRewardProgress
-                                        reward={productReward}
-                                        isApplied={isApplied}
-                                        applicable={promotion.applicable}
-                                        unapplicableReason={promotion.unapplicableReason}
-                                        cartItems={cartItems}
-                                    />
-                                )}
-                            </div>
-                        </div>
+                        <X size={18} />
+                    </button>
+                </div>
 
-                        {isApplied ? (
-                            <button
-                                onClick={() => removePromotion(removeInput)}
-                                disabled={isPending}
-                                aria-label={t('loyalty.remove')}
-                                className="shrink-0 text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <X size={14} />
-                            </button>
-                        ) : (
-                            <button
-                                onClick={() => applyPromotion({ type: promotion.type, promotionCode: promotion.promotionCode })}
-                                disabled={isPending || !promotion.applicable}
-                                className="shrink-0 bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                {isPending ? '...' : t('loyalty.apply')}
-                            </button>
-                        )}
+                {/* The scrollable half: the whole point of moving the list here. */}
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
+                    {rows.map((promotion) => (
+                        <PromotionRow
+                            key={promotionKey(promotion)}
+                            promotion={promotion}
+                            isApplied={appliedKeys.has(promotionKey(promotion))}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/** One campaign row — identical inline and inside the modal. */
+function PromotionRow({ promotion, isApplied }: { promotion: CartPromotion; isApplied: boolean }) {
+    const { t } = useTranslation();
+    const { cart, applyPromotion, removePromotion, isPromotionPending } = useCart();
+
+    const cartItems = React.useMemo(() => cart?.items ?? [], [cart?.items]);
+    const productReward = getProductReward(promotion);
+    const [isPickerOpen, setIsPickerOpen] = React.useState(false);
+    // The customer picks which cart line a product reward is spent on, so the
+    // eligible lines are recomputed from the live cart — a cart change drops the
+    // promotion on the backend and has to drop a stale selection here too.
+    const eligibleItems = React.useMemo(
+        () => resolveEligibleRewardItems(productReward, cartItems),
+        [productReward, cartItems],
+    );
+    const needsSelection = !isApplied && requiresRewardSelection(promotion);
+
+    React.useEffect(() => {
+        if (!needsSelection) setIsPickerOpen(false);
+    }, [needsSelection]);
+
+    const handleApply = async (selectedCartItemId?: string) => {
+        const applied = await applyPromotion({
+            type: promotion.type,
+            promotionCode: promotion.promotionCode,
+            ...(selectedCartItemId ? { selectedCartItemId } : {}),
+        });
+        // A rejected selection leaves the picker open with the refreshed cart,
+        // so the customer can choose again without reopening it.
+        if (applied) setIsPickerOpen(false);
+    };
+
+    const handleApplyClick = () => {
+        if (!needsSelection) {
+            handleApply();
+            return;
+        }
+        // Nothing to choose between: one eligible line is the selection.
+        if (eligibleItems.length === 1) {
+            handleApply(eligibleItems[0].id);
+            return;
+        }
+        setIsPickerOpen(true);
+    };
+    // A Rekonect campaign is removed by its own code — several can be
+    // applied at once. So is a product reward, which can sit next to a
+    // regular coupon and must not take it down with it. Plain internal
+    // coupons keep being removed per provider.
+    const removeInput = promotion.type === LoyaltyProviderType.REKONECT || productReward
+        ? { type: promotion.type, promotionCode: promotion.promotionCode }
+        : { type: promotion.type };
+    const isPending = isPromotionPending(isApplied ? removeInput : promotion);
+    const reason = resolveUnapplicableReason(promotion.unapplicableReason);
+    const progress = resolveProductRewardProgress(productReward);
+
+    return (
+        <div
+            className={`flex items-start justify-between gap-3 p-3 rounded-lg border ${isApplied ? 'bg-green-50 border-green-200 text-green-700' : 'bg-zinc-50 border-zinc-200'
+                }`}
+        >
+            <div className="flex items-start gap-2 min-w-0">
+                {promotion.imageUrl ? (
+                    <Image
+                        src={promotion.imageUrl}
+                        alt=""
+                        width={40}
+                        height={40}
+                        unoptimized
+                        className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                    />
+                ) : (
+                    <Ticket size={16} className="mt-0.5 shrink-0" />
+                )}
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <p className={`font-bold text-sm break-words ${isApplied ? '' : 'text-zinc-800'}`}>
+                            {promotion.name}
+                        </p>
+                        <span className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 border ${isApplied
+                            ? 'border-green-300 bg-green-100 text-green-700'
+                            : 'border-zinc-300 bg-white text-zinc-500'
+                            }`}>
+                            {t(`loyalty.providers.${promotion.type}`)}
+                        </span>
                     </div>
-                );
-            })}
+                    {promotion.description && (
+                        <p className={`text-xs break-words line-clamp-2 ${isApplied ? '' : 'text-zinc-600'}`}>
+                            {promotion.description}
+                        </p>
+                    )}
+                    {/* "Not earned yet" is exactly what the progress bar below already
+                        shows, so the row keeps the bar and drops the sentence. */}
+                    {!isApplied && !promotion.applicable && reason && !(productReward && progress) && (
+                        <p className="text-xs text-amber-600 break-words">{reason}</p>
+                    )}
+                    {productReward && (
+                        <ProductRewardProgress
+                            reward={productReward}
+                            isApplied={isApplied}
+                            applicable={promotion.applicable}
+                            unapplicableReason={promotion.unapplicableReason}
+                            cartItems={cartItems}
+                        />
+                    )}
+                </div>
+            </div>
+
+            {isApplied ? (
+                <button
+                    onClick={() => removePromotion(removeInput)}
+                    disabled={isPending}
+                    aria-label={t('loyalty.remove')}
+                    className="shrink-0 text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <X size={14} />
+                </button>
+            ) : (
+                <button
+                    onClick={handleApplyClick}
+                    disabled={isPending || !promotion.applicable}
+                    className="shrink-0 bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    {isPending ? '...' : needsSelection ? t('loyalty.productReward.choose') : t('loyalty.apply')}
+                </button>
+            )}
+
+            {isPickerOpen && productReward && (
+                <RewardItemPicker
+                    reward={productReward}
+                    items={eligibleItems}
+                    isPending={isPending}
+                    onConfirm={handleApply}
+                    onClose={() => setIsPickerOpen(false)}
+                />
+            )}
+        </div>
+    );
+}
+
+/**
+ * The cart line a product reward is spent on.
+ *
+ * The customer chooses, not the backend: picking the pricier eligible line is
+ * allowed and is what the discount is then worth. The choice is a cart line, not
+ * a product — the same coffee added twice with different options is two lines,
+ * and only the picked one loses its base price.
+ */
+function RewardItemPicker({
+    reward,
+    items,
+    isPending,
+    onConfirm,
+    onClose,
+}: {
+    reward: CartProductReward;
+    items: CartItem[];
+    isPending: boolean;
+    onConfirm: (cartItemId: string) => void;
+    onClose: () => void;
+}) {
+    const { t } = useTranslation();
+    const [selectedId, setSelectedId] = React.useState<string | null>(items[0]?.id ?? null);
+    const targetName = resolveRewardTargetName(reward);
+
+    React.useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [onClose]);
+
+    // The cart can be re-priced under the picker — by another tab, or by the
+    // failed apply that refetched it. A selection that is gone falls back to the
+    // first line that is still eligible.
+    React.useEffect(() => {
+        setSelectedId((current) =>
+            current && items.some((item) => item.id === current) ? current : items[0]?.id ?? null,
+        );
+    }, [items]);
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('loyalty.productReward.selectTitle')}
+        >
+            <div
+                className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-lg"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <div className="flex items-center gap-3 bg-primary p-4 text-white">
+                    <Gift size={20} />
+                    <h2 className="flex-1 font-bold text-lg">
+                        {targetName
+                            ? t('loyalty.productReward.selectTitleNamed', { name: targetName })
+                            : t('loyalty.productReward.selectTitle')}
+                    </h2>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label={t('common.close')}
+                        className="rounded-full p-1.5 transition-colors hover:bg-white/20"
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
+
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
+                    <p className="text-xs text-zinc-500">{t('loyalty.productReward.selectHint')}</p>
+
+                    {items.length === 0 ? (
+                        <p className="rounded-lg border border-dashed border-zinc-200 p-3 text-xs text-zinc-500">
+                            {t('loyalty.productReward.selectEmpty')}
+                        </p>
+                    ) : (
+                        items.map((item) => {
+                            const isSelected = item.id === selectedId;
+
+                            return (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={isSelected}
+                                    onClick={() => setSelectedId(item.id)}
+                                    className={`flex w-full items-start justify-between gap-3 rounded-lg border p-3 text-left transition-colors ${isSelected
+                                        ? 'border-primary bg-orange-50/60'
+                                        : 'border-zinc-200 bg-white hover:border-primary/50 hover:bg-orange-50/30'
+                                        }`}
+                                >
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-zinc-800 break-words">
+                                            {item.qty}x {item.productName}
+                                        </p>
+                                        {(item.options ?? []).length > 0 && (
+                                            <div className="mt-0.5 text-xs text-zinc-500">
+                                                {(item.options ?? []).map((group, idx) => (
+                                                    <span key={idx}>
+                                                        {group.selections?.map((sel) => sel.optionName).join(', ')}
+                                                        {idx < (item.options?.length ?? 0) - 1 && ' • '}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <p className="text-sm font-semibold text-zinc-800">
+                                            {formatCurrency(resolveRewardItemPrice(item))}
+                                        </p>
+                                        {isSelected && (
+                                            <p className="text-[11px] font-medium text-green-600">
+                                                {t('loyalty.productReward.selectDiscount', {
+                                                    amount: formatCurrency(resolveRewardItemPrice(item)),
+                                                })}
+                                            </p>
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })
+                    )}
+
+                    {reward.basePriceOnly && (
+                        <p className="text-[11px] text-zinc-400">{t('loyalty.productReward.basePriceOnly')}</p>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-zinc-100 p-4">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100"
+                    >
+                        {t('common.cancel')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => selectedId && onConfirm(selectedId)}
+                        disabled={!selectedId || isPending}
+                        className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {isPending ? '...' : t('loyalty.productReward.selectConfirm')}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

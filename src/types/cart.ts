@@ -2,7 +2,16 @@ export interface CartItem {
   id: string;
   productId: string;
   productName: string | null;
+  /** Category the product belongs to — how a `CATEGORY` scoped reward matches a line. */
+  categoryId?: string | null;
+  categoryName?: string | null;
   price: number;
+  /**
+   * Unit price without options. A product reward pays exactly this much for one
+   * unit, which is why the picker prices the lines with it. Older responses omit
+   * it and fall back to `price`.
+   */
+  basePrice?: number;
   note?: string | null;
   imgUrl: string | null;
   qty: number;
@@ -115,8 +124,8 @@ export interface CartProductReward {
    */
   basePriceOnly?: boolean;
 
-  // Applied — cart `appliedPromotions`. The backend picks the eligible line
-  // with the cheapest base price; the client never chooses it.
+  // Applied — cart `appliedPromotions`. The line is the one the customer picked
+  // and the client sent as `selectedCartItemId`; the backend echoes it back.
   appliedCartItemId?: string | null;
   appliedProductId?: string | null;
   appliedAmount?: number | null;
@@ -129,6 +138,13 @@ export const PRODUCT_REWARD_ITEM_REQUIRED = 'PRODUCT_REWARD_ITEM_REQUIRED';
 export interface ApplyPromotionInput {
   type: LoyaltyProviderType;
   promotionCode: string;
+  /**
+   * The cart line the customer spends a product reward on. Mandatory for an
+   * internal `PRODUCT_COUNT_BASED` campaign, ignored by every other promotion.
+   * It is a cart item id, not a product id: the same product can sit on several
+   * lines with different options and only one of them gets the discount.
+   */
+  selectedCartItemId?: string | null;
 }
 
 /** Omitting `promotionCode` removes every promotion belonging to that provider. */

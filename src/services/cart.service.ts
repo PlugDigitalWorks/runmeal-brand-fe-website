@@ -83,7 +83,10 @@ export const cartService = {
     const response = await api.post<ApiResponse<Cart>>(`/carts/${cartId}/promotions/apply`, {
       type: input.type,
       promotionCode: input.promotionCode,
-      orderType
+      orderType,
+      // Only product reward campaigns carry a line selection; sending an empty
+      // one elsewhere would fail DTO validation.
+      ...(input.selectedCartItemId ? { selectedCartItemId: input.selectedCartItemId } : {})
     }, branchHeaders(branchId));
     return response.data.data;
   },

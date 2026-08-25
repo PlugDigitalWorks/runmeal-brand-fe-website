@@ -346,6 +346,7 @@
   },
   "loyalty": {
     "campaignsTitle": "Kampanyalar",
+    "showAll": "Tüm kampanyaları gör ({{total}})",
     "apply": "Uygula",
     "remove": "Kaldır",
     "loading": "Kampanyalar yükleniyor...",
@@ -384,7 +385,8 @@
       "LOYALTY_PROMOTION_NO_LONGER_APPLICABLE": "Sepet değiştiği için bir veya daha fazla kampanya kaldırıldı.",
       "LOYALTY_EXTERNAL_PROVIDER_NOT_ACTIVE": "Bu restoran için harici kampanyalar kullanılamıyor.",
       "LOYALTY_PRODUCT_REWARD_RESERVATION_MISSING": "İkram ürününüz bu sipariş için artık ayrılmış değil.",
-      "LOYALTY_PRODUCT_REWARD_UNAVAILABLE": "Bu ikram ürün ödülü artık kullanılamıyor."
+      "LOYALTY_PRODUCT_REWARD_UNAVAILABLE": "Bu ikram ürün ödülü artık kullanılamıyor.",
+      "LOYALTY_PRODUCT_REWARD_ITEM_REQUIRED": "Bu ödül için sepetinizden uygun bir ürün seçin."
     },
     "productReward": {
       "label": "Ödül ilerlemesi",
@@ -403,7 +405,14 @@
       "lineDiscount": "İkram ürün −{{amount}}",
       "reapplyNeeded": "Ödemeden önce lütfen ödülü tekrar uygulayın.",
       "orderSummary": "İkram ürün ödülü kullanıldı.",
-      "orderSummaryNamed": "{{name}} için ikram ürün ödülü kullanıldı."
+      "orderSummaryNamed": "{{name}} için ikram ürün ödülü kullanıldı.",
+      "choose": "Ürün seç",
+      "selectTitle": "Ödül ürününüzü seçin",
+      "selectTitleNamed": "{{name}} ödülünüzü seçin",
+      "selectHint": "Ödülün karşılayacağı sepet satırını seçin.",
+      "selectEmpty": "Sepetinizde uygun bir ürün yok.",
+      "selectConfirm": "Ödülü kullan",
+      "selectDiscount": "−{{amount}} indirim"
     }
   },
   "contact": {

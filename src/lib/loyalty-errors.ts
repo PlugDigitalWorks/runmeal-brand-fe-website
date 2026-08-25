@@ -13,6 +13,7 @@ const LOYALTY_ERROR_CODES = new Set([
   'LOYALTY_EXTERNAL_PROVIDER_NOT_ACTIVE',
   'LOYALTY_PRODUCT_REWARD_RESERVATION_MISSING',
   'LOYALTY_PRODUCT_REWARD_UNAVAILABLE',
+  'LOYALTY_PRODUCT_REWARD_ITEM_REQUIRED',
 ]);
 
 /**
@@ -24,7 +25,20 @@ const LOYALTY_ERROR_CODES = new Set([
 const PRODUCT_REWARD_CHECKOUT_CODES = new Set([
   'LOYALTY_PRODUCT_REWARD_RESERVATION_MISSING',
   'LOYALTY_PRODUCT_REWARD_UNAVAILABLE',
+  // Checkout revalidates the stored selection: the line can be gone or out of
+  // the campaign's scope by then, and the reward has to be picked again.
+  'LOYALTY_PRODUCT_REWARD_ITEM_REQUIRED',
 ]);
+
+/**
+ * The line the customer picked for a product reward is missing, belongs to
+ * another cart, or fell out of the campaign's scope. The eligible lines have to
+ * be rebuilt from a fresh cart and the customer asked to choose again.
+ */
+export const PRODUCT_REWARD_ITEM_REQUIRED_ERROR = 'LOYALTY_PRODUCT_REWARD_ITEM_REQUIRED';
+
+export const isRewardItemSelectionError = (code: string | null | undefined) =>
+  code === PRODUCT_REWARD_ITEM_REQUIRED_ERROR;
 
 export const isProductRewardCheckoutError = (code: string | null | undefined) =>
   !!code && PRODUCT_REWARD_CHECKOUT_CODES.has(code);

@@ -1,6 +1,8 @@
 import {
+  CartItem,
   CartProductReward,
   CartPromotion,
+  LoyaltyProviderType,
   ProductRewardScope,
   PRODUCT_REWARD_ITEM_REQUIRED,
 } from '@/types/cart';
@@ -86,3 +88,44 @@ export function buildRewardMenuHref(
 /** The campaign is blocked purely because no eligible item is in the cart. */
 export const needsRewardItem = (promotion: Pick<CartPromotion, 'applicable' | 'unapplicableReason'>) =>
   !promotion.applicable && promotion.unapplicableReason === PRODUCT_REWARD_ITEM_REQUIRED;
+
+/**
+ * The cart lines a product reward may be spent on.
+ *
+ * The unit of choice is the cart line, not the product: the same coffee added
+ * twice with different options is two lines, and the reward lands on exactly
+ * one of them.
+ *
+ * A `CATEGORY` scoped reward matches on `item.categoryId`. Responses that
+ * predate that field carry no category on any line, and filtering would then
+ * hide every candidate — in that case the whole cart is offered and the backend
+ * rejects an out-of-scope pick with `LOYALTY_PRODUCT_REWARD_ITEM_REQUIRED`.
+ */
+export function resolveEligibleRewardItems(
+  reward: CartProductReward | null | undefined,
+  items: CartItem[] | null | undefined,
+): CartItem[] {
+  if (!reward) return [];
+
+  const active = (items ?? []).filter((item) => !!item.id && Number(item.qty ?? 0) >= 1);
+  if (reward.rewardScope === ProductRewardScope.PRODUCT) {
+    if (!reward.rewardProductId) return [];
+    return active.filter((item) => item.productId === reward.rewardProductId);
+  }
+
+  if (!reward.rewardCategoryId) return [];
+  const hasCategories = active.some((item) => !!item.categoryId);
+  if (!hasCategories) return active;
+  return active.filter((item) => item.categoryId === reward.rewardCategoryId);
+}
+
+/** What one unit of this line costs before options — the reward's exact value. */
+export const resolveRewardItemPrice = (item: CartItem) => Number(item.basePrice ?? item.price ?? 0);
+
+/**
+ * Applying this campaign needs a cart line from the customer first. Only
+ * internal product reward campaigns do; coupons and external providers apply
+ * straight away.
+ */
+export const requiresRewardSelection = (promotion: Pick<CartPromotion, 'type' | 'productReward'>) =>
+  promotion.type === LoyaltyProviderType.INTERNAL && !!getProductReward(promotion);

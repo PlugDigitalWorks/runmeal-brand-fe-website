@@ -346,6 +346,7 @@
   },
   "loyalty": {
     "campaignsTitle": "Campaigns",
+    "showAll": "Show all campaigns ({{total}})",
     "apply": "Apply",
     "remove": "Remove",
     "loading": "Loading campaigns...",
@@ -384,7 +385,8 @@
       "LOYALTY_PROMOTION_NO_LONGER_APPLICABLE": "One or more campaigns were removed because the cart changed.",
       "LOYALTY_EXTERNAL_PROVIDER_NOT_ACTIVE": "External campaigns are not available for this restaurant.",
       "LOYALTY_PRODUCT_REWARD_RESERVATION_MISSING": "Your free item was no longer reserved for this order.",
-      "LOYALTY_PRODUCT_REWARD_UNAVAILABLE": "This free item reward is no longer available."
+      "LOYALTY_PRODUCT_REWARD_UNAVAILABLE": "This free item reward is no longer available.",
+      "LOYALTY_PRODUCT_REWARD_ITEM_REQUIRED": "Choose an eligible item from your cart for this reward."
     },
     "productReward": {
       "label": "Reward progress",
@@ -403,7 +405,14 @@
       "lineDiscount": "Free item −{{amount}}",
       "reapplyNeeded": "Please apply the reward again before paying.",
       "orderSummary": "Free item reward used.",
-      "orderSummaryNamed": "Free item reward used on {{name}}."
+      "orderSummaryNamed": "Free item reward used on {{name}}.",
+      "choose": "Choose item",
+      "selectTitle": "Choose your free item",
+      "selectTitleNamed": "Choose your free {{name}}",
+      "selectHint": "Pick the item in your cart the reward should pay for.",
+      "selectEmpty": "No eligible item is in your cart yet.",
+      "selectConfirm": "Use reward",
+      "selectDiscount": "−{{amount}} off"
     }
   },
   "contact": {
