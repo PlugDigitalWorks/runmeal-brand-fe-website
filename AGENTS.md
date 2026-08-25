@@ -1,4 +1,4 @@
-# AGENTS - food-delivery-user-fe
+# AGENTS - runmeal-brand-fe-website
 
 Next.js customer-facing frontend for browsing menus and placing orders.
 

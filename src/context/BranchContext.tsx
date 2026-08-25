@@ -44,6 +44,25 @@ interface BranchContextType {
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
 
+const SELECTED_BRANCH_KEY = 'selected_branch_id';
+
+const readStoredBranchId = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+        return localStorage.getItem(SELECTED_BRANCH_KEY);
+    } catch {
+        return null;
+    }
+};
+
+const writeStoredBranchId = (branchId: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+        localStorage.setItem(SELECTED_BRANCH_KEY, branchId);
+    } catch {
+    }
+};
+
 export function BranchProvider({ children }: { children: React.ReactNode }) {
     const { isAuthenticated } = useAuth();
     const { addresses, isLoading: isUserLoading, refreshAddresses } = useUser();
@@ -184,9 +203,14 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
                         const data = await branchService.getNearbyBranches(activeAddress.latitude, activeAddress.longitude);
                         const nextBranches = data || [];
                         setBranches(nextBranches);
+                        const storedBranchId = readStoredBranchId();
                         setSelectedBranch((currentBranch) => {
                             if (nextBranches.length === 0) return null;
-                            return nextBranches.find((branch) => branch.id === currentBranch?.id) || nextBranches[0];
+                            return (
+                                nextBranches.find((branch) => branch.id === currentBranch?.id) ||
+                                nextBranches.find((branch) => branch.id === storedBranchId) ||
+                                nextBranches[0]
+                            );
                         });
                         setSearchedAddress((currentAddress) =>
                             currentAddress || {
@@ -212,6 +236,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     const selectBranch = (branch: Branch) => {
         if (isTableMode) return;
         setSelectedBranch(branch);
+        writeStoredBranchId(branch.id);
         if (!isAuthenticated) {
             localStorage.setItem('guest_branch', JSON.stringify(branch));
         }
@@ -248,6 +273,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
             // Usually search implies we want to see options, but auto-selecting the nearest is often good UX.
             if (data && data.length > 0) {
                 setSelectedBranch(data[0]);
+                writeStoredBranchId(data[0].id);
             } else {
                 setSelectedBranch(null);
             }

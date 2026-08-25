@@ -58,7 +58,7 @@ export function CartContent() {
             return;
         }
 
-        window.location.href = '/checkout';
+        router.push('/checkout');
     };
 
     // Unified items view
