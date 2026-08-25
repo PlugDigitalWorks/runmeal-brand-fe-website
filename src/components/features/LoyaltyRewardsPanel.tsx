@@ -2,15 +2,12 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Gift, PartyPopper, Sparkles } from 'lucide-react';
+import { Gift, History, PartyPopper, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@/context/UserContext';
-import {
-    LoyaltyStampCard as StampCard,
-    buildMemberQrPayload,
-    fetchLoyaltyStampCards,
-    resolveStampProgress,
-} from '@/lib/mock-loyalty';
+import { useStampCards, useStampQr } from '@/hooks/useLoyaltyStamps';
+import { countAvailableRewards, resolveCardTitle } from '@/lib/loyalty-stamps';
+import { StampCard } from '@/types/loyalty-stamp';
 import { LoyaltyStampCardView } from '@/components/features/LoyaltyStampCard';
 import { MemberQrCard } from '@/components/features/MemberQrCard';
 import { GiftRevealOverlay } from '@/components/features/GiftRevealOverlay';
@@ -18,30 +15,33 @@ import { GiftRevealOverlay } from '@/components/features/GiftRevealOverlay';
 /**
  * Stamp-card wallet on the profile page.
  *
- * The scannable code lives on its own screen (`/rewards`); everything here
- * either links to it or hands off to it.
+ * Cards come from `GET /loyalty/stamps/me/:brandId` and are rendered as sent —
+ * stamps are only ever earned in-store, so nothing here increments a counter
+ * optimistically. The scannable code lives on its own screen (`/rewards`);
+ * everything here either links to it or hands off to it.
  *
- * Data is mocked (`@/lib/mock-loyalty`) until the backend ships the endpoint.
- * A completed card plays the gift reveal once per browser session — replaying
- * it on every visit to the tab would get old fast — and the "replay" button
- * exists so the animation can be reviewed without resetting that flag.
+ * A newly completed card plays the gift reveal once per browser session —
+ * replaying it on every visit to the tab would get old fast — keyed by cycle
+ * so the next filled card after a redemption reveals again.
  */
 
 const REVEAL_SEEN_KEY = 'loyalty_reveal_seen';
 
-const hasSeenReveal = (cardId: string) => {
+const revealKey = (card: StampCard) => `${card.campaignId}:${card.cycleNumber}`;
+
+const hasSeenReveal = (key: string) => {
     if (typeof window === 'undefined') return true;
     try {
-        return sessionStorage.getItem(`${REVEAL_SEEN_KEY}:${cardId}`) === '1';
+        return sessionStorage.getItem(`${REVEAL_SEEN_KEY}:${key}`) === '1';
     } catch {
         return true;
     }
 };
 
-const markRevealSeen = (cardId: string) => {
+const markRevealSeen = (key: string) => {
     if (typeof window === 'undefined') return;
     try {
-        sessionStorage.setItem(`${REVEAL_SEEN_KEY}:${cardId}`, '1');
+        sessionStorage.setItem(`${REVEAL_SEEN_KEY}:${key}`, '1');
     } catch {
         // Private mode: the reveal just replays next visit.
     }
@@ -51,41 +51,27 @@ export function LoyaltyRewardsPanel() {
     const { t } = useTranslation();
     const router = useRouter();
     const { user } = useUser();
-    const [cards, setCards] = React.useState<StampCard[] | null>(null);
+    const { qr, isLoading: isQrLoading, hasError: hasQrError, refresh: refreshQr } = useStampQr(user?.id);
+    const { cards, isLoading, hasError, refresh } = useStampCards(!!user);
     const [revealCard, setRevealCard] = React.useState<StampCard | null>(null);
 
-    const qrPayload = user?.id ? buildMemberQrPayload(user.id) : null;
-
+    // Auto-play for the first waiting reward this session has not shown yet.
     React.useEffect(() => {
-        let cancelled = false;
-        fetchLoyaltyStampCards()
-            .then((result) => {
-                if (cancelled) return;
-                setCards(result);
+        if (!cards) return;
 
-                // Auto-play for the first completed card the user has not seen yet.
-                const completed = result.find((card) => resolveStampProgress(card).isComplete);
-                if (completed && !hasSeenReveal(completed.id)) {
-                    markRevealSeen(completed.id);
-                    setRevealCard(completed);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setCards([]);
-            });
+        const earned = cards.find((card) => card.status === 'REWARD_AVAILABLE');
+        if (!earned || hasSeenReveal(revealKey(earned))) return;
 
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+        markRevealSeen(revealKey(earned));
+        setRevealCard(earned);
+    }, [cards]);
 
-    const completedCard = cards?.find((card) => resolveStampProgress(card).isComplete) ?? null;
-    const readyCount = cards?.filter((card) => resolveStampProgress(card).isComplete).length ?? 0;
+    const readyCount = cards ? countAvailableRewards(cards) : 0;
 
     // The reveal hands off to the QR — that is what the customer needs next.
     const closeReveal = () => {
         setRevealCard(null);
-        if (qrPayload) router.push('/rewards');
+        router.push('/rewards');
     };
 
     return (
@@ -98,25 +84,22 @@ export function LoyaltyRewardsPanel() {
                     <p className="mt-1 text-sm text-zinc-500">{t('rewards.subtitle')}</p>
                 </div>
 
-                {/* Temporary: lets us review the reveal without earning a reward. */}
-                {completedCard && (
-                    <button
-                        type="button"
-                        onClick={() => setRevealCard(completedCard)}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
-                    >
-                        <Sparkles size={13} /> {t('rewards.replayAnimation')}
-                    </button>
-                )}
+                <button
+                    type="button"
+                    onClick={() => router.push('/rewards/history')}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:border-primary hover:text-primary"
+                >
+                    <History size={13} /> {t('rewards.history.link')}
+                </button>
             </div>
 
-            {qrPayload && (
-                <MemberQrCard
-                    payload={qrPayload}
-                    memberLabel={user?.id ?? null}
-                    onExpand={() => router.push('/rewards')}
-                />
-            )}
+            <MemberQrCard
+                payload={qr?.qrValue ?? null}
+                isLoading={isQrLoading}
+                hasError={hasQrError}
+                onRetry={refreshQr}
+                onExpand={() => router.push('/rewards')}
+            />
 
             {readyCount > 0 && (
                 <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
@@ -125,12 +108,28 @@ export function LoyaltyRewardsPanel() {
                 </div>
             )}
 
-            {cards === null ? (
-                <div className="grid gap-5 sm:grid-cols-2">
-                    {[0, 1].map((key) => (
-                        <div key={key} className="h-80 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-50" />
-                    ))}
+            {/* A failed refresh keeps the last good cards on screen behind a retry. */}
+            {hasError && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p className="text-sm text-amber-800">{t('rewards.loadError')}</p>
+                    <button
+                        type="button"
+                        onClick={refresh}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-100"
+                    >
+                        <RefreshCw size={13} /> {t('rewards.retry')}
+                    </button>
                 </div>
+            )}
+
+            {cards === null ? (
+                isLoading || !hasError ? (
+                    <div className="grid gap-5 sm:grid-cols-2">
+                        {[0, 1].map((key) => (
+                            <div key={key} className="h-80 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-50" />
+                        ))}
+                    </div>
+                ) : null
             ) : cards.length === 0 ? (
                 <div className="rounded-2xl border border-zinc-200 bg-white p-12 text-center">
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100">
@@ -141,19 +140,18 @@ export function LoyaltyRewardsPanel() {
             ) : (
                 <div className="grid gap-5 sm:grid-cols-2">
                     {cards.map((card) => (
-                        <LoyaltyStampCardView key={card.id} card={card} />
+                        <LoyaltyStampCardView key={card.campaignId} card={card} />
                     ))}
                 </div>
             )}
 
             {revealCard && (
                 <GiftRevealOverlay
-                    rewardName={revealCard.rewardName}
-                    merchantName={revealCard.merchantName}
+                    rewardName={revealCard.campaignName}
+                    merchantName={resolveCardTitle(revealCard)}
                     onClose={closeReveal}
                 />
             )}
-
         </div>
     );
 }

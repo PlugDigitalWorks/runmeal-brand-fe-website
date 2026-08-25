@@ -1,16 +1,23 @@
 'use client';
 
 import React from 'react';
-import { Check, Coffee, Gift } from 'lucide-react';
+import { Check, Coffee, Gift, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { LoyaltyStampCard as StampCard, resolveStampProgress } from '@/lib/mock-loyalty';
+import {
+    formatStampDate,
+    resolveCardSubtitle,
+    resolveCardTitle,
+    resolveStampProgress,
+} from '@/lib/loyalty-stamps';
+import { StampCard } from '@/types/loyalty-stamp';
 
 /**
- * One "buy N, get one free" card: the stamp grid and the progress copy.
+ * One category campaign card: the stamp grid and the progress copy.
  *
- * There is deliberately no QR here — the code the cashier scans is the
- * customer's own id, identical for every campaign, so the wallet renders it
- * once (`MemberQrCard`) instead of repeating the same image on each card.
+ * There is deliberately no QR and no redeem button here. The code the manager
+ * scans is the customer's member QR — one per customer, rendered once by the
+ * wallet — and redemption is confirmed by the manager after that scan, never
+ * from the customer app.
  */
 
 interface LoyaltyStampCardProps {
@@ -18,20 +25,19 @@ interface LoyaltyStampCardProps {
 }
 
 export function LoyaltyStampCardView({ card }: LoyaltyStampCardProps) {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const progress = resolveStampProgress(card);
 
-    const expiryLabel = card.expiresAt
-        ? new Date(card.expiresAt).toLocaleDateString(i18n.resolvedLanguage === 'en' ? 'en-US' : 'tr-TR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        })
-        : null;
+    const title = resolveCardTitle(card);
+    const subtitle = resolveCardSubtitle(card);
+    // Reward windows are instants, so the expiry is shown down to the minute.
+    const expiryLabel = formatStampDate(card.rewardExpiresAt, true);
+    // Kept visible only because an earned reward outlives the campaign itself.
+    const isEndedCampaign = card.campaignStatus === 'INACTIVE';
 
     return (
         <div
-            className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md ${progress.isComplete ? 'border-primary/40 ring-1 ring-primary/20' : 'border-zinc-200'
+            className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md ${progress.isRewardAvailable ? 'border-primary/40 ring-1 ring-primary/20' : 'border-zinc-200'
                 }`}
         >
             {/* Header */}
@@ -42,8 +48,8 @@ export function LoyaltyStampCardView({ card }: LoyaltyStampCardProps) {
 
                 <div className="relative flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{card.merchantName}</p>
-                        <p className="mt-0.5 truncate text-xs text-white/80">{card.productName}</p>
+                        <p className="truncate text-sm font-semibold">{title}</p>
+                        {subtitle !== title && <p className="mt-0.5 truncate text-xs text-white/80">{subtitle}</p>}
                     </div>
                     <span className="shrink-0 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap">
                         {t('rewards.buyGet', { target: progress.target })}
@@ -81,10 +87,10 @@ export function LoyaltyStampCardView({ card }: LoyaltyStampCardProps) {
                         <span className="font-semibold text-zinc-900">
                             {progress.earned} <span className="text-zinc-400">/ {progress.target}</span>
                         </span>
-                        <span className={progress.isComplete ? 'text-xs font-semibold text-primary' : 'text-xs text-zinc-500'}>
-                            {progress.isComplete
+                        <span className={progress.isRewardAvailable ? 'text-xs font-semibold text-primary' : 'text-xs text-zinc-500'}>
+                            {progress.isRewardAvailable
                                 ? t('rewards.readyToRedeem')
-                                : t('rewards.remaining', { remainingCount: progress.remaining, product: card.productName })}
+                                : t('rewards.remaining', { remainingCount: progress.remaining, product: title })}
                         </span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
@@ -93,29 +99,44 @@ export function LoyaltyStampCardView({ card }: LoyaltyStampCardProps) {
                             style={{ width: `${progress.percent}%` }}
                         />
                     </div>
+                    {progress.isRewardAvailable ? (
+                        <p className="flex items-center gap-1.5 text-[11px] leading-snug text-zinc-500">
+                            <Lock size={12} className="shrink-0" /> {t('rewards.cardLocked')}
+                        </p>
+                    ) : (
+                        <p className="text-[11px] leading-snug text-zinc-400">
+                            {t('rewards.cycleNote', { cycle: card.cycleNumber })}
+                        </p>
+                    )}
                 </div>
 
                 {/* Reward line */}
                 <div
-                    className={`flex items-center gap-3 rounded-xl px-4 py-3 ${progress.isComplete ? 'bg-primary/10 text-zinc-900' : 'bg-zinc-50 text-zinc-600'
+                    className={`flex items-center gap-3 rounded-xl px-4 py-3 ${progress.isRewardAvailable ? 'bg-primary/10 text-zinc-900' : 'bg-zinc-50 text-zinc-600'
                         }`}
                 >
                     <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${progress.isComplete ? 'bg-primary text-white' : 'bg-white text-zinc-400 border border-zinc-200'
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${progress.isRewardAvailable ? 'bg-primary text-white' : 'bg-white text-zinc-400 border border-zinc-200'
                             }`}
                     >
-                        {progress.isComplete ? <Check size={17} /> : <Gift size={17} />}
+                        {progress.isRewardAvailable ? <Check size={17} /> : <Gift size={17} />}
                     </span>
                     <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{card.rewardName}</p>
+                        <p className="truncate text-sm font-semibold">{card.campaignName || title}</p>
                         <p className="text-xs leading-snug text-zinc-500">
-                            {progress.isComplete ? t('rewards.rewardWaiting') : t('rewards.rewardPending')}
+                            {progress.isRewardAvailable ? t('rewards.rewardWaiting') : t('rewards.rewardPending')}
                         </p>
                     </div>
                 </div>
 
+                {isEndedCampaign && progress.isRewardAvailable && (
+                    <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-[11px] leading-snug text-amber-700">
+                        {t('rewards.campaignEnded')}
+                    </p>
+                )}
+
                 {expiryLabel && (
-                    <p className="text-center text-[11px] text-zinc-400">{t('rewards.validUntil', { date: expiryLabel })}</p>
+                    <p className="text-center text-[11px] text-zinc-400">{t('rewards.rewardExpiresAt', { date: expiryLabel })}</p>
                 )}
             </div>
         </div>

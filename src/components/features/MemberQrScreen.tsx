@@ -3,24 +3,21 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
-import { Coffee, X } from 'lucide-react';
+import { Coffee, RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@/context/UserContext';
-import {
-    LoyaltyStampCard as StampCard,
-    buildMemberQrPayload,
-    fetchLoyaltyStampCards,
-    resolveStampProgress,
-} from '@/lib/mock-loyalty';
+import { useStampCards, useStampQr } from '@/hooks/useLoyaltyStamps';
+import { resolveCardTitle, resolveStampProgress, sortCardsByProgress } from '@/lib/loyalty-stamps';
 
 /**
- * The screen the customer holds up at the counter: membership card on top,
+ * The screen the customer holds up at the counter: membership progress on top,
  * the scannable code below. This is a full page rather than a modal because
  * the gift button in the header links straight to it.
  *
- * The code identifies the customer and never rotates, so there is no expiry
- * countdown here. Nothing is printed under the QR: the code is scanned by the
- * cashier's dashboard, never typed in by hand.
+ * The code is the signed member QR the backend issues — static, so there is no
+ * expiry countdown, and it carries no category choice: the manager sees every
+ * card after scanning. The switcher below only picks what this screen
+ * summarises, and stamps are never added or redeemed from here.
  */
 
 const RING_RADIUS = 52;
@@ -50,36 +47,27 @@ export function MemberQrScreen() {
     const { t } = useTranslation();
     const router = useRouter();
     const { user, isLoading: isUserLoading } = useUser();
-    const [cards, setCards] = React.useState<StampCard[] | null>(null);
-    const [activeCardId, setActiveCardId] = React.useState<string | null>(null);
+    const { qr, isLoading: isQrLoading, hasError: hasQrError, refresh: refreshQr } = useStampQr(user?.id);
+    const { cards } = useStampCards(!!user);
+    const [activeCampaignId, setActiveCampaignId] = React.useState<string | null>(null);
 
     React.useEffect(() => {
         if (!isUserLoading && !user) router.replace('/login');
     }, [isUserLoading, user, router]);
 
+    // Lead with whatever is closest to a reward, but keep the customer's pick
+    // across the refreshes this screen does while it is open.
     React.useEffect(() => {
-        let cancelled = false;
-        fetchLoyaltyStampCards()
-            .then((result) => {
-                if (cancelled) return;
-                setCards(result);
-                // Lead with whatever is closest to a reward.
-                const featured = [...result].sort(
-                    (a, b) => resolveStampProgress(b).percent - resolveStampProgress(a).percent,
-                )[0];
-                setActiveCardId(featured?.id ?? null);
-            })
-            .catch(() => {
-                if (!cancelled) setCards([]);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+        if (!cards?.length) return;
+        setActiveCampaignId((current) =>
+            current && cards.some((card) => card.campaignId === current)
+                ? current
+                : sortCardsByProgress(cards)[0].campaignId,
+        );
+    }, [cards]);
 
-    const activeCard = cards?.find((card) => card.id === activeCardId) ?? null;
+    const activeCard = cards?.find((card) => card.campaignId === activeCampaignId) ?? null;
     const progress = activeCard ? resolveStampProgress(activeCard) : null;
-    const payload = user?.id ? buildMemberQrPayload(user.id) : null;
     const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
 
     // A deep link (gift button from another tab, shared URL) has nothing to go
@@ -133,13 +121,13 @@ export function MemberQrScreen() {
                             </p>
                             {activeCard && (
                                 <>
-                                    <p className="mt-2 truncate text-xs text-white/45">{activeCard.merchantName}</p>
+                                    <p className="mt-2 truncate text-xs text-white/45">{resolveCardTitle(activeCard)}</p>
                                     <p className="mt-0.5 truncate text-sm font-medium text-white/80">
-                                        {activeCard.rewardName}
+                                        {activeCard.campaignName}
                                     </p>
                                 </>
                             )}
-                            {progress?.isComplete ? (
+                            {progress?.isRewardAvailable ? (
                                 <span className="mt-3 inline-block rounded-full bg-primary px-3 py-1 text-[11px] font-semibold text-white">
                                     {t('rewards.readyToRedeem')}
                                 </span>
@@ -148,7 +136,7 @@ export function MemberQrScreen() {
                                     <p className="mt-3 text-xs text-white/50">
                                         {t('rewards.remaining', {
                                             remainingCount: progress.remaining,
-                                            product: activeCard?.productName ?? '',
+                                            product: activeCard ? resolveCardTitle(activeCard) : '',
                                         })}
                                     </p>
                                 )
@@ -161,18 +149,18 @@ export function MemberQrScreen() {
                 {cards && cards.length > 1 && (
                     <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide">
                         {cards.map((card) => {
-                            const isActive = card.id === activeCardId;
+                            const isActive = card.campaignId === activeCampaignId;
                             return (
                                 <button
-                                    key={card.id}
+                                    key={card.campaignId}
                                     type="button"
-                                    onClick={() => setActiveCardId(card.id)}
+                                    onClick={() => setActiveCampaignId(card.campaignId)}
                                     className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${isActive
                                         ? 'border-primary bg-primary/10 text-primary'
                                         : 'border-zinc-200 text-zinc-500 hover:border-zinc-300'
                                         }`}
                                 >
-                                    {card.merchantName}
+                                    {resolveCardTitle(card)}
                                 </button>
                             );
                         })}
@@ -187,18 +175,31 @@ export function MemberQrScreen() {
                 </p>
 
                 <div className="mt-6 w-full max-w-[260px]">
-                    {payload ? (
+                    {qr?.qrValue ? (
                         <div className="aspect-square w-full">
                             <QRCodeSVG
-                                value={payload}
+                                value={qr.qrValue}
                                 level="M"
                                 marginSize={0}
                                 className="h-full w-full"
                                 aria-label={t('rewards.memberQrTitle')}
                             />
                         </div>
+                    ) : hasQrError ? (
+                        <div className="flex aspect-square w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-zinc-200 px-4 text-center">
+                            <p className="text-sm text-zinc-500">{t('rewards.qrError')}</p>
+                            <button
+                                type="button"
+                                onClick={refreshQr}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:border-primary hover:text-primary"
+                            >
+                                <RefreshCw size={13} /> {t('rewards.retry')}
+                            </button>
+                        </div>
                     ) : (
-                        <div className="aspect-square w-full animate-pulse rounded-lg bg-zinc-100" />
+                        <div
+                            className={`aspect-square w-full rounded-lg bg-zinc-100 ${isQrLoading ? 'animate-pulse' : ''}`}
+                        />
                     )}
                 </div>
 
@@ -206,7 +207,9 @@ export function MemberQrScreen() {
                     {t('rewards.qrPageNote')}
                 </p>
 
-                <p className="mt-3 text-center text-[11px] text-zinc-400">{t('rewards.qrPagePermanent')}</p>
+                <p className="mt-3 max-w-xs text-center text-[11px] leading-snug text-zinc-400">
+                    {t('rewards.qrPagePermanent')}
+                </p>
             </div>
 
             <div className="px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
