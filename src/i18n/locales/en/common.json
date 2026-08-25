@@ -197,6 +197,7 @@
     "orderHistory": "Order History",
     "noOrders": "No orders yet.",
     "loadingDetails": "Loading details...",
+    "viewOrderDetails": "View order details",
     "orderNo": "Order #{{id}}",
     "scheduledDelivery": "Scheduled delivery",
     "scheduledPickup": "Scheduled pickup",
@@ -726,5 +727,26 @@
     "replayAnimation": "Replay animation",
     "giftUnlocked": "Reward unlocked",
     "giftUnlockedBody": "You completed your {{merchant}} loyalty card. Claim it with your QR code at the counter."
+  },
+  "orders": {
+    "back": "Back",
+    "loading": "Loading order details...",
+    "loadError": "Order details could not be loaded.",
+    "orderNo": "Order #{{id}}",
+    "orderedAt": "Ordered on {{date}}",
+    "orderedFrom": "Ordered from:",
+    "deliveredTo": "Delivered to:",
+    "table": "Table",
+    "orderNote": "Order note:",
+    "orderSummary": "Order summary",
+    "branchFallback": "Branch",
+    "unit": "Unit",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "walletUsed": "Wallet Balance Used",
+    "taxIncluded": "Tax included",
+    "total": "Total",
+    "paymentMethod": "Payment method",
+    "payAtCounter": "Pay at Counter"
   }
 }

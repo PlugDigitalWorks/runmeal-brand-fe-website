@@ -197,6 +197,7 @@
     "orderHistory": "Sipariş Geçmişi",
     "noOrders": "Henüz sipariş yok.",
     "loadingDetails": "Detaylar yükleniyor...",
+    "viewOrderDetails": "Sipariş detaylarını gör",
     "orderNo": "Sipariş #{{id}}",
     "scheduledDelivery": "Planlı teslimat",
     "scheduledPickup": "Planlı gel-al",
@@ -726,5 +727,26 @@
     "replayAnimation": "Animasyonu oynat",
     "giftUnlocked": "Hediye kazandın",
     "giftUnlockedBody": "{{merchant}} sadakat kartını tamamladın. Hediyeni kasada QR kodunla alabilirsin."
+  },
+  "orders": {
+    "back": "Geri",
+    "loading": "Sipariş detayları yükleniyor...",
+    "loadError": "Sipariş detayları yüklenemedi.",
+    "orderNo": "Sipariş #{{id}}",
+    "orderedAt": "{{date}} tarihinde sipariş verildi",
+    "orderedFrom": "Siparişin verildiği yer:",
+    "deliveredTo": "Teslim edildiği yer:",
+    "table": "Masa",
+    "orderNote": "Sipariş notu:",
+    "orderSummary": "Sipariş özeti",
+    "branchFallback": "Şube",
+    "unit": "Birim",
+    "subtotal": "Ara Toplam",
+    "discount": "İndirim",
+    "walletUsed": "Kullanılan Cüzdan Bakiyesi",
+    "taxIncluded": "KDV dahil",
+    "total": "Toplam",
+    "paymentMethod": "Ödeme şekli",
+    "payAtCounter": "Kasada Ödeme"
   }
 }

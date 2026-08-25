@@ -1,6 +1,6 @@
 import { api } from '@/lib/axios';
 import { ApiResponse } from '@/types/auth';
-import { CartProductReward } from '@/types/cart';
+import { CartItemOptionGroup, CartProductReward } from '@/types/cart';
 import { TableOrderView } from '@/types/table';
 
 export interface CreateOrderDto {
@@ -43,6 +43,19 @@ export interface Order {
     scheduledFor?: string | null;
     scheduledDate?: string | null;
     scheduledTime?: string | null;
+    /**
+     * Present on the formatted single-order view (`GET /orders/:id`) only; the
+     * customer list answers with raw rows that carry none of them.
+     */
+    discountAmount?: number | string | null;
+    creditUsedAmount?: number | string | null;
+    note?: string | null;
+    addressText?: string;
+    phone?: string;
+    latitude?: number;
+    longitude?: number;
+    userFirstName?: string | null;
+    userLastName?: string | null;
 }
 export interface OrderItem {
     id: string;
@@ -50,9 +63,18 @@ export interface OrderItem {
     productId: string;
     productName: string;
     quantity: number;
-    unitPrice?: string;
-    totalPrice?: string;
+    unitPrice?: number | string;
+    totalPrice?: number | string;
     price?: number | string;
+    /** The formatted order view names the quantity `qty` and prices as numbers. */
+    qty?: number;
+    basePrice?: number | string | null;
+    optionsTotal?: number | string | null;
+    lineTotal?: number | string | null;
+    payableAmount?: number | string | null;
+    /** Option groups frozen at order time, same shape as the cart's. */
+    options?: CartItemOptionGroup[] | null;
+    note?: string | null;
     /**
      * What a promotion took off this line, and what is left to pay. A product
      * reward discounts one unit's base price on a single line, so these are

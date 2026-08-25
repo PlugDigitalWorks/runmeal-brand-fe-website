@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MapPin, Plus, Trash2, X, Edit2, ChevronDown, Package, User as UserIcon, Mail, Shield, Wallet, ClipboardCheck } from 'lucide-react';
+import { MapPin, Plus, Trash2, X, Edit2, ChevronDown, Package, User as UserIcon, Mail, Shield, Wallet, ClipboardCheck, ReceiptText } from 'lucide-react';
 import { useEffect, useState, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@/context/UserContext';
@@ -10,13 +10,13 @@ import { userService } from '@/services/user.service';
 import { walletService } from '@/services/wallet.service';
 import { AddressForm } from '@/components/features/address/AddressForm';
 import { PendingSurveys } from '@/components/features/PendingSurveys';
-import { orderService, toPromotionSnapshots } from '@/services/order.service';
+import { orderService } from '@/services/order.service';
 import { Order, OrderDetails } from '@/services/order.service';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
-import { resolveRewardTargetName } from '@/lib/loyalty-rewards';
 import { LoyaltyRewardsPanel } from '@/components/features/LoyaltyRewardsPanel';
+import { OrderPromotionSnapshots } from '@/components/features/OrderPromotionSnapshots';
 
 function ProfileContent() {
     const router = useRouter();
@@ -83,6 +83,16 @@ function ProfileContent() {
             toast.error(t('profile.deleteFailed'));
         }
     }
+
+    /**
+     * The detail view is branch scoped, and the customer order list is the only
+     * place that pairs an order with its branch — so both ids ride along in the
+     * query string instead of being looked up again on the detail page.
+     */
+    const openOrderDetails = (order: Order) => {
+        const params = new URLSearchParams({ branchId: order.branchId, brandId: order.brandId });
+        router.push(`/orders/${order.id}?${params.toString()}`);
+    };
 
     const toggleOrder = async (orderId: string) => {
         const newExpanded = new Set(expandedOrders);
@@ -331,6 +341,19 @@ function ProfileContent() {
                                                                             snapshot={orderDetails[order.id].internalPromotionSnapshot}
                                                                             currencySymbol={order.currencySymbol}
                                                                         />
+                                                                        <div className="pt-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    openOrderDetails(order);
+                                                                                }}
+                                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+                                                                            >
+                                                                                <ReceiptText className="h-3.5 w-3.5" />
+                                                                                {t('profile.viewOrderDetails')}
+                                                                            </button>
+                                                                        </div>
                                                                         <div className="border-t border-zinc-200 mt-3 pt-3 flex justify-between items-center">
                                                                             <span className="text-sm font-medium text-zinc-900">{t('profile.total')}</span>
                                                                             <span className="text-base font-bold text-primary">{formatCurrency(orderDetails[order.id].totalPrice)}</span>
@@ -433,58 +456,6 @@ function ProfileContent() {
                     )}
                 </div>
             </div>
-        </div>
-    );
-}
-
-/**
- * The internal promotions the order was placed with, as the order recorded
- * them. A product reward names the free item it paid for; the campaign itself
- * may no longer exist, so nothing here is looked up live.
- */
-function OrderPromotionSnapshots({
-    snapshot,
-    currencySymbol,
-}: {
-    snapshot: OrderDetails['internalPromotionSnapshot'];
-    currencySymbol?: string | null;
-}) {
-    const { t } = useTranslation();
-    const snapshots = toPromotionSnapshots(snapshot);
-    if (snapshots.length === 0) return null;
-
-    return (
-        <div className="space-y-1.5 pt-2">
-            {snapshots.map((entry, index) => {
-                const reward = entry.productReward;
-                const rewardName = resolveRewardTargetName(reward);
-                const amount = Number(reward?.appliedAmount ?? entry.discountAmount ?? 0);
-
-                return (
-                    <div
-                        key={entry.promotionCode || index}
-                        className="flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700"
-                    >
-                        <div className="min-w-0">
-                            <p className="font-semibold break-words">
-                                {entry.name || entry.promotionCode || t('loyalty.campaignsTitle')}
-                            </p>
-                            {reward && (
-                                <p className="break-words">
-                                    {rewardName
-                                        ? t('loyalty.productReward.orderSummaryNamed', { name: rewardName })
-                                        : t('loyalty.productReward.orderSummary')}
-                                </p>
-                            )}
-                        </div>
-                        {amount > 0 && (
-                            <span className="shrink-0 font-semibold whitespace-nowrap">
-                                {formatCurrency(-amount, currencySymbol)}
-                            </span>
-                        )}
-                    </div>
-                );
-            })}
         </div>
     );
 }
