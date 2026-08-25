@@ -3,13 +3,15 @@
     "hello": "Hello {{name}}",
     "logout": "Logout",
     "login": "Login",
-    "register": "Register"
+    "register": "Register",
+    "account": "My account"
   },
   "common": {
     "loading": "Loading...",
     "processing": "Processing...",
     "saving": "Saving...",
     "cancel": "Cancel",
+    "close": "Close",
     "edit": "Edit",
     "increase": "Increase",
     "decrease": "Decrease",
@@ -189,7 +191,8 @@
     "loyaltyInfoLabel": "About your Runmeal Points balance",
     "tabs": {
       "addresses": "Addresses",
-      "orders": "Orders"
+      "orders": "Orders",
+      "rewards": "My rewards"
     },
     "orderHistory": "Order History",
     "noOrders": "No orders yet.",
@@ -699,5 +702,27 @@
       "ORDER_TYPE_UNAVAILABLE": "This order type is not available right now. Please check your options.",
       "SESSION_RESTARTED": "Your session expired and was restarted. Your cart is now empty, so please add your items again."
     }
+  },
+  "rewards": {
+    "tab": "My rewards",
+    "title": "My loyalty cards",
+    "subtitle": "Collect stamps and claim your reward with a QR code at the counter.",
+    "empty": "No loyalty cards yet. Stamps show up here as you order.",
+    "buyGet": "Buy {{target}}, get 1 free",
+    "remaining": "{{remainingCount}} more {{product}}",
+    "readyToRedeem": "Your reward is ready!",
+    "readyBanner": "You have {{rewardCount}} reward(s) waiting to be claimed.",
+    "rewardWaiting": "Show your QR code at the counter to claim it.",
+    "rewardPending": "Fill the card and this reward is yours.",
+    "progressAria": "{{earned}} of {{target}} stamps collected",
+    "validUntil": "Valid until {{date}}",
+    "memberQrTitle": "My member QR code",
+    "memberQrHint": "Every loyalty card is tied to this code. Tap for full screen.",
+    "qrScanAtCounter": "Just have this code scanned at the counter.",
+    "showQr": "Show my QR code",
+    "qrBrightnessHint": "Turn up your screen brightness if it will not scan.",
+    "replayAnimation": "Replay animation",
+    "giftUnlocked": "Reward unlocked",
+    "giftUnlockedBody": "You completed your {{merchant}} loyalty card. Claim it with your QR code at the counter."
   }
 }

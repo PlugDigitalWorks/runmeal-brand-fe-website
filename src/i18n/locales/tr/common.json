@@ -3,13 +3,15 @@
     "hello": "Merhaba {{name}}",
     "logout": "Çıkış Yap",
     "login": "Giriş Yap",
-    "register": "Kayıt Ol"
+    "register": "Kayıt Ol",
+    "account": "Hesabım"
   },
   "common": {
     "loading": "Yükleniyor...",
     "processing": "İşleniyor...",
     "saving": "Kaydediliyor...",
     "cancel": "İptal",
+    "close": "Kapat",
     "edit": "Düzenle",
     "increase": "Artır",
     "decrease": "Azalt",
@@ -189,7 +191,8 @@
     "loyaltyInfoLabel": "Para Puan bakiyesi hakkında bilgi",
     "tabs": {
       "addresses": "Adresler",
-      "orders": "Siparişler"
+      "orders": "Siparişler",
+      "rewards": "Hediyelerim"
     },
     "orderHistory": "Sipariş Geçmişi",
     "noOrders": "Henüz sipariş yok.",
@@ -699,5 +702,27 @@
       "ORDER_TYPE_UNAVAILABLE": "Bu sipariş türü şu anda kullanılamıyor. Lütfen seçeneklerinizi kontrol edin.",
       "SESSION_RESTARTED": "Oturum süreniz dolduğu için yeniden başlatıldı. Sepetiniz boşaldı, ürünleri tekrar eklemeniz gerekiyor."
     }
+  },
+  "rewards": {
+    "tab": "Hediyelerim",
+    "title": "Sadakat Kartlarım",
+    "subtitle": "Damgaları topla, hediyeni kasada QR ile al.",
+    "empty": "Henüz bir sadakat kartın yok. Sipariş verdikçe damgalar burada birikir.",
+    "buyGet": "{{target}} al 1 hediye",
+    "remaining": "{{remainingCount}} {{product}} daha",
+    "readyToRedeem": "Hediyen hazır!",
+    "readyBanner": "Kullanmayı bekleyen {{rewardCount}} hediyen var.",
+    "rewardWaiting": "Kasada QR kodunu okut ve al.",
+    "rewardPending": "Kartını doldurunca bu hediye senin.",
+    "progressAria": "{{target}} damgadan {{earned}} tanesi tamamlandı",
+    "validUntil": "{{date}} tarihine kadar geçerli",
+    "memberQrTitle": "Üyelik QR Kodum",
+    "memberQrHint": "Tüm sadakat kartların bu koda bağlı. Tam ekran için dokun.",
+    "qrScanAtCounter": "Bu kodu kasada okutman yeterli.",
+    "showQr": "QR kodumu göster",
+    "qrBrightnessHint": "Okunmazsa ekran parlaklığını artır.",
+    "replayAnimation": "Animasyonu oynat",
+    "giftUnlocked": "Hediye kazandın",
+    "giftUnlockedBody": "{{merchant}} sadakat kartını tamamladın. Hediyeni kasada QR kodunla alabilirsin."
   }
 }

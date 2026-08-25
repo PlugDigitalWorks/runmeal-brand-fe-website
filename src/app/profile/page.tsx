@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 import { resolveRewardTargetName } from '@/lib/loyalty-rewards';
+import { LoyaltyRewardsPanel } from '@/components/features/LoyaltyRewardsPanel';
 
 function ProfileContent() {
     const router = useRouter();
@@ -26,7 +27,7 @@ function ProfileContent() {
     const [isAddingAddress, setIsAddingAddress] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [orders, setOrders] = useState<Order[]>([]);
-    const [activeTab, setActiveTab] = useState<'addresses' | 'orders' | 'surveys'>('addresses');
+    const [activeTab, setActiveTab] = useState<'addresses' | 'orders' | 'rewards' | 'surveys'>('addresses');
     const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
     const [orderDetails, setOrderDetails] = useState<Record<string, OrderDetails>>({});
     const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
@@ -42,7 +43,7 @@ function ProfileContent() {
 
     useEffect(() => {
         const tab = searchParams.get('tab');
-        if (tab === 'orders' || tab === 'addresses' || tab === 'surveys') {
+        if (tab === 'orders' || tab === 'addresses' || tab === 'rewards' || tab === 'surveys') {
             setActiveTab(tab);
         }
     }, [searchParams]);
@@ -191,26 +192,34 @@ function ProfileContent() {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="flex space-x-1 bg-zinc-100 p-1 rounded-xl">
+                    <div className="flex space-x-1 overflow-x-auto scrollbar-hide bg-zinc-100 p-1 rounded-xl">
                         <button
                             onClick={() => setActiveTab('addresses')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'addresses' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
+                            className={`flex-1 whitespace-nowrap px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'addresses' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
                         >
                             {t('profile.tabs.addresses')}
                         </button>
                         <button
                             onClick={() => setActiveTab('orders')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'orders' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
+                            className={`flex-1 whitespace-nowrap px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'orders' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
                         >
                             {t('profile.tabs.orders')}
                         </button>
                         <button
+                            onClick={() => setActiveTab('rewards')}
+                            className={`flex-1 whitespace-nowrap px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'rewards' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
+                        >
+                            {t('rewards.tab')}
+                        </button>
+                        <button
                             onClick={() => setActiveTab('surveys')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'surveys' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
+                            className={`flex-1 whitespace-nowrap px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'surveys' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
                         >
                             {t('survey.tab')}
                         </button>
                     </div>
+
+                    {activeTab === 'rewards' && <LoyaltyRewardsPanel />}
 
                     {activeTab === 'surveys' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

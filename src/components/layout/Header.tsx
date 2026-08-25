@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useTable } from '@/context/TableContext';
-import { QrCode, User } from 'lucide-react';
+import { Gift, LogOut, QrCode, User } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTranslation } from 'react-i18next';
@@ -48,18 +48,30 @@ export function Header() {
                         </span>
                     )}
                     {showAccount ? (
-                        <div className="flex min-w-0 items-center gap-1.5 sm:gap-4">
-                            <Link href="/profile" className="flex min-w-0 items-center gap-1 text-xs font-medium text-zinc-700 transition-colors hover:text-primary sm:gap-2 sm:text-sm">
-                                <span className="max-w-24 truncate whitespace-nowrap max-[360px]:max-w-14 sm:max-w-48">
-                                    {[user.firstName, user.lastName].filter(Boolean).join(' ')}
-                                </span>
-                                <User size={15} className="shrink-0" />
+                        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+                            <Link
+                                href="/profile?tab=rewards"
+                                aria-label={t('rewards.tab')}
+                                title={t('rewards.tab')}
+                                className="shrink-0 rounded-full p-2 text-primary transition-colors hover:bg-primary/10"
+                            >
+                                <Gift size={18} />
+                            </Link>
+                            <Link
+                                href="/profile"
+                                aria-label={t('header.account')}
+                                title={t('header.account')}
+                                className="shrink-0 rounded-full p-2 text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-primary"
+                            >
+                                <User size={18} />
                             </Link>
                             <button
                                 onClick={() => logout()}
-                                className="shrink-0 whitespace-nowrap rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-900 transition-colors hover:bg-zinc-200 sm:px-3 sm:text-sm"
+                                aria-label={t('header.logout')}
+                                title={t('header.logout')}
+                                className="shrink-0 rounded-full p-2 text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-destructive"
                             >
-                                {t('header.logout')}
+                                <LogOut size={18} />
                             </button>
                             <LanguageSwitcher />
                         </div>
