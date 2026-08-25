@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Gift, PartyPopper, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@/context/UserContext';
@@ -13,13 +14,12 @@ import {
 import { LoyaltyStampCardView } from '@/components/features/LoyaltyStampCard';
 import { MemberQrCard } from '@/components/features/MemberQrCard';
 import { GiftRevealOverlay } from '@/components/features/GiftRevealOverlay';
-import { RewardQrOverlay } from '@/components/features/RewardQrOverlay';
 
 /**
  * Stamp-card wallet on the profile page.
  *
- * One fixed QR (the customer's user id) sits above the cards — the cashier
- * scans the same code no matter which campaign is being redeemed.
+ * The scannable code lives on its own screen (`/rewards`); everything here
+ * either links to it or hands off to it.
  *
  * Data is mocked (`@/lib/mock-loyalty`) until the backend ships the endpoint.
  * A completed card plays the gift reveal once per browser session — replaying
@@ -49,9 +49,9 @@ const markRevealSeen = (cardId: string) => {
 
 export function LoyaltyRewardsPanel() {
     const { t } = useTranslation();
+    const router = useRouter();
     const { user } = useUser();
     const [cards, setCards] = React.useState<StampCard[] | null>(null);
-    const [isQrOpen, setIsQrOpen] = React.useState(false);
     const [revealCard, setRevealCard] = React.useState<StampCard | null>(null);
 
     const qrPayload = user?.id ? buildMemberQrPayload(user.id) : null;
@@ -85,7 +85,7 @@ export function LoyaltyRewardsPanel() {
     // The reveal hands off to the QR — that is what the customer needs next.
     const closeReveal = () => {
         setRevealCard(null);
-        if (qrPayload) setIsQrOpen(true);
+        if (qrPayload) router.push('/rewards');
     };
 
     return (
@@ -114,7 +114,7 @@ export function LoyaltyRewardsPanel() {
                 <MemberQrCard
                     payload={qrPayload}
                     memberLabel={user?.id ?? null}
-                    onExpand={() => setIsQrOpen(true)}
+                    onExpand={() => router.push('/rewards')}
                 />
             )}
 
@@ -154,14 +154,6 @@ export function LoyaltyRewardsPanel() {
                 />
             )}
 
-            {isQrOpen && qrPayload && (
-                <RewardQrOverlay
-                    payload={qrPayload}
-                    title={t('rewards.memberQrTitle')}
-                    subtitle={user?.id ?? null}
-                    onClose={() => setIsQrOpen(false)}
-                />
-            )}
         </div>
     );
 }

@@ -50,7 +50,7 @@ export function Header() {
                     {showAccount ? (
                         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
                             <Link
-                                href="/profile?tab=rewards"
+                                href="/rewards"
                                 aria-label={t('rewards.tab')}
                                 title={t('rewards.tab')}
                                 className="shrink-0 rounded-full p-2 text-primary transition-colors hover:bg-primary/10"
