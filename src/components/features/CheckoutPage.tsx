@@ -16,7 +16,7 @@ import { CartLoyaltyWallet, LoyaltyProviderType, promotionKey } from '@/types/ca
 import { formatCurrency, resolveCurrencySymbol, sanitizePositiveNumber } from '@/lib/utils';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 import { isProductRewardCheckoutError, resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
-import { getProductReward } from '@/lib/loyalty-rewards';
+import { getProductReward, resolveProductRewardProgress } from '@/lib/loyalty-rewards';
 import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 import { ProductRewardProgress } from './ProductRewardProgress';
 import { useTranslation } from 'react-i18next';
@@ -1049,6 +1049,7 @@ function PromotionsList() {
                     : { type: promotion.type };
                 const isPending = isPromotionPending(isApplied ? removeInput : promotion);
                 const reason = resolveUnapplicableReason(promotion.unapplicableReason);
+                const progress = resolveProductRewardProgress(productReward);
 
                 return (
                     <div
@@ -1082,11 +1083,13 @@ function PromotionsList() {
                                     </span>
                                 </div>
                                 {promotion.description && (
-                                    <p className={`text-xs break-words ${isApplied ? '' : 'text-zinc-600'}`}>
+                                    <p className={`text-xs break-words line-clamp-2 ${isApplied ? '' : 'text-zinc-600'}`}>
                                         {promotion.description}
                                     </p>
                                 )}
-                                {!isApplied && !promotion.applicable && reason && (
+                                {/* "Not earned yet" is exactly what the progress bar below already
+                                    shows, so the row keeps the bar and drops the sentence. */}
+                                {!isApplied && !promotion.applicable && reason && !(productReward && progress) && (
                                     <p className="text-xs text-amber-600 break-words">{reason}</p>
                                 )}
                                 {productReward && (

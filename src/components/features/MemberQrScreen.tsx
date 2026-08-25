@@ -18,13 +18,10 @@ import {
  * the scannable code below. This is a full page rather than a modal because
  * the gift button in the header links straight to it.
  *
- * The code is the customer's user id and never rotates, so there is no expiry
- * countdown here — the id itself is printed under the QR for the case where a
- * scanner will not read the screen.
+ * The code identifies the customer and never rotates, so there is no expiry
+ * countdown here. Nothing is printed under the QR: the code is scanned by the
+ * cashier's dashboard, never typed in by hand.
  */
-
-/** UUIDs are unreadable in one block; group them so they can be read aloud. */
-const formatMemberId = (id: string) => id.replace(/-/g, ' ').toUpperCase();
 
 const RING_RADIUS = 52;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -204,12 +201,6 @@ export function MemberQrScreen() {
                         <div className="aspect-square w-full animate-pulse rounded-lg bg-zinc-100" />
                     )}
                 </div>
-
-                {user?.id && (
-                    <p className="mt-5 break-all text-center font-mono text-sm tracking-wider text-zinc-900">
-                        {formatMemberId(user.id)}
-                    </p>
-                )}
 
                 <p className="mt-6 max-w-xs text-center text-xs font-semibold leading-relaxed text-zinc-700">
                     {t('rewards.qrPageNote')}

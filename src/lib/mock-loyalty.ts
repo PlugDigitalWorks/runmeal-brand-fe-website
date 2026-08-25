@@ -52,6 +52,9 @@ export const MOCK_LOYALTY_CARDS: LoyaltyStampCard[] = [
 /**
  * What the cashier scans. It is the customer's own id and never changes, so it
  * is rendered once for the whole wallet rather than per card.
+ *
+ * Once the backend is wired up this becomes the dashboard URL the scan should
+ * open, so the payload stays behind this builder instead of being inlined.
  */
 export const buildMemberQrPayload = (userId: string) => userId;
 

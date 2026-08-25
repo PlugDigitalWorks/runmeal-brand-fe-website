@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Gift } from 'lucide-react';
+import { ArrowRight, Gift, Info } from 'lucide-react';
 import { CartItem, CartProductReward } from '@/types/cart';
 import {
     buildRewardMenuHref,
@@ -56,16 +56,29 @@ export function ProductRewardProgress({
         : null;
 
     return (
-        <div className="mt-2 space-y-2">
-            {progress && (
+        <div className="mt-1.5 space-y-1">
+            {progress ? (
                 <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2 text-xs font-medium text-zinc-700">
-                        <span>
-                            {targetName
-                                ? t('loyalty.productReward.scopeLabel', { name: targetName })
-                                : t('loyalty.productReward.label')}
+                    <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-zinc-600">
+                        <span className="inline-flex min-w-0 items-center gap-1">
+                            <span className="truncate">
+                                {targetName
+                                    ? t('loyalty.productReward.scopeLabel', { name: targetName })
+                                    : t('loyalty.productReward.label')}
+                            </span>
+                            {/* The base price caveat is a footnote, not a paragraph — the row
+                                has to stay as short as a plain coupon's. */}
+                            {reward.basePriceOnly && (
+                                <span
+                                    className="shrink-0 text-zinc-400"
+                                    title={t('loyalty.productReward.basePriceOnly')}
+                                    aria-label={t('loyalty.productReward.basePriceOnly')}
+                                >
+                                    <Info size={11} />
+                                </span>
+                            )}
                         </span>
-                        <span className="tabular-nums">
+                        <span className="shrink-0 tabular-nums">
                             {t('loyalty.productReward.count', {
                                 earned: progress.earned,
                                 target: progress.target,
@@ -73,7 +86,7 @@ export function ProductRewardProgress({
                         </span>
                     </div>
                     <div
-                        className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200"
+                        className="h-1 w-full overflow-hidden rounded-full bg-zinc-200"
                         role="progressbar"
                         aria-valuenow={progress.earned}
                         aria-valuemin={0}
@@ -84,24 +97,23 @@ export function ProductRewardProgress({
                             style={{ width: `${progress.percent}%` }}
                         />
                     </div>
-                    <p className="text-xs text-zinc-500">
-                        {progress.remaining > 0
-                            ? t('loyalty.productReward.remaining', { count: progress.remaining })
-                            : t('loyalty.productReward.ready')}
-                    </p>
                 </div>
+            ) : (
+                reward.basePriceOnly && (
+                    <p className="text-[11px] text-zinc-400">{t('loyalty.productReward.basePriceOnly')}</p>
+                )
             )}
 
             {!isApplied && availableRewards > 0 && (
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-green-700">
-                    <Gift size={13} className="shrink-0" />
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold text-green-700">
+                    <Gift size={12} className="shrink-0" />
                     {t('loyalty.productReward.available', { count: availableRewards })}
                 </p>
             )}
 
             {isApplied && (
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-green-700">
-                    <Gift size={13} className="shrink-0" />
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold text-green-700">
+                    <Gift size={12} className="shrink-0" />
                     {appliedItem?.productName
                         ? t('loyalty.productReward.appliedTo', { name: appliedItem.productName })
                         : t('loyalty.productReward.applied')}
@@ -109,14 +121,10 @@ export function ProductRewardProgress({
                 </p>
             )}
 
-            {reward.basePriceOnly && (
-                <p className="text-xs text-zinc-500">{t('loyalty.productReward.basePriceOnly')}</p>
-            )}
-
             {itemHref && (
                 <Link
                     href={itemHref}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
                 >
                     {targetName
                         ? t('loyalty.productReward.addItemNamed', { name: targetName })
