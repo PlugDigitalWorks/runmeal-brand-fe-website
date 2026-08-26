@@ -2,6 +2,7 @@ import { api } from '@/lib/axios';
 import { ApiResponse, PaginatedApiResponse, PaginationMeta } from '@/types/auth';
 import {
     CustomerStampTransaction,
+    StampAvailability,
     StampCard,
     StampQrResponse,
     StampTransactionType,
@@ -32,6 +33,14 @@ export const loyaltyStampService = {
     async getQr() {
         const response = await api.get<ApiResponse<StampQrResponse>>('/loyalty/stamps/qr');
         return response.data.data;
+    },
+
+    /** Whether the brand runs stamp loyalty at all — gates the whole wallet UI. */
+    async getAvailability(brandId: string) {
+        const response = await api.get<ApiResponse<StampAvailability>>(
+            `/loyalty/stamps/me/${brandId}/availability`,
+        );
+        return response.data.data ?? null;
     },
 
     /** One card per category campaign; progress is shared across brand branches. */

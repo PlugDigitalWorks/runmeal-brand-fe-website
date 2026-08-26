@@ -47,6 +47,7 @@ export function CheckoutPage() {
         applyPromotion,
         refreshCart,
         refreshAvailablePromotions,
+        setPromotionOrderType,
     } = useCart();
     const {
         selectedBranch,
@@ -167,6 +168,14 @@ export function CheckoutPage() {
     React.useEffect(() => {
         if (!isScheduled) setScheduledFor(null);
     }, [isScheduled]);
+
+    // Campaigns are evaluated per order type: a delivery-only campaign has no
+    // business showing on a scheduled pickup, and checkout revalidates with the
+    // same type the customer is paying for. The list is cached per order type,
+    // so switching back and forth costs no extra request.
+    React.useEffect(() => {
+        setPromotionOrderType(orderType);
+    }, [orderType, setPromotionOrderType]);
 
     // Account-wide Runmeal balance; only the fallback for the amount shown below.
     React.useEffect(() => {
@@ -401,7 +410,7 @@ export function CheckoutPage() {
                 // own here: the cart and the campaign list are refetched and the
                 // customer applies the reward again if it is still there.
                 await refreshCart();
-                await refreshAvailablePromotions();
+                await refreshAvailablePromotions({ force: true });
                 toast.error(`${loyaltyError.message} ${t('loyalty.productReward.reapplyNeeded')}`);
             } else if (loyaltyError.isLoyaltyError) {
                 // Checkout revalidation changed the applied campaigns: re-sync
@@ -1026,7 +1035,7 @@ function PromotionsList() {
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
                 <p className="text-xs text-zinc-500">{t('loyalty.loadError')}</p>
                 <button
-                    onClick={() => refreshAvailablePromotions()}
+                    onClick={() => refreshAvailablePromotions({ force: true })}
                     className="text-xs font-medium text-primary hover:underline"
                 >
                     {t('loyalty.retry')}

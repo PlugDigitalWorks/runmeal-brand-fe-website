@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { RUNMEAL_LOGO } from '@/lib/constants';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { HeaderNavigation } from '@/components/layout/HeaderNavigation';
+import { useStampAvailability } from '@/hooks/useLoyaltyStamps';
 
 export function Header() {
     const { user, isAuthenticated, isGuest, logout } = useAuth();
@@ -19,6 +20,8 @@ export function Header() {
     // has no name, no profile and nothing to log out of — treat them as a
     // visitor and offer the real sign-in instead.
     const showAccount = isAuthenticated && !!user && !isGuest;
+    // Brands that do not run stamp loyalty get no rewards entry point at all.
+    const { isStampActive } = useStampAvailability(showAccount);
 
     return (
         <header className="bg-white text-zinc-900 border-b border-zinc-100 sticky top-0 z-50">
@@ -49,14 +52,16 @@ export function Header() {
                     )}
                     {showAccount ? (
                         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-                            <Link
-                                href="/rewards"
-                                aria-label={t('rewards.tab')}
-                                title={t('rewards.tab')}
-                                className="shrink-0 rounded-full p-2 text-primary transition-colors hover:bg-primary/10"
-                            >
-                                <Gift size={18} />
-                            </Link>
+                            {isStampActive && (
+                                <Link
+                                    href="/rewards"
+                                    aria-label={t('rewards.tab')}
+                                    title={t('rewards.tab')}
+                                    className="shrink-0 rounded-full p-2 text-primary transition-colors hover:bg-primary/10"
+                                >
+                                    <Gift size={18} />
+                                </Link>
+                            )}
                             <Link
                                 href="/profile"
                                 aria-label={t('header.account')}

@@ -31,6 +31,58 @@ const useSignOutOn401 = () => {
     );
 };
 
+export interface StampAvailabilityState {
+    /** True only once the backend confirms it; the wallet stays hidden until then. */
+    isStampActive: boolean;
+    isLoading: boolean;
+}
+
+/**
+ * Whether this brand runs stamp loyalty.
+ *
+ * The entry points to the wallet are hidden unless the backend says the program
+ * is on — a brand with no stamp campaigns must not advertise one, so anything
+ * short of an explicit `true` (still loading, a failed read) keeps them hidden
+ * rather than flashing a link to an empty screen.
+ */
+export function useStampAvailability(enabled: boolean): StampAvailabilityState {
+    const [isStampActive, setIsStampActive] = React.useState(false);
+    const [isLoading, setIsLoading] = React.useState(false);
+
+    React.useEffect(() => {
+        const brandId = getBrandId();
+        if (!enabled || !brandId) {
+            setIsStampActive(false);
+            return;
+        }
+
+        let cancelled = false;
+        setIsLoading(true);
+
+        loyaltyStampService
+            .getAvailability(brandId)
+            .then((result) => {
+                if (cancelled) return;
+                setIsStampActive(!!result?.isStampActive);
+            })
+            .catch((error) => {
+                if (cancelled) return;
+                // Never a blocking error: the wallet entry point just stays hidden.
+                console.error('Failed to read stamp availability', error);
+                setIsStampActive(false);
+            })
+            .finally(() => {
+                if (!cancelled) setIsLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [enabled]);
+
+    return { isStampActive, isLoading };
+}
+
 export interface StampQrState {
     qr: StampQrResponse | null;
     isLoading: boolean;

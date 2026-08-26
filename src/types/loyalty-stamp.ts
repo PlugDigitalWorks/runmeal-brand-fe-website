@@ -15,6 +15,15 @@ export interface StampCategoryRef {
   name: string;
 }
 
+/**
+ * `GET /loyalty/stamps/me/:brandId/availability` — whether this brand runs the
+ * stamp program at all. The whole wallet entry point is hidden when it is off,
+ * so a brand without stamp campaigns never advertises one.
+ */
+export interface StampAvailability {
+  isStampActive: boolean;
+}
+
 /** `GET /loyalty/stamps/qr` — the signed value the QR renderer draws. */
 export interface StampQrResponse {
   qrToken: string;

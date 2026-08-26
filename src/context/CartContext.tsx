@@ -81,7 +81,14 @@ interface CartContextType {
   availablePromotions: CartPromotion[];
   isPromotionsLoading: boolean;
   hasPromotionsError: boolean;
-  refreshAvailablePromotions: () => Promise<void>;
+  /**
+   * Order type every promotion call is evaluated against. Checkout owns the
+   * choice — applicability differs between a delivery and a scheduled pickup,
+   * and checkout revalidates with whatever the customer is paying for.
+   */
+  promotionOrderType: string;
+  setPromotionOrderType: (orderType: string) => void;
+  refreshAvailablePromotions: (options?: { force?: boolean }) => Promise<void>;
   applyPromotion: (input: ApplyPromotionInput) => Promise<boolean>;
   removePromotion: (input: RemovePromotionInput) => Promise<boolean>;
   isPromotionPending: (input: RemovePromotionInput) => boolean;
@@ -101,6 +108,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isPromotionsLoading, setIsPromotionsLoading] = useState(false);
   const [hasPromotionsError, setHasPromotionsError] = useState(false);
   const [pendingPromotionKeys, setPendingPromotionKeys] = useState<Set<string>>(new Set());
+  const [selectedOrderType, setSelectedOrderType] = useState<string>(DEFAULT_ORDER_TYPE);
+  // Available promotions per order type, for the cart exactly as it is now. The
+  // customer flips between delivery and scheduled pickup while comparing slots,
+  // and each flip would otherwise be a round trip for a list we already read.
+  const promotionsCacheRef = useRef<{ key: string; byOrderType: Map<string, CartPromotion[]> }>({
+    key: '',
+    byOrderType: new Map(),
+  });
   // Synchronous mirror of pendingPromotionKeys: state updates are async, so a
   // rapid double click could otherwise fire two mutations for the same promotion.
   const pendingPromotionKeysRef = useRef<Set<string>>(new Set());
@@ -619,14 +634,38 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const cartId = cart?.id || cart?.cartId;
   // Applicability is evaluated per order type, and checkout revalidates with
   // the same one — asking for DELIVERY offers on a table cart would show
-  // campaigns that get dropped at submit.
-  const promotionOrderType = isTableMode ? TABLE_ORDER_TYPE : DEFAULT_ORDER_TYPE;
+  // campaigns that get dropped at submit. A table journey is pinned to
+  // TABLE_ORDER; everywhere else checkout drives the choice.
+  const promotionOrderType = isTableMode ? TABLE_ORDER_TYPE : selectedOrderType;
 
-  const refreshAvailablePromotions = useCallback(async () => {
+  // Applicability depends on the cart's items and on what is already applied,
+  // so a cart change is what invalidates every cached list.
+  const promotionsSignature = cart
+    ? JSON.stringify({
+      items: (cart.items || []).map(item => [item.id, item.qty]),
+      applied: (cart.appliedPromotions || []).map(promotionKey),
+    })
+    : '';
+
+  const refreshAvailablePromotions = useCallback(async (options?: { force?: boolean }) => {
     if (!isAuthenticated || !cartId) return;
+
+    const cacheKey = `${cartId}|${promotionsSignature}`;
+    if (promotionsCacheRef.current.key !== cacheKey) {
+      promotionsCacheRef.current = { key: cacheKey, byOrderType: new Map() };
+    }
+
+    const cached = promotionsCacheRef.current.byOrderType.get(promotionOrderType);
+    if (cached && !options?.force) {
+      setAvailablePromotions(cached);
+      setHasPromotionsError(false);
+      return;
+    }
+
     setIsPromotionsLoading(true);
     try {
       const promotions = await cartService.getAvailablePromotions(cartId, promotionOrderType, activeBranchId);
+      promotionsCacheRef.current.byOrderType.set(promotionOrderType, promotions);
       setAvailablePromotions(promotions);
       setHasPromotionsError(false);
     } catch (e) {
@@ -636,26 +675,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsPromotionsLoading(false);
     }
-  }, [isAuthenticated, cartId, promotionOrderType, activeBranchId]);
+  }, [isAuthenticated, cartId, promotionOrderType, promotionsSignature, activeBranchId]);
 
-  // Load the promotion list once a cart ID exists and re-fetch whenever cart
-  // items or applied promotions change, since applicability depends on both.
-  const promotionsSignature = cart
-    ? JSON.stringify({
-      items: (cart.items || []).map(item => [item.id, item.qty]),
-      applied: (cart.appliedPromotions || []).map(promotionKey),
-    })
-    : '';
-
+  // Load the promotion list once a cart ID exists, and re-read it whenever the
+  // cart or the order type changes. Cached order types answer from memory.
   useEffect(() => {
     if (!isAuthenticated || !cartId) {
       setAvailablePromotions([]);
       setHasPromotionsError(false);
+      promotionsCacheRef.current = { key: '', byOrderType: new Map() };
       return;
     }
     refreshAvailablePromotions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, cartId, promotionsSignature]);
+  }, [isAuthenticated, cartId, promotionsSignature, promotionOrderType]);
 
   const isPromotionPending = useCallback(
     (input: RemovePromotionInput) => pendingPromotionKeys.has(promotionMutationKey(input)),
@@ -675,7 +708,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       isProductRewardCheckoutError(code)
     ) {
       await refreshCart();
-      await refreshAvailablePromotions();
+      await refreshAvailablePromotions({ force: true });
     }
   };
 
@@ -726,6 +759,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(null);
     setAvailablePromotions([]);
     setHasPromotionsError(false);
+    promotionsCacheRef.current = { key: '', byOrderType: new Map() };
   }, []);
 
   const cartTotal = isAuthenticated
@@ -746,6 +780,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       availablePromotions,
       isPromotionsLoading,
       hasPromotionsError,
+      promotionOrderType,
+      setPromotionOrderType: setSelectedOrderType,
       refreshAvailablePromotions,
       applyPromotion,
       removePromotion,
