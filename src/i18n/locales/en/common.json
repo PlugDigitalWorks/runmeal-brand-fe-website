@@ -29,6 +29,7 @@
     "ADDRESS_SAVE_FAILED": "The address could not be saved.",
     "ADDRESS_SET_ACTIVE_FAILED": "The address could not be set as active.",
     "ADDRESS_UPDATE_FAILED": "The address could not be updated.",
+    "APPLE_WALLET_UNAVAILABLE": "Apple Wallet is temporarily unavailable. Please try again later.",
     "AUTH_ACCESS_SCOPE_EMPTY": "You don't have access to this resource.",
     "AUTH_AUTHENTICATION_REQUIRED": "Sign in to continue.",
     "AUTH_BRANCH_CONTEXT_REQUIRED": "Select a branch to continue.",
@@ -130,6 +131,7 @@
     "LOYALTY_PROMOTION_NO_LONGER_APPLICABLE": "One or more selected promotions are no longer applicable.",
     "LOYALTY_PROVIDER_REQUEST_FAILED": "The loyalty provider could not complete this request.",
     "LOYALTY_PROVIDER_SETTINGS_MISSING": "Loyalty provider settings are missing for this branch.",
+    "LOYALTY_STAMP_CAMPAIGN_NOT_FOUND": "This loyalty card is no longer available.",
     "LOYALTY_WALLET_BALANCE_INSUFFICIENT": "Insufficient credit balance. Available: {{available}}, requested: {{requested}}.",
     "LOYALTY_WALLET_CONFIRMATION_CODE_MISSING": "This wallet payment is missing its confirmation code.",
     "LOYALTY_WALLET_PAYMENT_RECORD_NOT_FOUND": "No wallet payment record was found for this order.",
@@ -892,6 +894,12 @@
         "EXPIRE": "Expired",
         "allCategories": "All categories"
       }
+    },
+    "appleWallet": {
+      "add": "Add to Apple Wallet",
+      "creating": "Preparing your pass...",
+      "error": "Your Apple Wallet pass could not be created. Please try again.",
+      "macHint": "Apple Wallet passes are added on iPhone. On a Mac the pass may only open as a preview or a download."
     }
   },
   "orders": {

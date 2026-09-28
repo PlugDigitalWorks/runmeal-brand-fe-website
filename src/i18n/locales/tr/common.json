@@ -29,6 +29,7 @@
     "ADDRESS_SAVE_FAILED": "Adres kaydedilemedi.",
     "ADDRESS_SET_ACTIVE_FAILED": "Adres aktif olarak ayarlanamadı.",
     "ADDRESS_UPDATE_FAILED": "Adres güncellenemedi.",
+    "APPLE_WALLET_UNAVAILABLE": "Apple Cüzdan şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
     "AUTH_ACCESS_SCOPE_EMPTY": "Bu kaynağa erişiminiz yok.",
     "AUTH_AUTHENTICATION_REQUIRED": "Devam etmek için giriş yapın.",
     "AUTH_BRANCH_CONTEXT_REQUIRED": "Devam etmek için bir şube seçin.",
@@ -130,6 +131,7 @@
     "LOYALTY_PROMOTION_NO_LONGER_APPLICABLE": "Seçilen kampanyalardan bir veya daha fazlası artık geçerli değil.",
     "LOYALTY_PROVIDER_REQUEST_FAILED": "Sadakat sağlayıcısı bu isteği tamamlayamadı.",
     "LOYALTY_PROVIDER_SETTINGS_MISSING": "Bu şube için sadakat sağlayıcısı ayarları eksik.",
+    "LOYALTY_STAMP_CAMPAIGN_NOT_FOUND": "Bu sadakat kartı artık kullanılamıyor.",
     "LOYALTY_WALLET_BALANCE_INSUFFICIENT": "Kredi bakiyesi yetersiz. Kullanılabilir: {{available}}, istenen: {{requested}}.",
     "LOYALTY_WALLET_CONFIRMATION_CODE_MISSING": "Bu cüzdan ödemesinde onay kodu eksik.",
     "LOYALTY_WALLET_PAYMENT_RECORD_NOT_FOUND": "Bu sipariş için cüzdan ödeme kaydı bulunamadı.",
@@ -892,6 +894,12 @@
         "EXPIRE": "Süresi dolan",
         "allCategories": "Tüm kategoriler"
       }
+    },
+    "appleWallet": {
+      "add": "Apple Cüzdan'a Ekle",
+      "creating": "Kartınız hazırlanıyor...",
+      "error": "Apple Cüzdan kartınız oluşturulamadı. Lütfen tekrar deneyin.",
+      "macHint": "Apple Cüzdan kartları iPhone'a eklenir. Mac'te kart yalnızca önizleme veya indirme olarak açılabilir."
     }
   },
   "orders": {
