@@ -22,5 +22,26 @@
   },
   "observability": {
     "enabled": true
+  },
+  // Staging: deployed from the `staging` branch with `npm run deploy:staging`
+  "env": {
+    "staging": {
+      "name": "runmeal-brand-fe-website-staging",
+      "routes": [
+        {
+          "pattern": "staging-brandfe.runmeal.com",
+          "custom_domain": true
+        }
+      ],
+      "services": [
+        {
+          "binding": "WORKER_SELF_REFERENCE",
+          "service": "runmeal-brand-fe-website-staging"
+        }
+      ],
+      "images": {
+        "binding": "IMAGES"
+      }
+    }
   }
 }
