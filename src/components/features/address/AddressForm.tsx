@@ -11,7 +11,7 @@ import { LocationPicker, GeocodedAddress, Location } from './LocationPicker';
 import { AddressSelects } from './AddressSelects';
 import { Country, State, City } from 'country-state-city';
 import { useCallback, useRef, useEffect, useState } from 'react';
-import { extractStreetAndBuilding, getAddressComponent, normalizeLocationName } from '@/lib/address-parsing';
+import { extractStreetAndBuilding, getAddressComponent, getAddressShortName, normalizeLocationName } from '@/lib/address-parsing';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
@@ -102,6 +102,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         register,
         handleSubmit,
         setValue,
+        getValues,
         watch,
         control,
         formState: { errors },
@@ -139,6 +140,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         const getComponent = (type: string) => getAddressComponent(components, type);
 
         const countryRaw = getComponent('country');
+        const countryIso = getAddressShortName(components, 'country').toUpperCase();
         const administrativeAreaLevel1 = getComponent('administrative_area_level_1');
         const administrativeAreaLevel2 = getComponent('administrative_area_level_2');
         const locality = getComponent('locality');
@@ -148,24 +150,27 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
 
         // 1. Match Country
         const allCountries = Country.getAllCountries();
-        let matchedCountry = allCountries.find(c =>
-            normalizeName(c.name) === normalizeName(countryRaw) ||
-            c.isoCode === countryRaw ||
-            normalizeName(c.name).includes(normalizeName(countryRaw))
-        );
+        // ISO code from Google is language independent, so prefer it over name matching.
+        let matchedCountry = allCountries.find(c => c.isoCode === countryIso) ||
+            allCountries.find(c =>
+                normalizeName(c.name) === normalizeName(countryRaw) ||
+                c.isoCode === countryRaw ||
+                (countryRaw && normalizeName(c.name).includes(normalizeName(countryRaw)))
+            );
 
         // Explicit fix for Türkiye -> Turkey if not found above
         if (!matchedCountry && (countryRaw.toLowerCase() === 'türkiye' || countryRaw.toLowerCase() === 'turkiye')) {
             matchedCountry = allCountries.find(c => c.isoCode === 'TR');
         }
 
-        const countryCode = matchedCountry?.isoCode || 'TR';
+        // Never silently switch to TR; keep the current country when nothing matched.
+        const countryCode = matchedCountry?.isoCode || getValues('countryCode');
 
         // 2. Match State (Province)
         let finalState = '';
         let stateCode = '';
 
-        if (matchedCountry) {
+        if (countryCode) {
             const countryStates = State.getStatesOfCountry(countryCode);
             const matchedState = countryStates.find(s =>
                 normalizeName(s.name) === normalizeName(administrativeAreaLevel1) ||
@@ -204,7 +209,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         if (building) setValue('buildingNumber', building);
 
         setSearchAddress(undefined);
-    }, [setValue]);
+    }, [setValue, getValues]);
 
     const onSubmit = async (data: AddressFormValues) => {
         setAddressLoading(true);

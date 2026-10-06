@@ -39,7 +39,12 @@ const getComponentText = (component?: AddressComponentLike) =>
 export const getAddressComponent = (components: AddressComponentLike[], type: string) =>
   getComponentText(components.find((component) => component.types.includes(type)));
 
-const isCountrySegment = (segment: string) => {
+export const getAddressShortName = (components: AddressComponentLike[], type: string) => {
+  const component = components.find((item) => item.types.includes(type));
+  return component?.short_name || component?.shortText || '';
+};
+
+const isCountrySegment =(segment: string) => {
   const normalized = normalizeLocationName(segment);
   return normalized === 'turkiye' || normalized === 'turkey' || normalized === 'tr';
 };
