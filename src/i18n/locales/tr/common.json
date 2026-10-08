@@ -608,7 +608,7 @@
       "districtRequired": "İlçe/şehir gereklidir",
       "provinceRequired": "İl/eyalet gereklidir",
       "phoneRequired": "Telefon gereklidir",
-      "phoneFormat": "E.164 biçimini kullanın, ör. +905551112233",
+      "phoneFormat": "Geçerli bir telefon numarası girin",
       "postalCodeRequired": "Posta kodu gereklidir",
       "streetRequired": "Sokak gereklidir",
       "buildingRequired": "Bina numarası gereklidir",

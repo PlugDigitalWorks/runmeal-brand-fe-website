@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { ApiResponse } from '@/types/auth';
@@ -8,6 +8,7 @@ import { userService } from '@/services/user.service';
 import { AxiosError } from 'axios';
 import { Save, Loader2 } from 'lucide-react'; // Added Loader2 for loading state
 import { LocationPicker, GeocodedAddress, Location } from './LocationPicker';
+import { PhoneField } from './PhoneField';
 import { AddressSelects } from './AddressSelects';
 import { Country, State, City } from 'country-state-city';
 import { useCallback, useRef, useEffect, useState } from 'react';
@@ -273,12 +274,19 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                 <Input label={t('address.province')} {...register('province')} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                    label={t('address.phone')}
-                    type="tel"
-                    placeholder="+905551112233"
-                    {...register('phoneE164')}
-                    error={errors.phoneE164?.message}
+                <Controller
+                    name="phoneE164"
+                    control={control}
+                    render={({ field }) => (
+                        <PhoneField
+                            label={t('address.phone')}
+                            value={field.value}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            countryCode={watch('countryCode')}
+                            error={errors.phoneE164?.message}
+                        />
+                    )}
                 />
                 <Input label={t('address.postalCode')} placeholder="34000" {...register('postalCode')} error={errors.postalCode?.message} />
             </div>

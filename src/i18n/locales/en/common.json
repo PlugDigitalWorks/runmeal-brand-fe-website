@@ -608,7 +608,7 @@
       "districtRequired": "District/City is required",
       "provinceRequired": "Province/State is required",
       "phoneRequired": "Phone is required",
-      "phoneFormat": "Use E.164 format, e.g. +905551112233",
+      "phoneFormat": "Enter a valid phone number",
       "postalCodeRequired": "Postal Code is required",
       "streetRequired": "Street is required",
       "buildingRequired": "Building is required",
