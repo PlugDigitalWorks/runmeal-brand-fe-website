@@ -11,6 +11,7 @@ import {
 } from '@/lib/loyalty-stamps';
 import { StampCard } from '@/types/loyalty-stamp';
 import { AddToAppleWalletButton } from '@/components/features/AddToAppleWalletButton';
+import { AddToGoogleWalletButton } from '@/components/features/AddToGoogleWalletButton';
 
 /**
  * One category campaign card: the stamp grid and the progress copy.
@@ -18,8 +19,8 @@ import { AddToAppleWalletButton } from '@/components/features/AddToAppleWalletBu
  * There is deliberately no QR and no redeem button here. The code the manager
  * scans is the customer's member QR — one per customer, rendered once by the
  * wallet — and redemption is confirmed by the manager after that scan, never
- * from the customer app. The Apple Wallet pass offered at the bottom is per
- * campaign and carries that same member QR.
+ * from the customer app. The Apple / Google Wallet passes offered at the bottom
+ * are per campaign and carry that same member QR.
  */
 
 interface LoyaltyStampCardProps {
@@ -142,6 +143,7 @@ export function LoyaltyStampCardView({ card }: LoyaltyStampCardProps) {
                 )}
 
                 <AddToAppleWalletButton brandId={card.brandId} campaignId={card.campaignId} />
+                <AddToGoogleWalletButton brandId={card.brandId} campaignId={card.campaignId} />
             </div>
         </div>
     );

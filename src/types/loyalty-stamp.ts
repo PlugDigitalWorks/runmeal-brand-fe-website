@@ -37,6 +37,12 @@ export interface AppleWalletLinkResponse {
   url: string;
 }
 
+/** `POST /loyalty/stamps/me/:brandId/:campaignId/google-wallet` */
+export interface GoogleWalletLinkResponse {
+  /** Signed `https://pay.google.com/gp/v/save/<JWT>` link to Google's save page. */
+  url: string;
+}
+
 /**
  * One category campaign's progress. Counters are authoritative — never derive
  * them from transaction history and never increment them optimistically.

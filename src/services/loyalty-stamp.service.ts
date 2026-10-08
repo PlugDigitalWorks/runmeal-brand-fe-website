@@ -2,6 +2,7 @@ import { api } from '@/lib/axios';
 import { ApiResponse, PaginatedApiResponse, PaginationMeta } from '@/types/auth';
 import {
     AppleWalletLinkResponse,
+    GoogleWalletLinkResponse,
     CustomerStampTransaction,
     StampAvailability,
     StampCard,
@@ -58,6 +59,18 @@ export const loyaltyStampService = {
     async createAppleWalletLink(brandId: string, campaignId: string) {
         const response = await api.post<ApiResponse<AppleWalletLinkResponse>>(
             `/loyalty/stamps/me/${encodeURIComponent(brandId)}/${encodeURIComponent(campaignId)}/apple-wallet`,
+        );
+        return response.data.data;
+    },
+
+    /**
+     * Asks the backend for a Google Wallet save link for one campaign card. The
+     * backend upserts the pass with Google on every call, so the link is
+     * requested on every click and never cached.
+     */
+    async createGoogleWalletLink(brandId: string, campaignId: string) {
+        const response = await api.post<ApiResponse<GoogleWalletLinkResponse>>(
+            `/loyalty/stamps/me/${encodeURIComponent(brandId)}/${encodeURIComponent(campaignId)}/google-wallet`,
         );
         return response.data.data;
     },

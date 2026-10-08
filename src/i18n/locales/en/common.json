@@ -104,6 +104,7 @@
     "CONTACT_REQUEST_NOT_FOUND": "Contact request not found.",
     "CONTACT_REQUEST_SENDER_IDENTITY_INCOMPLETE": "Your profile is missing a name or email required to send this request.",
     "CONTENT_PAGE_NOT_FOUND": "Content page not found.",
+    "GOOGLE_WALLET_UNAVAILABLE": "Google Wallet is temporarily unavailable. Please try again later.",
     "INTERNAL_SERVER_ERROR": "An internal server error occurred.",
     "LOYALTY_COUPON_ALREADY_USED": "You have already used this coupon.",
     "LOYALTY_COUPON_BIRTHDAY_NOT_SET": "Add your birthday to your profile to use this coupon.",
@@ -897,6 +898,12 @@
       "creating": "Preparing your pass...",
       "error": "Your Apple Wallet pass could not be created. Please try again.",
       "macHint": "Apple Wallet passes are added on iPhone. On a Mac the pass may only open as a preview or a download."
+    },
+    "googleWallet": {
+      "add": "Add to Google Wallet",
+      "creating": "Preparing your pass...",
+      "error": "Your Google Wallet pass could not be created. Please try again.",
+      "desktopHint": "The pass is saved to your Google account and shows up in Google Wallet on your Android phone."
     }
   },
   "orders": {

@@ -104,6 +104,7 @@
     "CONTACT_REQUEST_NOT_FOUND": "İletişim talebi bulunamadı.",
     "CONTACT_REQUEST_SENDER_IDENTITY_INCOMPLETE": "Bu isteği göndermek için gereken ad veya e-posta profilinizde eksik.",
     "CONTENT_PAGE_NOT_FOUND": "İçerik sayfası bulunamadı.",
+    "GOOGLE_WALLET_UNAVAILABLE": "Google Cüzdan şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
     "INTERNAL_SERVER_ERROR": "Sunucuda beklenmeyen bir hata oluştu.",
     "LOYALTY_COUPON_ALREADY_USED": "Bu kuponu zaten kullandınız.",
     "LOYALTY_COUPON_BIRTHDAY_NOT_SET": "Bu kuponu kullanmak için doğum gününüzü profilinize ekleyin.",
@@ -897,6 +898,12 @@
       "creating": "Kartınız hazırlanıyor...",
       "error": "Apple Cüzdan kartınız oluşturulamadı. Lütfen tekrar deneyin.",
       "macHint": "Apple Cüzdan kartları iPhone'a eklenir. Mac'te kart yalnızca önizleme veya indirme olarak açılabilir."
+    },
+    "googleWallet": {
+      "add": "Google Cüzdan'a Ekle",
+      "creating": "Kartınız hazırlanıyor...",
+      "error": "Google Cüzdan kartınız oluşturulamadı. Lütfen tekrar deneyin.",
+      "desktopHint": "Kart Google hesabınıza eklenir ve Android telefonunuzdaki Google Cüzdan'da görünür."
     }
   },
   "orders": {

@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { useUser } from '@/context/UserContext';
 import { useStampCards, useStampQr } from '@/hooks/useLoyaltyStamps';
 import { resolveCardTitle, resolveStampProgress, sortCardsByProgress } from '@/lib/loyalty-stamps';
+import { AddToAppleWalletButton } from '@/components/features/AddToAppleWalletButton';
+import { AddToGoogleWalletButton } from '@/components/features/AddToGoogleWalletButton';
 
 /**
  * The screen the customer holds up at the counter: membership progress on top,
@@ -17,7 +19,8 @@ import { resolveCardTitle, resolveStampProgress, sortCardsByProgress } from '@/l
  * The code is the signed member QR the backend issues — static, so there is no
  * expiry countdown, and it carries no category choice: the manager sees every
  * card after scanning. The switcher below only picks what this screen
- * summarises, and stamps are never added or redeemed from here.
+ * summarises — and which campaign the Wallet buttons save — and stamps are
+ * never added or redeemed from here.
  */
 
 const RING_RADIUS = 52;
@@ -212,7 +215,16 @@ export function MemberQrScreen() {
                 </p>
             </div>
 
-            <div className="px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
+            <div className="space-y-3 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
+                {/* Keyed by campaign so switching cards drops the previous card's
+                    error and in-flight state. */}
+                {activeCard && (
+                    <React.Fragment key={activeCard.campaignId}>
+                        <AddToAppleWalletButton brandId={activeCard.brandId} campaignId={activeCard.campaignId} />
+                        <AddToGoogleWalletButton brandId={activeCard.brandId} campaignId={activeCard.campaignId} />
+                    </React.Fragment>
+                )}
+
                 <button
                     type="button"
                     onClick={() => router.push('/profile?tab=rewards')}

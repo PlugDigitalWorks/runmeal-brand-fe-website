@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 import { AppleWalletPlatform, detectAppleWalletPlatform, parseAppleWalletDownloadUrl } from '@/lib/apple-wallet';
+import { GoogleWalletPlatform, detectGoogleWalletPlatform, parseGoogleWalletSaveUrl } from '@/lib/google-wallet';
 import { getBrandId } from '@/lib/brand-store';
 import { STAMP_QR_INVALID_CODE } from '@/lib/loyalty-stamps';
 import { loyaltyStampService, StampTransactionQuery } from '@/services/loyalty-stamp.service';
@@ -352,6 +353,81 @@ export function useAppleWalletPass(brandId: string, campaignId: string): AppleWa
         } catch (requestError) {
             if (!mountedRef.current || handle401(requestError)) return;
             setError(resolveApiErrorMessage(requestError, t('rewards.appleWallet.error')));
+        } finally {
+            inFlightRef.current = false;
+            if (mountedRef.current) setIsCreating(false);
+        }
+    }, [brandId, campaignId, handle401, t]);
+
+    return {
+        platform,
+        isCreating,
+        error,
+        add: React.useCallback(() => {
+            void add();
+        }, [add]),
+    };
+}
+
+export interface GoogleWalletPassState {
+    /** `unsupported` until mounted, so server and first client render agree. */
+    platform: GoogleWalletPlatform;
+    isCreating: boolean;
+    error: string | null;
+    add: () => void;
+}
+
+/**
+ * How long the button stays locked after handing the browser to Google's save
+ * page. On Android the Wallet sheet can open over the page without unloading
+ * it; the pause stops a second tap from firing another request meanwhile.
+ */
+const GOOGLE_WALLET_HANDOFF_LOCK_MS = 2500;
+
+/**
+ * "Add to Google Wallet" for one campaign card.
+ *
+ * Every click asks the backend for a new save link, which also refreshes the
+ * pass on Google's side. The browser is sent to the URL exactly as returned,
+ * and only if it points at Google's save page.
+ */
+export function useGoogleWalletPass(brandId: string, campaignId: string): GoogleWalletPassState {
+    const { t } = useTranslation();
+    const handle401 = useSignOutOn401();
+    const [platform, setPlatform] = React.useState<GoogleWalletPlatform>('unsupported');
+    const [isCreating, setIsCreating] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+    const inFlightRef = React.useRef(false);
+    const mountedRef = React.useRef(true);
+
+    React.useEffect(() => {
+        mountedRef.current = true;
+        setPlatform(detectGoogleWalletPlatform());
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
+
+    const add = React.useCallback(async () => {
+        // A ref, not state: two taps in the same frame both see stale state.
+        if (inFlightRef.current) return;
+        inFlightRef.current = true;
+        setIsCreating(true);
+        setError(null);
+
+        try {
+            const result = await loyaltyStampService.createGoogleWalletLink(brandId, campaignId);
+            const url = parseGoogleWalletSaveUrl(result?.url);
+            if (!url) {
+                if (mountedRef.current) setError(t('rewards.googleWallet.error'));
+                return;
+            }
+
+            window.location.assign(url);
+            await new Promise((resolve) => setTimeout(resolve, GOOGLE_WALLET_HANDOFF_LOCK_MS));
+        } catch (requestError) {
+            if (!mountedRef.current || handle401(requestError)) return;
+            setError(resolveApiErrorMessage(requestError, t('rewards.googleWallet.error')));
         } finally {
             inFlightRef.current = false;
             if (mountedRef.current) setIsCreating(false);
