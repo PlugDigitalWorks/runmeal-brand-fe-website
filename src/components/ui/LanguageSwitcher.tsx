@@ -2,7 +2,11 @@
 
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
-import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n/config';
+import {
+  LANGUAGE_CHOICE_STORAGE_KEY,
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from '@/i18n/config';
 
 const LABELS: Record<SupportedLanguage, string> = {
   tr: 'TR',
@@ -12,11 +16,17 @@ const LABELS: Record<SupportedLanguage, string> = {
 export function LanguageSwitcher() {
   const { i18n, t } = useTranslation();
   const current = (i18n.resolvedLanguage || i18n.language || 'tr').slice(0, 2);
+  const idx = SUPPORTED_LANGUAGES.indexOf(current as SupportedLanguage);
+  // The button shows the language it switches to, not the active one.
+  const target = SUPPORTED_LANGUAGES[(idx + 1) % SUPPORTED_LANGUAGES.length];
 
   const next = () => {
-    const idx = SUPPORTED_LANGUAGES.indexOf(current as SupportedLanguage);
-    const target = SUPPORTED_LANGUAGES[(idx + 1) % SUPPORTED_LANGUAGES.length];
     i18n.changeLanguage(target);
+    try {
+      localStorage.setItem(LANGUAGE_CHOICE_STORAGE_KEY, target);
+    } catch {
+      // Storage unavailable (private mode etc.): the switch still applies to this page view.
+    }
   };
 
   return (
@@ -27,7 +37,7 @@ export function LanguageSwitcher() {
       aria-label={t('common.changeLanguage')}
     >
       <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-      <span>{LABELS[current as SupportedLanguage] ?? current.toUpperCase()}</span>
+      <span>{LABELS[target]}</span>
     </button>
   );
 }
