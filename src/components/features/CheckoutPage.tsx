@@ -14,6 +14,7 @@ import type { Address } from '@/types/address';
 import { cartService } from '@/services/cart.service';
 import { CartItem, CartLoyaltyWallet, CartProductReward, CartPromotion, LoyaltyProviderType, promotionKey } from '@/types/cart';
 import { sanitizePositiveNumber } from '@/lib/utils';
+import { branchCanDeliver } from '@/lib/branch-details';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 import { isProductRewardCheckoutError, resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
 import {
@@ -87,12 +88,14 @@ export function CheckoutPage() {
     const targetBranchId = cart?.branchId || selectedBranch?.id;
     const paymentSettings = selectedBranch?.payment_settings;
     const orderTypeSettings = selectedBranch?.order_type_settings;
+    // Picked from the all-branches list while it doesn't reach the active address: pickup only.
+    const deliversToAddress = branchCanDeliver(selectedBranch) !== false;
     const orderTypeOptions = React.useMemo(() => [
-        { value: 'DELIVERY' as OrderType, label: t('checkout.orderTypes.delivery'), isAvailable: orderTypeSettings?.delivery?.isActive ?? true },
+        { value: 'DELIVERY' as OrderType, label: t('checkout.orderTypes.delivery'), isAvailable: deliversToAddress && (orderTypeSettings?.delivery?.isActive ?? true) },
         { value: 'PICKUP' as OrderType, label: t('checkout.orderTypes.pickup'), isAvailable: orderTypeSettings?.pickup?.isActive ?? false },
-        { value: 'SCHEDULED_DELIVERY' as OrderType, label: t('checkout.orderTypes.scheduledDelivery'), isAvailable: orderTypeSettings?.scheduledDelivery?.isActive ?? false },
+        { value: 'SCHEDULED_DELIVERY' as OrderType, label: t('checkout.orderTypes.scheduledDelivery'), isAvailable: deliversToAddress && (orderTypeSettings?.scheduledDelivery?.isActive ?? false) },
         { value: 'SCHEDULED_PICKUP' as OrderType, label: t('checkout.orderTypes.scheduledPickup'), isAvailable: orderTypeSettings?.scheduledPickup?.isActive ?? false },
-    ].filter((option) => option.isAvailable), [orderTypeSettings, t]);
+    ].filter((option) => option.isAvailable), [orderTypeSettings, deliversToAddress, t]);
     const isPickup = orderType === 'PICKUP' || orderType === 'SCHEDULED_PICKUP';
     const isScheduled = orderType === 'SCHEDULED_DELIVERY' || orderType === 'SCHEDULED_PICKUP';
     const paymentOptions = React.useMemo(() => [

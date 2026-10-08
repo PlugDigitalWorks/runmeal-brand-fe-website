@@ -494,13 +494,12 @@
     }
   },
   "branch": {
-    "addressSearchHint": "Önce mahalle, sonra sokak girin",
     "loading": "Şubeler yükleniyor...",
     "availableBranches": "Siparişe açık şubeler",
-    "change": "Şubeyi Değiştir",
-    "select": "Şube Seç",
-    "searching": "Aranıyor...",
-    "noneFound": "Bu konumda şube bulunamadı.",
+    "noDeliveryHere": "Bu adrese teslimat yok",
+    "pickupAvailable": "Gel-al ile sipariş verebilirsiniz",
+    "allBranches": "Tüm şubeler ({{count}})",
+    "noBranches": "Şube bulunamadı.",
     "selectToOrder": "Sipariş vermek için bir şube seçin.",
     "minimumOrder": "Minimum sipariş tutarı",
     "payment": "Ödeme",
@@ -577,8 +576,6 @@
     "addToCart": "Sepete Ekle"
   },
   "address": {
-    "searchPlaceholder": "Teslimat adresi arayın...",
-    "poweredBy": "Destekleyen",
     "country": "Ülke",
     "province": "İl",
     "district": "İlçe",

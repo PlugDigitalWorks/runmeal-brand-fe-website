@@ -2,22 +2,20 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { branchService } from '@/services/branch.service';
-import { userService } from '@/services/user.service';
-import {
-    buildAddressDtoFromSelection,
-    isSameDeliveryLocation,
-} from '@/lib/address-parsing';
-import type { DeliveryAddressSelection } from '@/lib/address-parsing';
-import type { Branch, BranchAvailabilityResponse } from '@/types/branch';
+import { isBranchSelectable } from '@/lib/branch-details';
+import type { Branch, BranchAvailabilityResponse, BrandBranch } from '@/types/branch';
 import { useAuth } from './AuthContext';
 import { useTable } from './TableContext';
 import { useUser } from './UserContext';
 
 interface BranchContextType {
-    selectedBranch: Branch | null;
-    branches: Branch[];
+    selectedBranch: Branch | BrandBranch | null;
+    /**
+     * Every open branch of the brand (`nearby/brand/all`), relative to the
+     * user's active saved address when there is one, else unlocated.
+     */
+    branches: Array<Branch | BrandBranch>;
     isLoading: boolean;
-    searchedAddress: DeliveryAddressSelection | null;
     /**
      * The branch every menu/cart call should use.
      *
@@ -38,8 +36,7 @@ interface BranchContextType {
     hasAvailabilityError: boolean;
     refreshAvailability: () => Promise<BranchAvailabilityResponse | null>;
     invalidateMenu: () => void;
-    selectBranch: (branch: Branch) => void;
-    searchBranches: (address: DeliveryAddressSelection) => Promise<void>;
+    selectBranch: (branch: Branch | BrandBranch) => void;
 }
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
@@ -65,12 +62,11 @@ const writeStoredBranchId = (branchId: string) => {
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
     const { isAuthenticated } = useAuth();
-    const { addresses, isLoading: isUserLoading, refreshAddresses } = useUser();
+    const { addresses, isLoading: isUserLoading } = useUser();
     const { isTableMode, journey } = useTable();
-    const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedBranch, setSelectedBranch] = useState<Branch | BrandBranch | null>(null);
+    const [branches, setBranches] = useState<Array<Branch | BrandBranch>>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [searchedAddress, setSearchedAddress] = useState<DeliveryAddressSelection | null>(null);
     const [menuRevision, setMenuRevision] = useState(0);
     const [availability, setAvailability] = useState<BranchAvailabilityResponse | null>(null);
     const [isAvailabilityLoading, setIsAvailabilityLoading] = useState(false);
@@ -153,7 +149,8 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
             // below would otherwise fight it for `selectedBranch`.
             if (isTableMode) return;
 
-            // Priority 1: Restore from Guest Cart (if unauthenticated and exists)
+            // A guest cart belongs to one branch; keep it selected so the cart stays valid.
+            let cartBranch: Branch | null = null;
             if (!isAuthenticated) {
                 const guestCart = localStorage.getItem('guest_cart');
                 const guestBranch = localStorage.getItem('guest_branch');
@@ -162,31 +159,16 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
                     try {
                         const items = JSON.parse(guestCart);
                         if (items.length > 0) {
-                            // Strategy 1: Explicit 'guest_branch'
                             if (guestBranch) {
-                                const branch = JSON.parse(guestBranch);
-                                setSelectedBranch(branch);
-                                setBranches([branch]);
-                                const guestAddress = localStorage.getItem('guest_address');
-                                if (guestAddress) {
-                                    setSearchedAddress(JSON.parse(guestAddress));
-                                }
-                                return;
-                            }
-
-                            // Strategy 2: Derive from first item's 'branchId' (fallback)
-                            const firstItem = items[0];
-                            if (firstItem.branchId) {
-                                // We only have ID, need to fetch details.
-                                const branchDetails = await branchService.getBranchDetails(firstItem.branchId);
-                                if (branchDetails) {
-                                    setSelectedBranch(branchDetails);
-                                    setBranches([branchDetails]);
-                                    // Self-heal storage
-                                    localStorage.setItem('guest_branch', JSON.stringify(branchDetails));
-                                    return;
+                                cartBranch = JSON.parse(guestBranch);
+                            } else if (items[0].branchId) {
+                                // Only the id is stored with the items; fetch the rest and self-heal storage.
+                                cartBranch = await branchService.getBranchDetails(items[0].branchId);
+                                if (cartBranch) {
+                                    localStorage.setItem('guest_branch', JSON.stringify(cartBranch));
                                 }
                             }
+                            if (cartBranch) setSelectedBranch(cartBranch);
                         }
                     } catch (e) {
                         console.error("Failed to restore guest branch", e);
@@ -194,37 +176,29 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
                 }
             }
 
-            // Priority 2: User Address Logic
-            if (isAuthenticated && addresses.length > 0) {
-                setIsLoading(true);
-                try {
-                    const activeAddress = addresses.find(a => a.isActive);
-                    if (activeAddress) {
-                        const data = await branchService.getNearbyBranches(activeAddress.latitude, activeAddress.longitude);
-                        const nextBranches = data || [];
-                        setBranches(nextBranches);
-                        const storedBranchId = readStoredBranchId();
-                        setSelectedBranch((currentBranch) => {
-                            if (nextBranches.length === 0) return null;
-                            return (
-                                nextBranches.find((branch) => branch.id === currentBranch?.id) ||
-                                nextBranches.find((branch) => branch.id === storedBranchId) ||
-                                nextBranches[0]
-                            );
-                        });
-                        setSearchedAddress((currentAddress) =>
-                            currentAddress || {
-                                latitude: activeAddress.latitude,
-                                longitude: activeAddress.longitude,
-                                formattedAddress: [activeAddress.street, activeAddress.district, activeAddress.province].filter(Boolean).join(', '),
-                            },
-                        );
-                    }
-                } catch (err) {
-                    console.error("Failed to init user branch", err);
-                } finally {
-                    setIsLoading(false);
-                }
+            // Every open branch, measured from the active saved address when there is one.
+            const activeAddress = isAuthenticated ? addresses.find(a => a.isActive) : undefined;
+            setIsLoading(true);
+            try {
+                const nextBranches = (await branchService.getBrandBranches(activeAddress ?? null)) || [];
+                setBranches(nextBranches);
+                const storedBranchId = readStoredBranchId();
+                setSelectedBranch((currentBranch) => {
+                    const listed = (id?: string | null) =>
+                        id ? nextBranches.find((branch) => branch.id === id && isBranchSelectable(branch)) : undefined;
+                    if (cartBranch) return listed(cartBranch.id) || cartBranch;
+                    return (
+                        listed(currentBranch?.id) ||
+                        listed(storedBranchId) ||
+                        // Nearest branch that delivers to the active address.
+                        nextBranches.find((branch) => branch.canDeliver === true) ||
+                        (nextBranches.length === 1 && isBranchSelectable(nextBranches[0]) ? nextBranches[0] : null)
+                    );
+                });
+            } catch (err) {
+                console.error("Failed to load brand branches", err);
+            } finally {
+                setIsLoading(false);
             }
         };
 
@@ -233,7 +207,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         }
     }, [isAuthenticated, addresses, isUserLoading, isTableMode]);
 
-    const selectBranch = (branch: Branch) => {
+    const selectBranch = (branch: Branch | BrandBranch) => {
         if (isTableMode) return;
         setSelectedBranch(branch);
         writeStoredBranchId(branch.id);
@@ -242,66 +216,15 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const syncSearchAddress = async (address: DeliveryAddressSelection) => {
-        if (!isAuthenticated) {
-            localStorage.setItem('guest_address', JSON.stringify(address));
-            return;
-        }
-
-        const matchingAddress = addresses.find((savedAddress) =>
-            isSameDeliveryLocation(savedAddress, address),
-        );
-
-        if (matchingAddress) {
-            if (!matchingAddress.isActive) {
-                await userService.setActiveAddress(matchingAddress.id);
-            }
-        } else {
-            await userService.createAddress(buildAddressDtoFromSelection(address));
-        }
-
-        await refreshAddresses();
-    };
-
-    const searchBranches = async (address: DeliveryAddressSelection) => {
-        if (isTableMode) return;
-        setSearchedAddress(address);
-        try {
-            const data = await branchService.getNearbyBranches(address.latitude, address.longitude);
-            setBranches(data || []);
-            // Optional: Auto select first?
-            // Usually search implies we want to see options, but auto-selecting the nearest is often good UX.
-            if (data && data.length > 0) {
-                setSelectedBranch(data[0]);
-                writeStoredBranchId(data[0].id);
-            } else {
-                setSelectedBranch(null);
-            }
-        } catch (err) {
-            console.error("Manual search failed", err);
-            setBranches([]);
-            setSelectedBranch(null);
-            return;
-        }
-
-        try {
-            await syncSearchAddress(address);
-        } catch (err) {
-            console.error("Failed to sync searched address", err);
-        }
-    };
-
     return (
         <BranchContext.Provider value={{
             selectedBranch,
             branches,
             isLoading,
-            searchedAddress,
             activeBranchId,
             menuRevision,
             invalidateMenu,
             selectBranch,
-            searchBranches,
             availability,
             isAvailabilityLoading,
             hasAvailabilityError,

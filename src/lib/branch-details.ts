@@ -1,4 +1,4 @@
-import type { Branch } from '@/types/branch';
+import type { Branch, BrandBranch } from '@/types/branch';
 
 /**
  * The handful of branch facts both context panels above the menu render —
@@ -53,4 +53,23 @@ export function resolveBranchDetails(branch: Branch | null | undefined): Resolve
 /** True when this branch still lets a QR customer switch to pickup. */
 export function isPickupAvailable(branch: Branch | null | undefined): boolean {
     return branch?.order_type_settings?.pickup?.isActive === true;
+}
+
+/** `canDeliver` from the all-branches list; null when unknown (no location, or a record from elsewhere). */
+export function branchCanDeliver(branch: Branch | BrandBranch | null | undefined): boolean | null {
+    return branch && 'canDeliver' in branch ? branch.canDeliver : null;
+}
+
+/** Pickup (now or scheduled) — what still works when the branch doesn't deliver to the customer. */
+export function hasPickupOrderType(branch: Branch | BrandBranch | null | undefined): boolean {
+    const settings = branch?.order_type_settings;
+    return settings?.pickup?.isActive === true || settings?.scheduledPickup?.isActive === true;
+}
+
+/**
+ * A branch that doesn't deliver to the customer can still be picked for pickup.
+ * Table ordering doesn't count: it only starts from a scanned QR code.
+ */
+export function isBranchSelectable(branch: Branch | BrandBranch): boolean {
+    return branchCanDeliver(branch) !== false || hasPickupOrderType(branch);
 }

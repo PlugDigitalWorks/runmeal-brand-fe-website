@@ -2,25 +2,45 @@ import { api } from '@/lib/axios';
 import { ApiResponse } from '@/types/auth';
 import type {
   Branch,
+  BrandBranch,
   BranchAvailabilityResponse,
   FulfillmentSlotsResponse,
   ScheduledOrderType,
 } from '@/types/branch';
 
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+/** `brandId` plus lat/lng — both coordinates or neither, never just one. */
+async function brandLocationParams(location?: Coordinates | null) {
+  const { getBrandId } = await import('@/lib/brand-store');
+  const params: Record<string, string> = { brandId: getBrandId() };
+  if (location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)) {
+    params.lat = String(location.latitude);
+    params.lng = String(location.longitude);
+  }
+  return params;
+}
+
 export const branchService = {
+  /** Only the branches that deliver to the given location. */
   async getNearbyBranches(lat?: number, lng?: number) {
-    const { getBrandId } = await import('@/lib/brand-store');
-    const brandId = getBrandId();
+    const params = await brandLocationParams(
+      lat === undefined || lng === undefined ? null : { latitude: lat, longitude: lng },
+    );
+    const response = await api.get<ApiResponse<Branch[]>>('/branches/nearby/brand', { params });
+    return response.data.data;
+  },
 
-    const params = new URLSearchParams();
-    if (lat) params.append('lat', lat.toString());
-    if (lng) params.append('lng', lng.toString());
-    if (brandId) params.append('brandId', brandId);
-
-    const queryString = params.toString();
-    const url = `/branches/nearby/brand${queryString ? `?${queryString}` : ''}`;
-
-    const response = await api.get<ApiResponse<Branch[]>>(url);
+  /**
+   * Every open branch of the brand. With a location they come nearest first and
+   * carry `distanceM`/`canDeliver`; without one, sorted by name with both null.
+   */
+  async getBrandBranches(location?: Coordinates | null) {
+    const params = await brandLocationParams(location);
+    const response = await api.get<ApiResponse<BrandBranch[]>>('/branches/nearby/brand/all', { params });
     return response.data.data;
   },
 

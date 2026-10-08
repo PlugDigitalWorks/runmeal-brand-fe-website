@@ -7,7 +7,7 @@ export interface Branch {
     type: 'Point';
     coordinates: number[]; // [longitude, latitude]
   };
-  distanceM?: number;
+  distanceM?: number | null;
   brandId?: string;
   createdAt: string;
   updatedAt: string;
@@ -55,6 +55,17 @@ export interface Branch {
       CARD_ON_DELIVERY: number;
     }
   };
+}
+
+/**
+ * A row of `GET /branches/nearby/brand/all`: every open branch of the brand,
+ * not only those delivering to the caller. Without coordinates both extra
+ * fields are null and the list is sorted by name.
+ */
+export interface BrandBranch extends Branch {
+  distanceM: number | null;
+  /** Whether the branch delivers to the given location; null when none was sent. */
+  canDeliver: boolean | null;
 }
 
 export type AvailabilityReason =

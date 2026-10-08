@@ -494,13 +494,12 @@
     }
   },
   "branch": {
-    "addressSearchHint": "Enter Neighborhood first, then Street",
     "loading": "Loading branches...",
     "availableBranches": "Branches available for order",
-    "change": "Change Branch",
-    "select": "Select Branch",
-    "searching": "Searching...",
-    "noneFound": "No branches found in this location.",
+    "noDeliveryHere": "No delivery to this address",
+    "pickupAvailable": "You can order for pickup",
+    "allBranches": "All branches ({{count}})",
+    "noBranches": "No branches found.",
     "selectToOrder": "Please select a branch to order.",
     "minimumOrder": "Minimum order amount",
     "payment": "Payment",
@@ -577,8 +576,6 @@
     "addToCart": "Add to Cart"
   },
   "address": {
-    "searchPlaceholder": "Search for a delivery address...",
-    "poweredBy": "Powered by",
     "country": "Country",
     "province": "Province",
     "district": "District",
