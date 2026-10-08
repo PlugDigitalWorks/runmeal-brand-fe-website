@@ -1,9 +1,9 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import { formatCurrency } from '@/lib/utils';
 import { resolveRewardTargetName } from '@/lib/loyalty-rewards';
 import { OrderDetails, toPromotionSnapshots } from '@/services/order.service';
+import { Money } from '@/components/ui/Money';
 
 /**
  * The internal promotions the order was placed with, as the order recorded
@@ -12,10 +12,10 @@ import { OrderDetails, toPromotionSnapshots } from '@/services/order.service';
  */
 export function OrderPromotionSnapshots({
     snapshot,
-    currencySymbol,
+    currency,
 }: {
     snapshot: OrderDetails['internalPromotionSnapshot'];
-    currencySymbol?: string | null;
+    currency?: string | null;
 }) {
     const { t } = useTranslation();
     const snapshots = toPromotionSnapshots(snapshot);
@@ -47,7 +47,7 @@ export function OrderPromotionSnapshots({
                         </div>
                         {amount > 0 && (
                             <span className="shrink-0 font-semibold whitespace-nowrap">
-                                {formatCurrency(-amount, currencySymbol)}
+                                <Money value={-amount} currency={currency} />
                             </span>
                         )}
                     </div>

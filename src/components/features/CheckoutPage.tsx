@@ -13,7 +13,7 @@ import { userService } from '@/services/user.service';
 import type { Address } from '@/types/address';
 import { cartService } from '@/services/cart.service';
 import { CartItem, CartLoyaltyWallet, CartProductReward, CartPromotion, LoyaltyProviderType, promotionKey } from '@/types/cart';
-import { formatCurrency, resolveCurrencySymbol, sanitizePositiveNumber } from '@/lib/utils';
+import { sanitizePositiveNumber } from '@/lib/utils';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 import { isProductRewardCheckoutError, resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
 import {
@@ -34,6 +34,8 @@ import { walletService, WalletBalance } from '@/services/wallet.service';
 import { Wallet, Ticket, X, Gift } from 'lucide-react';
 import { FulfillmentSlotPicker } from './FulfillmentSlotPicker';
 import type { ScheduledOrderType } from '@/types/branch';
+import { Money } from '@/components/ui/Money';
+import { useMoney } from '@/hooks/useMoney';
 
 export function CheckoutPage() {
     const router = useRouter();
@@ -212,7 +214,6 @@ export function CheckoutPage() {
 
     const spendableBalance = loyaltyWallet?.balance ?? walletBalance?.balance ?? 0;
     const isBalanceSpendable = (loyaltyWallet?.usable ?? true) && spendableBalance > 0;
-    const balanceSymbol = resolveCurrencySymbol(loyaltyWallet?.currency);
     const balanceTypeKey = loyaltyWallet && `loyalty.balanceTypes.${loyaltyWallet.balanceType}`;
     const balanceTypeLabel = balanceTypeKey
         ? (t(balanceTypeKey) === balanceTypeKey ? loyaltyWallet.balanceType : t(balanceTypeKey))
@@ -710,7 +711,7 @@ export function CheckoutPage() {
                                     <div className="flex items-center justify-between gap-3">
                                         <span className="text-zinc-600 text-sm">{t('loyalty.availableBalance')}</span>
                                         <span className="font-bold text-zinc-800">
-                                            {formatCurrency(spendableBalance, balanceSymbol)}
+                                            <Money value={spendableBalance} />
                                         </span>
                                     </div>
                                     {loyaltyWallet && (
@@ -726,7 +727,7 @@ export function CheckoutPage() {
 
                                 {walletAppliedAmount > 0 ? (
                                     <div className="flex items-center justify-between bg-green-50 text-green-700 p-3 rounded-lg border border-green-200">
-                                        <span className="font-medium text-sm">{t('checkout.used')}: {formatCurrency(walletAppliedAmount)}</span>
+                                        <span className="font-medium text-sm">{t('checkout.used')}: <Money value={walletAppliedAmount} /></span>
                                         <button
                                             onClick={handleRemoveWallet}
                                             className="text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-1.5 rounded-full transition-colors"
@@ -764,7 +765,7 @@ export function CheckoutPage() {
 
                                 {walletAppliedAmount > 0 && (
                                     <p className="text-xs text-green-600 mt-2 text-right">
-                                        {formatCurrency(-walletAppliedAmount)} {t('checkout.applied')}
+                                        <Money value={-walletAppliedAmount} /> {t('checkout.applied')}
                                     </p>
                                 )}
                             </div>
@@ -889,7 +890,7 @@ export function CheckoutPage() {
                             <div className="border-t border-zinc-100 pt-4 space-y-2">
                                 <div className="flex justify-between text-sm text-zinc-600">
                                     <span>{t('checkout.subtotal')}</span>
-                                    <span>{formatCurrency(cartTotal)}</span>
+                                    <span><Money value={cartTotal} /></span>
                                 </div>
                                 <div className="flex justify-between text-sm text-zinc-600">
                                     <span>{t('checkout.deliveryFee')}</span>
@@ -902,7 +903,7 @@ export function CheckoutPage() {
                                             <Ticket size={14} />
                                             <span>{t('checkout.discount')}</span>
                                         </div>
-                                        <span>{formatCurrency(-cart.discountAmount)}</span>
+                                        <span><Money value={-cart.discountAmount} /></span>
                                     </div>
                                 ) : null}
 
@@ -912,13 +913,13 @@ export function CheckoutPage() {
                                             <Wallet size={14} />
                                             <span>{t('checkout.walletUsed')}</span>
                                         </div>
-                                        <span>{formatCurrency(-walletAppliedAmount)}</span>
+                                        <span><Money value={-walletAppliedAmount} /></span>
                                     </div>
                                 ) : null}
 
                                 <div className="flex justify-between text-lg font-bold text-zinc-800 pt-2 border-t border-zinc-100">
                                     <span>{t('checkout.total')}</span>
-                                    <span>{formatCurrency(Math.max(0, (cart?.finalPrice ?? cart?.totalCartPrice ?? cartTotal) - walletAppliedAmount))}</span>
+                                    <span><Money value={Math.max(0, (cart?.finalPrice ?? cart?.totalCartPrice ?? cartTotal) - walletAppliedAmount)} /></span>
                                 </div>
                             </div>
 
@@ -1311,6 +1312,7 @@ function RewardItemPicker({
     onClose: () => void;
 }) {
     const { t } = useTranslation();
+    const { format: formatPrice } = useMoney();
     const [selectedId, setSelectedId] = React.useState<string | null>(items[0]?.id ?? null);
     const targetName = resolveRewardTargetName(reward);
 
@@ -1400,12 +1402,12 @@ function RewardItemPicker({
                                     </div>
                                     <div className="shrink-0 text-right">
                                         <p className="text-sm font-semibold text-zinc-800">
-                                            {formatCurrency(resolveRewardItemPrice(item))}
+                                            <Money value={resolveRewardItemPrice(item)} />
                                         </p>
                                         {isSelected && (
                                             <p className="text-[11px] font-medium text-green-600">
                                                 {t('loyalty.productReward.selectDiscount', {
-                                                    amount: formatCurrency(resolveRewardItemPrice(item)),
+                                                    amount: formatPrice(resolveRewardItemPrice(item)),
                                                 })}
                                             </p>
                                         )}

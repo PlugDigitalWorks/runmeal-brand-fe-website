@@ -4,9 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
-import { resolveCurrencySymbol } from '@/lib/utils';
 import type { TableOrderView } from '@/types/table';
+import { Money } from '@/components/ui/Money';
 
 /**
  * Order confirmation for a table journey.
@@ -46,10 +45,7 @@ export function TableOrderSuccess({
                         <dd className="font-bold text-zinc-800">
                             {/* The formatted view resolves the symbol; the raw
                                 pay-later row only carries the ISO code. */}
-                            {formatCurrency(
-                                order.totalPrice,
-                                order.currencySymbol ?? resolveCurrencySymbol(order.currency),
-                            )}
+                            <Money value={order.totalPrice} currency={order.currency} />
                         </dd>
                     </div>
                     <div className="flex justify-between gap-3">

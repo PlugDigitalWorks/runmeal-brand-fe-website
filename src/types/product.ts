@@ -11,8 +11,6 @@ export interface Product {
   tags?: string[];
   price: number | string;
   discountedPrice?: number | string | null;
-  currency?: string;
-  currencySymbol?: string;
   image?: string | null;
   imageUrl?: string | null;
   isActive: boolean;

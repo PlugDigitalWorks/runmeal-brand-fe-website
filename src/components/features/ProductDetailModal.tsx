@@ -7,9 +7,9 @@ import { useBranch } from '@/context/BranchContext';
 import { catalogService } from '@/services/catalog.service';
 import { X, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
 import { DEFAULT_PRODUCT_IMAGE } from '@/lib/constants';
 import { useTranslation } from 'react-i18next';
+import { Money } from '@/components/ui/Money';
 
 export type SelectedProductOption =
     | { groupId: string; optionId: string; optionIds?: never }
@@ -97,7 +97,6 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canA
     if (!isOpen || !product) return null;
 
     const basePrice = Number(product.discountedPrice || product.price);
-    const currencySymbol = product.currencySymbol;
 
     const calculateTotal = () => {
         let total = basePrice;
@@ -270,8 +269,8 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canA
                     <div>
                         <h2 className="text-2xl font-bold text-zinc-800">{product.name}</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xl font-bold text-primary">{formatCurrency(product.price, currencySymbol)}</span>
-                            {product.discountedPrice && <span className="text-sm text-zinc-400 line-through">{formatCurrency(product.discountedPrice, currencySymbol)}</span>}
+                            <span className="text-xl font-bold text-primary"><Money value={product.price} /></span>
+                            {product.discountedPrice && <span className="text-sm text-zinc-400 line-through"><Money value={product.discountedPrice} /></span>}
                         </div>
                         <p className="mt-2 text-zinc-600 text-sm leading-relaxed">{product.description}</p>
                     </div>
@@ -330,7 +329,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canA
                                                 </div>
                                                 <div className="font-medium text-sm">
                                                     {opt.priceDelta > 0 ? (
-                                                        <span className="text-zinc-600">+{formatCurrency(opt.priceDelta, currencySymbol)}</span>
+                                                        <span className="text-zinc-600">+<Money value={opt.priceDelta} /></span>
                                                     ) : (
                                                         <span className="text-primary font-bold">{t('product.free')}</span>
                                                     )}
@@ -360,7 +359,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canA
                                             />
                                             <span className="text-zinc-700">{addon.name}</span>
                                         </div>
-                                        <span className="text-sm font-medium text-zinc-600">+{formatCurrency(addon.price, currencySymbol)}</span>
+                                        <span className="text-sm font-medium text-zinc-600">+<Money value={addon.price} /></span>
                                     </label>
                                 ))}
                             </div>
@@ -403,7 +402,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canA
                         </div>
                         <div className="text-right">
                             <div className="text-xs text-zinc-400 font-medium uppercase tracking-wide">{t('product.totalAmount')}</div>
-                            <div className="text-2xl font-bold text-primary">{formatCurrency(calculateTotal(), currencySymbol)}</div>
+                            <div className="text-2xl font-bold text-primary"><Money value={calculateTotal()} /></div>
                         </div>
                     </div>
 

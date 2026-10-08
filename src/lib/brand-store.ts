@@ -36,6 +36,9 @@ export type ResolvedBrand = {
   logoUrl: string | null;
   primaryDomain: string;
   defaultDomain: string;
+  /** ISO 4217 code every price of this brand is in, e.g. "GBP". */
+  currency?: string;
+  currencySymbol?: string;
 };
 
 type BrandResolveResponse = {

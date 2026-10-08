@@ -46,9 +46,9 @@ export type TablePaymentChoice = 'PAY_NOW' | 'PAY_LATER';
  * backend actually returns it:
  *
  * - `POST /orders/table/pay-later` answers with the raw `Order` row, so
- *   `totalPrice` is a decimal string and there is no `currencySymbol`.
+ *   `totalPrice` is a decimal string.
  * - `GET /orders/:orderId` answers with the formatted view, where
- *   `totalPrice` is a number and `currencySymbol` is resolved.
+ *   `totalPrice` is a number.
  *
  * The union is deliberate: one confirmation component renders both.
  */
@@ -62,7 +62,6 @@ export interface TableOrderView {
     tableCheckId?: string | null;
     totalPrice: string | number;
     currency?: string;
-    currencySymbol?: string;
     createdAt?: string;
 }
 

@@ -7,9 +7,9 @@ import { useCart } from '@/context/CartContext';
 import { ShoppingCart, Trash2, Minus, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTable } from '@/context/TableContext';
-import { formatCurrency } from '@/lib/utils';
 import { useBranch } from '@/context/BranchContext';
 import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
+import { Money } from '@/components/ui/Money';
 
 type CartContentItem = {
     id?: string;
@@ -19,7 +19,6 @@ type CartContentItem = {
     price?: number;
     note?: string | null;
     notes?: string;
-    currencySymbol?: string;
     qty?: number;
     quantity?: number;
     // Backend line pricing; a guest cart never has any, so all three stay optional.
@@ -165,7 +164,6 @@ export function CartContent() {
                                                 discountAmount={item.discountAmount}
                                                 finalLineTotal={item.finalLineTotal}
                                                 fallbackTotal={(item.price || 0) * itemQuantity}
-                                                currencySymbol={item.currencySymbol}
                                                 className="font-bold text-zinc-800 text-sm shrink-0 text-right"
                                             />
                                         </div>
@@ -179,17 +177,17 @@ export function CartContent() {
                         <div className="space-y-2 text-sm text-zinc-600 pt-2 border-t border-zinc-100">
                             <div className="flex justify-between">
                                 <span>{t('cart.subtotal')}</span>
-                                <span>{formatCurrency(cartTotal)}</span>
+                                <span><Money value={cartTotal} /></span>
                             </div>
                             {discount > 0 && (
                                 <div className="flex justify-between text-green-600">
                                     <span>{t('cart.totalDiscounts')}</span>
-                                    <span>{formatCurrency(-discount)}</span>
+                                    <span><Money value={-discount} /></span>
                                 </div>
                             )}
                             <div className="flex justify-between text-lg font-bold text-zinc-800 pt-2 border-t border-zinc-100 mt-2">
                                 <span>{t('cart.total')}</span>
-                                <span>{formatCurrency(finalTotal)}</span>
+                                <span><Money value={finalTotal} /></span>
                             </div>
 
                             <button

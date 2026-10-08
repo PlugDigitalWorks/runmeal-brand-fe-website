@@ -13,10 +13,10 @@ import { PendingSurveys } from '@/components/features/PendingSurveys';
 import { orderService } from '@/services/order.service';
 import { Order, OrderDetails } from '@/services/order.service';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
 import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 import { LoyaltyRewardsPanel } from '@/components/features/LoyaltyRewardsPanel';
 import { OrderPromotionSnapshots } from '@/components/features/OrderPromotionSnapshots';
+import { Money } from '@/components/ui/Money';
 
 function ProfileContent() {
     const router = useRouter();
@@ -192,7 +192,7 @@ function ProfileContent() {
                         </div>
                         <div className="p-6">
                             <div className="text-2xl font-bold text-primary">
-                                {walletBalance === null ? '—' : formatCurrency(walletBalance)}
+                                {walletBalance === null ? '—' : <Money value={walletBalance} />}
                             </div>
                             <p className="mt-3 text-xs leading-relaxed text-zinc-500">
                                 {t('profile.loyaltyNote')}
@@ -290,7 +290,7 @@ function ProfileContent() {
                                                         </div>
                                                         <div className="text-right">
                                                             <div className="font-bold text-zinc-900">
-                                                                {formatCurrency(order.totalPrice)}
+                                                                <Money value={order.totalPrice} currency={order.currency} />
                                                             </div>
                                                             <div className={`text-xs px-2.5 py-0.5 rounded-full inline-block capitalize mt-1.5 font-medium
                                                         ${order.status === 'completed' ? 'bg-green-100 text-green-700' :
@@ -332,14 +332,14 @@ function ProfileContent() {
                                                                                     discountAmount={item.discountAmount}
                                                                                     finalLineTotal={item.finalLineTotal}
                                                                                     fallbackTotal={Number(item.totalPrice ?? item.price ?? 0)}
-                                                                                    currencySymbol={order.currencySymbol}
+                                                                                    currency={order.currency}
                                                                                     className="text-zinc-900 font-medium whitespace-nowrap text-right"
                                                                                 />
                                                                             </div>
                                                                         ))}
                                                                         <OrderPromotionSnapshots
                                                                             snapshot={orderDetails[order.id].internalPromotionSnapshot}
-                                                                            currencySymbol={order.currencySymbol}
+                                                                            currency={order.currency}
                                                                         />
                                                                         <div className="pt-2">
                                                                             <button
@@ -356,7 +356,7 @@ function ProfileContent() {
                                                                         </div>
                                                                         <div className="border-t border-zinc-200 mt-3 pt-3 flex justify-between items-center">
                                                                             <span className="text-sm font-medium text-zinc-900">{t('profile.total')}</span>
-                                                                            <span className="text-base font-bold text-primary">{formatCurrency(orderDetails[order.id].totalPrice)}</span>
+                                                                            <span className="text-base font-bold text-primary"><Money value={orderDetails[order.id].totalPrice} currency={orderDetails[order.id].currency ?? order.currency} /></span>
                                                                         </div>
                                                                     </div>
                                                                 ) : (

@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
 import {
     forgetTableCheckPayment,
@@ -35,6 +34,8 @@ import type {
     TableCheckPaymentRequest,
     TableSplitPart,
 } from '@/types/table';
+import { Money } from '@/components/ui/Money';
+import { useMoney } from '@/hooks/useMoney';
 
 type SelectionMap = Record<string, number>;
 
@@ -75,6 +76,7 @@ export function TableCheckPanel({
     sessionReady: boolean;
 }) {
     const { t } = useTranslation();
+    const { format: formatPrice } = useMoney();
     const [check, setCheck] = React.useState<CustomerTableCheck | null>(null);
     const [selection, setSelection] = React.useState<SelectionMap>({});
     const [partCount, setPartCount] = React.useState(2);
@@ -395,7 +397,7 @@ export function TableCheckPanel({
                     <span>
                         <span className="block font-bold text-zinc-800">{t('table.check.title')}</span>
                         <span className="text-sm text-zinc-500">
-                            {t('table.check.remainingSummary', { amount: formatCurrency(check.remainingAmount) })}
+                            {t('table.check.remainingSummary', { amount: formatPrice(check.remainingAmount) })}
                         </span>
                     </span>
                 </span>
@@ -486,7 +488,7 @@ export function TableCheckPanel({
                                                                     available: item.availableQuantity,
                                                                     total: item.quantity,
                                                                 })}
-                                                                {' · '}{formatCurrency(item.remainingAmount)}
+                                                                {' · '}<Money value={item.remainingAmount} />
                                                             </p>
                                                         </div>
                                                         {check.checkoutOptions.payNow && check.remainingAmount > 0 && (
@@ -559,7 +561,7 @@ function Amount({ label, value, strong = false }: { label: string; value: number
         <div>
             <p className="text-xs text-zinc-500">{label}</p>
             <p className={strong ? 'text-sm font-bold text-primary' : 'text-sm font-semibold text-zinc-800'}>
-                {formatCurrency(value)}
+                <Money value={value} />
             </p>
         </div>
     );
@@ -621,7 +623,7 @@ function SplitPartCard({
         <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-100 p-4">
             <div>
                 <p className="text-xs text-zinc-500">{t('table.check.part', { number: part.partNumber })}</p>
-                <p className="font-bold text-zinc-800">{formatCurrency(part.amount)}</p>
+                <p className="font-bold text-zinc-800"><Money value={part.amount} /></p>
             </div>
             {part.status === 'AVAILABLE' ? (
                 <button

@@ -34,8 +34,6 @@ interface GuestCartItem {
   // For now storing minimal info
   productName?: string;
   price?: number;
-  currency?: string;
-  currencySymbol?: string;
   branchId?: string;
 }
 
@@ -562,8 +560,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           notes: notes?.trim() || undefined,
           productName: productDetails?.name,
           price: Number(productDetails?.discountedPrice || productDetails?.price || 0),
-          currency: productDetails?.currency,
-          currencySymbol: productDetails?.currencySymbol,
           branchId: selectedBranch?.id
         });
       }

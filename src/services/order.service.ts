@@ -39,7 +39,6 @@ export interface Order {
     tableLabel?: string | null;
     tableCheckId?: string | null;
     currency?: string;
-    currencySymbol?: string;
     scheduledFor?: string | null;
     scheduledDate?: string | null;
     scheduledTime?: string | null;

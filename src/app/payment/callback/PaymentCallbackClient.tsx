@@ -21,9 +21,10 @@ import {
 } from "@/lib/table-check-payment";
 import { resolveApiErrorMessage } from "@/lib/api-errors";
 import { toast } from "sonner";
-import { formatCurrency, resolveCurrencySymbol } from "@/lib/utils";
 import type { PendingTableCheckPayment } from "@/lib/table-check-payment";
 import type { CustomerTableCheck, TableOrderView } from "@/types/table";
+import { Money } from '@/components/ui/Money';
+import { useMoney } from '@/hooks/useMoney';
 
 const getServerPaymentContext = () => null;
 const getClientHydrated = () => true;
@@ -60,6 +61,7 @@ export default function PaymentCallbackClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { t } = useTranslation();
+  const { format: formatPrice } = useMoney();
   const { isGuest } = useAuth();
   const { journey } = useTable();
   const { resetCartState } = useCart();
@@ -307,11 +309,11 @@ export default function PaymentCallbackClient() {
               <dl className="mb-6 mt-4 space-y-2 rounded-lg border border-zinc-100 bg-zinc-50 p-4 text-left text-sm">
                 <div className="flex justify-between gap-3">
                   <dt className="text-zinc-500">{t("table.check.paid")}</dt>
-                  <dd className="font-semibold text-zinc-800">{formatCurrency(refreshedCheck.paidAmount)}</dd>
+                  <dd className="font-semibold text-zinc-800"><Money value={refreshedCheck.paidAmount} /></dd>
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="text-zinc-500">{t("table.check.remaining")}</dt>
-                  <dd className="font-bold text-zinc-800">{formatCurrency(refreshedCheck.remainingAmount)}</dd>
+                  <dd className="font-bold text-zinc-800"><Money value={refreshedCheck.remainingAmount} /></dd>
                 </div>
               </dl>
             ) : order ? (
@@ -325,10 +327,7 @@ export default function PaymentCallbackClient() {
                 <div className="flex justify-between gap-3">
                   <dt className="text-zinc-500">{t("table.success.total")}</dt>
                   <dd className="font-bold text-zinc-800">
-                    {formatCurrency(
-                      order.totalPrice,
-                      order.currencySymbol ?? resolveCurrencySymbol(order.currency),
-                    )}
+                    <Money value={order.totalPrice} currency={order.currency} />
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
@@ -372,7 +371,7 @@ export default function PaymentCallbackClient() {
             <p className="text-zinc-600 mb-6">{t("table.check.paymentPendingBody")}</p>
             {refreshedCheck && (
               <p className="mb-6 rounded-lg bg-zinc-50 p-3 text-sm text-zinc-600">
-                {t("table.check.remainingSummary", { amount: formatCurrency(refreshedCheck.remainingAmount) })}
+                {t("table.check.remainingSummary", { amount: formatPrice(refreshedCheck.remainingAmount) })}
               </p>
             )}
             <button

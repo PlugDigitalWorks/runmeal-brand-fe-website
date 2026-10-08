@@ -12,7 +12,7 @@ import {
     SURVEY_SCORES,
     toSurveyAnswers,
 } from '@/types/survey';
-import { formatCurrency, resolveCurrencySymbol } from '@/lib/utils';
+import { Money } from '@/components/ui/Money';
 
 interface ApiErrorLike {
     response?: { status?: number; data?: { message?: string | string[] } };
@@ -165,7 +165,7 @@ export function PendingSurveys() {
                                 </p>
                             </div>
                             <span className="shrink-0 font-semibold text-zinc-800">
-                                {formatCurrency(survey.totalPrice, resolveCurrencySymbol(survey.currency))}
+                                <Money value={survey.totalPrice} currency={survey.currency} />
                             </span>
                         </div>
 

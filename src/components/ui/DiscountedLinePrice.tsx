@@ -2,7 +2,8 @@
 
 import { useTranslation } from 'react-i18next';
 import { Gift } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { Money } from '@/components/ui/Money';
+import { useMoney } from '@/hooks/useMoney';
 
 interface DiscountedLinePriceProps {
     /** Line price before any promotion; falls back to `fallbackTotal`. */
@@ -13,7 +14,8 @@ interface DiscountedLinePriceProps {
     finalLineTotal?: number | string | null;
     /** `price * qty`, for responses that predate the line level fields. */
     fallbackTotal: number;
-    currencySymbol?: string | null;
+    /** Defaults to the brand currency; a placed order passes its own. */
+    currency?: string | null;
     className?: string;
 }
 
@@ -30,30 +32,31 @@ export function DiscountedLinePrice({
     discountAmount,
     finalLineTotal,
     fallbackTotal,
-    currencySymbol,
+    currency,
     className = '',
 }: DiscountedLinePriceProps) {
     const { t } = useTranslation();
+    const { format } = useMoney();
     const discount = Number(discountAmount ?? 0);
     const original = lineTotal == null ? fallbackTotal : Number(lineTotal);
     const final = finalLineTotal == null ? original : Number(finalLineTotal);
 
     if (!(discount > 0)) {
-        return <span className={className}>{formatCurrency(final, currencySymbol)}</span>;
+        return <span className={className}><Money value={final} currency={currency} /></span>;
     }
 
     return (
         <span className={`flex flex-col items-end gap-0.5 ${className}`}>
             <span className="flex items-center gap-1.5">
                 <span className="text-xs font-normal text-zinc-400 line-through">
-                    {formatCurrency(original, currencySymbol)}
+                    <Money value={original} currency={currency} />
                 </span>
-                <span>{formatCurrency(final, currencySymbol)}</span>
+                <span><Money value={final} currency={currency} /></span>
             </span>
             <span className="flex items-center gap-1 text-[11px] font-medium text-green-600">
                 <Gift size={11} className="shrink-0" />
                 {t('loyalty.productReward.lineDiscount', {
-                    amount: formatCurrency(discount, currencySymbol),
+                    amount: format(discount, currency),
                 })}
             </span>
         </span>

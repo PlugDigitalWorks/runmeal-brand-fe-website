@@ -5,13 +5,15 @@ import { useAuth } from '@/context/AuthContext';
 import { Gift, Info } from 'lucide-react';
 import { CartContent } from './CartContent';
 import { walletService } from '@/services/wallet.service';
-import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { Money } from '@/components/ui/Money';
+import { useMoney } from '@/hooks/useMoney';
 
 export function CartSidebar() {
     const { isAuthenticated, isGuest } = useAuth();
     const [balance, setBalance] = useState<number>(0);
     const { t } = useTranslation();
+    const { symbol: currencySymbol } = useMoney();
 
     // A QR guest is authenticated but owns no wallet or rewards — showing them
     // an account panel with a zero balance is just noise.
@@ -50,9 +52,9 @@ export function CartSidebar() {
                                 <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />
                             </span>
                         </span>
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-white">₺</span>
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-white">{currencySymbol()}</span>
                     </div>
-                    <span className="font-bold text-zinc-800">{formatCurrency(balance)}</span>
+                    <span className="font-bold text-zinc-800"><Money value={balance} /></span>
                 </div>
             )}
 

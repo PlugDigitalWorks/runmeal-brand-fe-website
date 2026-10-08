@@ -8,8 +8,8 @@ import { ChevronDown } from 'lucide-react';
 import { AddressSearch } from '@/components/features/AddressSearch';
 import { BranchContactLink, BranchInfoTabs } from '@/components/features/BranchInfoTabs';
 import { resolveBranchDetails } from '@/lib/branch-details';
-import { formatCurrency } from '@/lib/utils';
 import type { Branch } from '@/types/branch';
+import { Money } from '@/components/ui/Money';
 
 /**
  * The address/branch context panel that sits above the menu on the storefront.
@@ -120,7 +120,7 @@ export function BranchSelector() {
 
                     {selectedBranch && branchDetails && (
                         <div className="mt-4 text-sm text-zinc-500 space-y-1">
-                            <p>{t('branch.minimumOrder')}: {formatCurrency(branchDetails.minimumDeliveryAmount)}</p>
+                            <p>{t('branch.minimumOrder')}: <Money value={branchDetails.minimumDeliveryAmount} /></p>
                             <p>
                                 {t('branch.payment')}:{' '}
                                 {branchDetails.paymentMethodKeys.map(key => t(`branch.paymentMethods.${key}`)).join(', ')}

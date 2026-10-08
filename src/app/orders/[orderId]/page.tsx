@@ -10,7 +10,6 @@ import { orderService, Order, OrderDetails } from '@/services/order.service';
 import { OrderPromotionSnapshots } from '@/components/features/OrderPromotionSnapshots';
 import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 import { RUNMEAL_LOGO } from '@/lib/constants';
-import { formatCurrency } from '@/lib/utils';
 import {
     formatOrderDateTime,
     getOrderDisplayId,
@@ -22,6 +21,7 @@ import {
     toNumber,
 } from '@/lib/order-display';
 import type { Branch } from '@/types/branch';
+import { Money } from '@/components/ui/Money';
 
 const PAYMENT_METHOD_KEYS: Record<string, string> = {
     ONLINE_CARD: 'checkout.payment.onlineCard',
@@ -132,7 +132,7 @@ function OrderDetailContent() {
         );
     }
 
-    const currencySymbol = order.currencySymbol;
+    const orderCurrency = order.currency;
     const discountAmount = toNumber(order.discountAmount);
     const creditUsedAmount = toNumber(order.creditUsedAmount);
     const taxAmount = toNumber(order.taxAmount);
@@ -249,7 +249,7 @@ function OrderDetailContent() {
                                                     {getOrderItemQty(item)}x {item.productName}
                                                 </p>
                                                 <p className="text-xs text-zinc-500">
-                                                    {t('orders.unit')}: {formatCurrency(getOrderItemUnitPrice(item), currencySymbol)}
+                                                    {t('orders.unit')}: <Money value={getOrderItemUnitPrice(item)} currency={orderCurrency} />
                                                 </p>
                                             </div>
                                             <DiscountedLinePrice
@@ -257,7 +257,7 @@ function OrderDetailContent() {
                                                 discountAmount={item.discountAmount}
                                                 finalLineTotal={item.finalLineTotal}
                                                 fallbackTotal={getOrderItemLineTotal(item)}
-                                                currencySymbol={currencySymbol}
+                                                currency={orderCurrency}
                                                 className="shrink-0 text-right font-semibold text-zinc-900"
                                             />
                                         </div>
@@ -278,35 +278,35 @@ function OrderDetailContent() {
 
                         <OrderPromotionSnapshots
                             snapshot={order.internalPromotionSnapshot}
-                            currencySymbol={currencySymbol}
+                            currency={orderCurrency}
                         />
 
                         <div className="space-y-3 border-t border-zinc-200 pt-5">
                             <div className="flex justify-between text-zinc-700">
                                 <span>{t('orders.subtotal')}</span>
-                                <span>{formatCurrency(subtotal, currencySymbol)}</span>
+                                <span><Money value={subtotal} currency={orderCurrency} /></span>
                             </div>
                             {discountAmount > 0 && (
                                 <div className="flex justify-between text-green-600">
                                     <span>{t('orders.discount')}</span>
-                                    <span>-{formatCurrency(discountAmount, currencySymbol)}</span>
+                                    <span>-<Money value={discountAmount} currency={orderCurrency} /></span>
                                 </div>
                             )}
                             {creditUsedAmount > 0 && (
                                 <div className="flex justify-between text-zinc-700">
                                     <span>{t('orders.walletUsed')}</span>
-                                    <span>-{formatCurrency(creditUsedAmount, currencySymbol)}</span>
+                                    <span>-<Money value={creditUsedAmount} currency={orderCurrency} /></span>
                                 </div>
                             )}
                             {taxAmount > 0 && (
                                 <div className="flex justify-between text-zinc-700">
                                     <span>{t('orders.taxIncluded')}</span>
-                                    <span>{formatCurrency(taxAmount, currencySymbol)}</span>
+                                    <span><Money value={taxAmount} currency={orderCurrency} /></span>
                                 </div>
                             )}
                             <div className="flex justify-between border-t border-zinc-200 pt-3 text-lg font-bold text-zinc-900">
                                 <span>{t('orders.total')}</span>
-                                <span className="text-primary">{formatCurrency(order.totalPrice, currencySymbol)}</span>
+                                <span className="text-primary"><Money value={order.totalPrice} currency={orderCurrency} /></span>
                             </div>
                         </div>
 

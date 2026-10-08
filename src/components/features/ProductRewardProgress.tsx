@@ -10,7 +10,7 @@ import {
     resolveProductRewardProgress,
     resolveRewardTargetName,
 } from '@/lib/loyalty-rewards';
-import { formatCurrency } from '@/lib/utils';
+import { Money } from '@/components/ui/Money';
 
 interface ProductRewardProgressProps {
     reward: CartProductReward;
@@ -117,7 +117,7 @@ export function ProductRewardProgress({
                     {appliedItem?.productName
                         ? t('loyalty.productReward.appliedTo', { name: appliedItem.productName })
                         : t('loyalty.productReward.applied')}
-                    {appliedAmount > 0 ? ` · ${formatCurrency(-appliedAmount)}` : ''}
+                    {appliedAmount > 0 && <> · <Money value={-appliedAmount} /></>}
                 </p>
             )}
 

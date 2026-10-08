@@ -19,12 +19,12 @@ import { orderService } from '@/services/order.service';
 import { paymentService } from '@/services/payment.service';
 import { isPickupAvailable } from '@/lib/branch-details';
 import { resolveTableOrderError } from '@/lib/table-order-errors';
-import { formatCurrency } from '@/lib/utils';
 import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 import { TableJourneyError } from '@/components/features/TableJourneyError';
 import { TableOrderSuccess } from '@/components/features/TableOrderSuccess';
 import type { TableFulfillment, TableOrderView, TablePaymentChoice } from '@/types/table';
 import { getApiErrorDetails } from '@/lib/api-errors';
+import { Money } from '@/components/ui/Money';
 
 /**
  * Checkout for a QR table journey.
@@ -373,17 +373,17 @@ export function TableCheckoutPage() {
                         <div className="space-y-2 border-t border-zinc-100 pt-4">
                             <div className="flex justify-between text-sm text-zinc-600">
                                 <span>{t('table.checkout.subtotal')}</span>
-                                <span>{formatCurrency(cartTotal)}</span>
+                                <span><Money value={cartTotal} /></span>
                             </div>
                             {cart?.discountAmount && cart.discountAmount > 0 ? (
                                 <div className="flex justify-between text-sm text-green-600">
                                     <span>{t('table.checkout.discount')}</span>
-                                    <span>{formatCurrency(-cart.discountAmount)}</span>
+                                    <span><Money value={-cart.discountAmount} /></span>
                                 </div>
                             ) : null}
                             <div className="flex justify-between border-t border-zinc-100 pt-2 text-lg font-bold text-zinc-800">
                                 <span>{t('table.checkout.total')}</span>
-                                <span>{formatCurrency(totalToPay)}</span>
+                                <span><Money value={totalToPay} /></span>
                             </div>
                         </div>
                     </div>
