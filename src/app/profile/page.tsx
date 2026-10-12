@@ -145,7 +145,7 @@ function ProfileContent() {
             <h1 className="text-3xl font-bold text-zinc-900 mb-8">{t('profile.accountSettings')}</h1>
 
             <div className="grid gap-8 md:grid-cols-[1fr_2fr]">
-                <div className="order-2 md:order-1 space-y-6">
+                <div className="order-2 md:order-1 min-w-0 space-y-6">
                     {/* Profile Card */}
                     <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
                         <div className="px-6 py-4 border-b border-zinc-100 bg-zinc-50/50">
@@ -201,7 +201,7 @@ function ProfileContent() {
                     </div>
                 </div>
 
-                <div className="order-1 md:order-2 space-y-6">
+                <div className="order-1 md:order-2 min-w-0 space-y-6">
                     <div className="flex space-x-1 overflow-x-auto scrollbar-hide bg-zinc-100 p-1 rounded-xl">
                         <button
                             onClick={() => setActiveTab('addresses')}
