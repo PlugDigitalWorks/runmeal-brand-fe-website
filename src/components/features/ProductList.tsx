@@ -268,11 +268,22 @@ function ProductSection({ title, products, onProductClick, isBranchSelected }: {
             <h3 className="text-lg font-bold text-zinc-800 mb-4 pb-2 border-b border-zinc-100">{title}</h3>
             <div className="space-y-4">
                 {products.map(product => (
-                    <div key={product.id} className="flex flex-col sm:flex-row sm:items-center justify-between group hover:bg-zinc-50 p-2 rounded transition-colors gap-4">
+                    // The whole row opens the product; the + button stays as the
+                    // keyboard-reachable control and stops its click from also
+                    // reaching the row, which would open the modal twice.
+                    <div
+                        key={product.id}
+                        onClick={isBranchSelected ? () => onProductClick(product) : undefined}
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between group hover:bg-zinc-50 p-2 rounded transition-colors gap-4 ${isBranchSelected ? 'cursor-pointer' : ''}`}
+                    >
                         <div className="flex items-start gap-4 flex-1">
                             <div className="flex items-center gap-2 shrink-0">
                                 <button
-                                    onClick={() => onProductClick(product)}
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onProductClick(product);
+                                    }}
                                     disabled={!isBranchSelected}
                                     className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${!isBranchSelected ? 'bg-zinc-300 text-zinc-500 cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
                                 >
