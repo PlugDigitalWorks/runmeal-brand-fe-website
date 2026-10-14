@@ -1,9 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CreditCard, MapPin, Package, ReceiptText, Store, UtensilsCrossed } from 'lucide-react';
+import { CreditCard, MapPin, Package, ReceiptText, Store, UtensilsCrossed } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { branchService } from '@/services/branch.service';
 import { orderService, Order, OrderDetails } from '@/services/order.service';
@@ -41,7 +41,6 @@ function OrderDetailContent() {
     const { t, i18n } = useTranslation();
     const params = useParams<{ orderId: string }>();
     const searchParams = useSearchParams();
-    const router = useRouter();
 
     const orderId = Array.isArray(params.orderId) ? params.orderId[0] : params.orderId;
     const [order, setOrder] = useState<OrderDetails | null>(null);
@@ -118,13 +117,6 @@ function OrderDetailContent() {
     if (error || !order) {
         return (
             <div className="container mx-auto max-w-3xl px-4 py-8">
-                <button
-                    type="button"
-                    onClick={() => router.back()}
-                    className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900"
-                >
-                    <ArrowLeft className="h-4 w-4" /> {t('orders.back')}
-                </button>
                 <div className="rounded-xl border border-zinc-200 bg-white p-10 text-center text-red-500 shadow-sm">
                     {error || t('orders.loadError')}
                 </div>
@@ -143,13 +135,6 @@ function OrderDetailContent() {
 
     return (
         <div className="container mx-auto max-w-3xl px-4 py-8">
-            <button
-                type="button"
-                onClick={() => router.back()}
-                className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900"
-            >
-                <ArrowLeft className="h-4 w-4" /> {t('orders.back')}
-            </button>
 
             <div className="space-y-6">
                 <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
