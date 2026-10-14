@@ -7,7 +7,7 @@ import { ApiResponse } from '@/types/auth';
 import { userService } from '@/services/user.service';
 import { AxiosError } from 'axios';
 import { Save, Loader2 } from 'lucide-react'; // Added Loader2 for loading state
-import { LocationPicker, GeocodedAddress, Location } from './LocationPicker';
+import { LocationPicker, AddressComponent, GeocodedAddress, Location } from './LocationPicker';
 import { AddressSearch, AddressSearchResult, toSearchResult } from './AddressSearch';
 import { PhoneField } from './PhoneField';
 import { AddressSelects } from './AddressSelects';
@@ -249,32 +249,54 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
             }
 
             const { location, address } = toSearchResult(match);
-            // Some postcodes come back with their street; otherwise the postcode is
-            // an area and the nearest street address names the street.
+            // A postcode is an area, not a house. The addresses nearest to its
+            // centre give the street (when the postcode result lacks one) and a
+            // house number to start from.
+            const nearby = await geocode({ location: { lat: location.latitude, lng: location.longitude } });
+            if (cancelled) return;
+            const nearbyAddresses = nearby.filter((result) =>
+                result.types.some((type) => ['street_address', 'premise', 'subpremise', 'route'].includes(type)),
+            );
+
             let street = getAddressComponent(address.address_components, 'route');
-            if (!street) {
-                const nearby = await geocode({ location: { lat: location.latitude, lng: location.longitude } });
-                if (cancelled) return;
-                const streetResult = nearby.find((result) => result.types.some((type) => ['street_address', 'premise', 'route'].includes(type)));
-                street = streetResult ? extractStreetAndBuilding(toSearchResult(streetResult).address).street : '';
+            if (!street && nearbyAddresses[0]) {
+                street = extractStreetAndBuilding(toSearchResult(nearbyAddresses[0]).address).street;
             }
 
-            const googlePostalCode = getAddressComponent(address.address_components, 'postal_code');
-            // A postcode on another street makes the old street and house number
-            // wrong. The number cannot be derived from a postcode (Google only
-            // knows the nearest address), so it is cleared for the customer to
-            // type rather than guessed. Same street: keep what they entered.
+            // Nearest numbered address on that street, inside the same postcode
+            // when Google has one there. It is a best guess the customer can
+            // correct; the pin moves onto it so number and pin agree.
+            const numberedOnStreet = nearbyAddresses.filter((result) => {
+                const components = result.address_components as AddressComponent[];
+                return Boolean(getAddressComponent(components, 'street_number')) &&
+                    (!street || normalizeLocationName(getAddressComponent(components, 'route')) === normalizeLocationName(street));
+            });
+            const nearestNumbered =
+                numberedOnStreet.find((result) =>
+                    comparablePostalCode(getAddressComponent(result.address_components as AddressComponent[], 'postal_code')) ===
+                    comparablePostalCode(postalCode),
+                ) ?? numberedOnStreet[0];
+            const nearestNumber = nearestNumbered
+                ? getAddressComponent(nearestNumbered.address_components as AddressComponent[], 'street_number')
+                : '';
+
+            // A new street replaces the old street and number. On the same street
+            // a number the customer already entered is theirs and stays.
             const currentStreet = getValues('street') ?? '';
             const isNewStreet = Boolean(street) && normalizeLocationName(street) !== normalizeLocationName(currentStreet);
+            const fillNumber = Boolean(nearestNumber) && (isNewStreet || !getValues('buildingNumber'));
+
+            const googlePostalCode = getAddressComponent(address.address_components, 'postal_code');
             userEditedRef.current = true;
             applyFields({
                 ...resolveRegionFromGoogle(address.address_components, country),
-                location,
+                location: fillNumber && nearestNumbered ? toSearchResult(nearestNumbered).location : location,
                 // Keep what the customer typed unless Google returns the same code formatted properly.
                 postalCode: googlePostalCode && comparablePostalCode(googlePostalCode) === comparablePostalCode(postalCode)
                     ? googlePostalCode
                     : postalCode,
                 ...(isNewStreet ? { street, buildingNumber: '' } : {}),
+                ...(fillNumber ? { buildingNumber: nearestNumber } : {}),
             });
             setPostalLookup('idle');
         }, POSTAL_LOOKUP_DEBOUNCE_MS);
