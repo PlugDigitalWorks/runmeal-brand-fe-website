@@ -578,6 +578,10 @@
     "addToCart": "Sepete Ekle"
   },
   "address": {
+    "searchPlaceholder": "Adres, posta kodu veya yer arayın",
+    "searchNoResults": "Sonuç bulunamadı.",
+    "postalCodeLooking": "Posta kodu aranıyor…",
+    "postalCodeNotFound": "Bu posta kodu bulunamadı; adresi elle girebilir veya haritadan seçebilirsiniz.",
     "country": "Ülke",
     "province": "İl",
     "district": "İlçe",

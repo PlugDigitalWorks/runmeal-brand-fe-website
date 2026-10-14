@@ -578,6 +578,10 @@
     "addToCart": "Add to Cart"
   },
   "address": {
+    "searchPlaceholder": "Search for an address, postcode or place",
+    "searchNoResults": "No results found.",
+    "postalCodeLooking": "Looking up postcode…",
+    "postalCodeNotFound": "We couldn't find this postcode. Enter the address yourself or pick it on the map.",
     "country": "Country",
     "province": "Province",
     "district": "District",
