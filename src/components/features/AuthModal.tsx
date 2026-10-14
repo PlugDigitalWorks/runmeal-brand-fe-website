@@ -117,20 +117,19 @@ export function AuthModal() {
     }
   };
 
-  const resendCode = async () => {
+  const resendCode = async (resendToken?: string) => {
     if (!sentEmail) return;
-    if (isRecaptchaEnabled && !recaptchaToken) {
+    if (isRecaptchaEnabled && !resendToken) {
       toast.error(t('auth.validation.securityCheck'));
       return;
     }
     setIsLoading(true);
     try {
-      await requestOtpLogin(sentEmail, recaptchaToken ?? undefined);
+      await requestOtpLogin(sentEmail, resendToken);
       toast.success(t('auth.otp.resent'));
     } catch (error) {
       toast.error(resolveApiErrorMessage(error, t('auth.authenticationFailed')));
     } finally {
-      resetCaptcha();
       setIsLoading(false);
     }
   };
@@ -156,8 +155,6 @@ export function AuthModal() {
               onVerify={verifyCode}
               onResend={resendCode}
               onBack={() => { setSentEmail(null); resetCaptcha(); }}
-              resendDisabled={isRecaptchaEnabled && !recaptchaToken}
-              resendVerification={<RecaptchaWidget onTokenChange={setRecaptchaToken} resetKey={recaptchaResetKey} />}
             />
           ) : (
             <>

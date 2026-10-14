@@ -87,20 +87,19 @@ export default function LoginPage() {
     }
   };
 
-  const resendCode = async () => {
+  const resendCode = async (resendToken?: string) => {
     if (!sentEmail) return;
-    if (isRecaptchaEnabled && !recaptchaToken) {
+    if (isRecaptchaEnabled && !resendToken) {
       toast.error(t('auth.validation.securityCheck'));
       return;
     }
     setIsLoading(true);
     try {
-      await requestOtpLogin(sentEmail, recaptchaToken ?? undefined);
+      await requestOtpLogin(sentEmail, resendToken);
       toast.success(t('auth.otp.resent'));
     } catch (error) {
       toast.error(resolveApiErrorMessage(error, t('auth.login.error')));
     } finally {
-      resetCaptcha();
       setIsLoading(false);
     }
   };
@@ -144,8 +143,6 @@ export default function LoginPage() {
             onVerify={verifyCode}
             onResend={resendCode}
             onBack={() => { setSentEmail(null); resetCaptcha(); }}
-            resendDisabled={isRecaptchaEnabled && !recaptchaToken}
-            resendVerification={<RecaptchaWidget onTokenChange={setRecaptchaToken} resetKey={recaptchaResetKey} />}
           />
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

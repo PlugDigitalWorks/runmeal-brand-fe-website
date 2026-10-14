@@ -1,6 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
+import type { AuthClient } from '@/types/auth';
+
 import { getBrandId } from './brand-store';
 import { getDeviceId } from './device-id';
 
@@ -24,6 +26,13 @@ const API_URL =
 export const AUTH_API_URL = (
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 ).replace(/\/+$/, '');
+
+/**
+ * Which app this session belongs to. The API scopes refresh cookies per client
+ * (`refresh_user`/`sid_user`), so login, OTP verification and refresh must all
+ * name the same one.
+ */
+export const AUTH_CLIENT: AuthClient = 'user';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -164,6 +173,7 @@ const refreshAccessToken = async (): Promise<string> => {
       }
 
       const response = await authApi.post('/auth/refresh', {
+        client: AUTH_CLIENT,
         ...(refreshToken && sid ? { refreshToken, sid } : {}),
       });
 

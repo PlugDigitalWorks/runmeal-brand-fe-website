@@ -259,6 +259,7 @@
       "verify": "Verify Code",
       "verifying": "Verifying...",
       "resend": "Resend Code",
+      "resendCheck": "Complete the check to send a new code.",
       "changeEmail": "Change Email",
       "sendCode": "Send Code",
       "sendingCode": "Sending code...",
@@ -718,7 +719,8 @@
         "otpResend": "The verification code could not be resent.",
         "otpVerify": "The verification code could not be confirmed."
       }
-    }
+    },
+    "redirectingToOrder": "Taking you to your order in {{seconds}}s…"
   },
   "table": {
     "resolving": "Loading table details...",

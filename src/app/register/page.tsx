@@ -2,7 +2,6 @@
 
 import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
 import { OtpChallenge } from '@/components/features/OtpChallenge';
-import { RecaptchaWidget } from '@/components/features/RecaptchaWidget';
 import { useAuth } from '@/context/AuthContext';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,8 +25,6 @@ export default function RegisterPage() {
   const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
   const isRecaptchaEnabled = Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
 
   const schema = z.object({
@@ -37,11 +34,6 @@ export default function RegisterPage() {
     password: z.string().optional(),
   });
   const { register, handleSubmit, setError, clearErrors, formState: { errors } } = useForm<RegisterFormValues>({ resolver: zodResolver(schema) });
-
-  const resetCaptcha = () => {
-    setRecaptchaToken(null);
-    setRecaptchaResetKey((key) => key + 1);
-  };
 
   const onSubmit = async (data: RegisterFormValues) => {
     if (method === 'password' && (!data.password || data.password.length < 6)) {
@@ -80,20 +72,19 @@ export default function RegisterPage() {
     }
   };
 
-  const resendCode = async () => {
+  const resendCode = async (resendToken?: string) => {
     if (!sentEmail) return;
-    if (isRecaptchaEnabled && !recaptchaToken) {
+    if (isRecaptchaEnabled && !resendToken) {
       toast.error(t('auth.validation.securityCheck'));
       return;
     }
     setIsLoading(true);
     try {
-      await requestOtpLogin(sentEmail, recaptchaToken ?? undefined);
+      await requestOtpLogin(sentEmail, resendToken);
       toast.success(t('auth.otp.resent'));
     } catch (error) {
       toast.error(resolveApiErrorMessage(error, t('auth.register.error')));
     } finally {
-      resetCaptcha();
       setIsLoading(false);
     }
   };
@@ -115,9 +106,7 @@ export default function RegisterPage() {
             isLoading={isLoading}
             onVerify={verifyCode}
             onResend={resendCode}
-            onBack={() => { setSentEmail(null); resetCaptcha(); }}
-            resendDisabled={isRecaptchaEnabled && !recaptchaToken}
-            resendVerification={<RecaptchaWidget onTokenChange={setRecaptchaToken} resetKey={recaptchaResetKey} />}
+            onBack={() => { setSentEmail(null); }}
           />
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
