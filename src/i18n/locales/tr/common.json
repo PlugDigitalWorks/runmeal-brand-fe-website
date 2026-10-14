@@ -719,7 +719,8 @@
         "otpResend": "Doğrulama kodu yeniden gönderilemedi.",
         "otpVerify": "Doğrulama kodu onaylanamadı."
       }
-    }
+    },
+    "redirectingToOrder": "{{seconds}} saniye içinde sipariş detayına yönlendiriliyorsunuz…"
   },
   "table": {
     "resolving": "Masa bilgileri yükleniyor...",

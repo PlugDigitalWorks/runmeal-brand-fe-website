@@ -719,7 +719,8 @@
         "otpResend": "The verification code could not be resent.",
         "otpVerify": "The verification code could not be confirmed."
       }
-    }
+    },
+    "redirectingToOrder": "Taking you to your order in {{seconds}}s…"
   },
   "table": {
     "resolving": "Loading table details...",

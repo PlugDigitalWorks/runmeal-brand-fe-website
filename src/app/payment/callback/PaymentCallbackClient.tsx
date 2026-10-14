@@ -5,10 +5,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { CheckCircle, Clock3, XCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useBranch } from "@/context/BranchContext";
 import { useCart } from "@/context/CartContext";
 import { useTable } from "@/context/TableContext";
 import { orderService } from "@/services/order.service";
+import { OrderRedirectCountdown } from "@/components/features/OrderRedirectCountdown";
 import { ReceiptAccountPanel } from "@/components/features/ReceiptAccountPanel";
+import { getBrandId } from "@/lib/brand-store";
 import { paymentService } from "@/services/payment.service";
 import { tableService } from "@/services/table.service";
 import {
@@ -65,6 +68,7 @@ export default function PaymentCallbackClient() {
   const { isGuest } = useAuth();
   const { journey } = useTable();
   const { resetCartState } = useCart();
+  const { activeBranchId } = useBranch();
   const [order, setOrder] = useState<TableOrderView | null>(null);
   const paymentContextSnapshot = useSyncExternalStore(
     subscribeToTableCheckPayment,
@@ -108,6 +112,19 @@ export default function PaymentCallbackClient() {
   // The journey survives the provider round trip in sessionStorage, so a table
   // customer lands back on their own menu instead of the storefront.
   const tableMenuHref = journey ? `/order?qr=${encodeURIComponent(journey.qrToken)}` : null;
+
+  // A storefront order opens its detail page; table customers go back to the
+  // menu and guests have no order pages. The ids spare the detail page a
+  // lookup through the order list.
+  const orderHref = (() => {
+    if (!orderId || tableMenuHref || isGuest) return null;
+    const params = new URLSearchParams();
+    if (activeBranchId) params.set("branchId", activeBranchId);
+    const brandId = getBrandId();
+    if (brandId) params.set("brandId", brandId);
+    const query = params.toString();
+    return `/orders/${orderId}${query ? `?${query}` : ""}`;
+  })();
 
   // Retiring the cart is a side effect on shared state, not something we
   // render from — and it only happens on success. A failure/cancel URL
@@ -194,6 +211,11 @@ export default function PaymentCallbackClient() {
 
     if (tableMenuHref) {
       router.push(tableMenuHref);
+      return;
+    }
+
+    if (orderHref) {
+      router.replace(orderHref);
       return;
     }
 
@@ -342,6 +364,7 @@ export default function PaymentCallbackClient() {
                 </p>
               )
             )}
+            {!isTableCheckPayment && orderHref && <OrderRedirectCountdown href={orderHref} />}
             {journey && order?.orderType === "TABLE_ORDER" && orderId && (
               <ReceiptAccountPanel orderId={orderId} />
             )}
