@@ -13,7 +13,7 @@ import { PhoneField } from './PhoneField';
 import { AddressSelects } from './AddressSelects';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
 import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
-import { extractStreetAndBuilding, getAddressComponent } from '@/lib/address-parsing';
+import { extractStreetAndBuilding, getAddressComponent, normalizeLocationName } from '@/lib/address-parsing';
 import { AddressRegion, resolveAddressRegion, resolveRegionFromGoogle } from '@/lib/address-region';
 import { DEFAULT_ADDRESS_LOCATION, fetchVisitorLocation } from '@/lib/visitor-location';
 import { useTranslation } from 'react-i18next';
@@ -249,13 +249,23 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
             }
 
             const { location, address } = toSearchResult(match);
-            // A postcode resolves to an area; the nearest street address names the street.
-            const nearby = await geocode({ location: { lat: location.latitude, lng: location.longitude } });
-            if (cancelled) return;
-            const streetResult = nearby.find((result) => result.types.some((type) => ['street_address', 'premise', 'route'].includes(type)));
-            const street = streetResult ? extractStreetAndBuilding(toSearchResult(streetResult).address).street : '';
+            // Some postcodes come back with their street; otherwise the postcode is
+            // an area and the nearest street address names the street.
+            let street = getAddressComponent(address.address_components, 'route');
+            if (!street) {
+                const nearby = await geocode({ location: { lat: location.latitude, lng: location.longitude } });
+                if (cancelled) return;
+                const streetResult = nearby.find((result) => result.types.some((type) => ['street_address', 'premise', 'route'].includes(type)));
+                street = streetResult ? extractStreetAndBuilding(toSearchResult(streetResult).address).street : '';
+            }
 
             const googlePostalCode = getAddressComponent(address.address_components, 'postal_code');
+            // A postcode on another street makes the old street and house number
+            // wrong. The number cannot be derived from a postcode (Google only
+            // knows the nearest address), so it is cleared for the customer to
+            // type rather than guessed. Same street: keep what they entered.
+            const currentStreet = getValues('street') ?? '';
+            const isNewStreet = Boolean(street) && normalizeLocationName(street) !== normalizeLocationName(currentStreet);
             userEditedRef.current = true;
             applyFields({
                 ...resolveRegionFromGoogle(address.address_components, country),
@@ -264,7 +274,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                 postalCode: googlePostalCode && comparablePostalCode(googlePostalCode) === comparablePostalCode(postalCode)
                     ? googlePostalCode
                     : postalCode,
-                ...(street && !getValues('street') ? { street } : {}),
+                ...(isNewStreet ? { street, buildingNumber: '' } : {}),
             });
             setPostalLookup('idle');
         }, POSTAL_LOOKUP_DEBOUNCE_MS);
