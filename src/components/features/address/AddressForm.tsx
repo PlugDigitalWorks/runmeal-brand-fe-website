@@ -6,11 +6,10 @@ import * as z from 'zod';
 import { ApiResponse } from '@/types/auth';
 import { userService } from '@/services/user.service';
 import { AxiosError } from 'axios';
-import { Save, Loader2 } from 'lucide-react'; // Added Loader2 for loading state
+import { Save, Loader2, MapPin } from 'lucide-react'; // Added Loader2 for loading state
 import { LocationPicker, AddressComponent, GeocodedAddress, Location } from './LocationPicker';
 import { AddressSearch, AddressSearchResult, toSearchResult } from './AddressSearch';
 import { PhoneField } from './PhoneField';
-import { AddressSelects } from './AddressSelects';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
 import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
 import { extractStreetAndBuilding, getAddressComponent, normalizeLocationName } from '@/lib/address-parsing';
@@ -136,6 +135,11 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
     });
 
     const [watchedCountry, watchedDistrict, watchedStreet, watchedPostalCode] = watch(['countryCode', 'district', 'street', 'postalCode']);
+    const watchedProvince = watch('province');
+    const regionLabel = [watchedDistrict, watchedProvince].filter(Boolean).join(', ');
+    const regionError = errors.countryCode || errors.province || errors.district
+        ? t('address.validation.locationRequired')
+        : undefined;
 
     useEffect(() => {
         const key = searchKey(watchedCountry, watchedDistrict, watchedStreet);
@@ -356,19 +360,15 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                 />
             </div>
 
-            <AddressSelects
-                control={control}
-                setValue={setValue}
-                currentCountry={watch('countryCode')}
-                currentState={watch('province')}
-                errors={errors}
-                className="col-span-full"
-                onLocationChange={(lat, lng) => {
-                    setValue('latitude', lat);
-                    setValue('longitude', lng);
-                }}
-            />
-            {/* Hidden inputs to register fields if needed, or rely on Controller */}
+            {/* Country, province and district come from the search, the map pin,
+                the postcode or the visitor location; the customer types the rest. */}
+            {regionLabel && (
+                <p className="flex items-center gap-1.5 text-sm text-zinc-600">
+                    <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                    {regionLabel}
+                </p>
+            )}
+            {regionError && <p className="text-xs font-medium text-red-500">{regionError}</p>}
             <div className="hidden">
                 <Input label={t('address.country')} {...register('countryCode')} />
                 <Input label={t('address.district')} {...register('district')} />

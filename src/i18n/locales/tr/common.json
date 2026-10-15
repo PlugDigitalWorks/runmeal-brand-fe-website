@@ -611,6 +611,7 @@
     "rateLimited": "Çok hızlı istek gönderiyorsunuz. Lütfen biraz bekleyin.",
     "validation": {
       "countryRequired": "Ülke gereklidir",
+      "locationRequired": "Konumu arama, posta kodu veya haritadan seçin",
       "districtRequired": "İlçe/şehir gereklidir",
       "provinceRequired": "İl/eyalet gereklidir",
       "phoneRequired": "Telefon gereklidir",

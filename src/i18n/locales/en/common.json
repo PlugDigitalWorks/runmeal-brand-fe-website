@@ -611,6 +611,7 @@
     "rateLimited": "You are sending requests too quickly. Please wait a moment.",
     "validation": {
       "countryRequired": "Country is required",
+      "locationRequired": "Pick the location with the search, postcode or map",
       "districtRequired": "District/City is required",
       "provinceRequired": "Province/State is required",
       "phoneRequired": "Phone is required",
