@@ -498,12 +498,11 @@
   "branch": {
     "loading": "Loading branches...",
     "availableBranches": "Branches available for order",
-    "noDeliveryHere": "No delivery to this address",
+    "noDeliveryHere": "No delivery to your selected address",
     "pickupAvailable": "You can order for pickup",
     "allBranches": "All branches ({{count}})",
     "noBranches": "No branches found.",
     "selectToOrder": "Please select a branch to order.",
-    "minimumOrder": "Minimum order amount",
     "payment": "Payment",
     "workingHours": "Working Hours",
     "today": "Today",
@@ -578,6 +577,10 @@
     "addToCart": "Add to Cart"
   },
   "address": {
+    "searchPlaceholder": "Search for an address, postcode or place",
+    "searchNoResults": "No results found.",
+    "postalCodeLooking": "Looking up postcode…",
+    "postalCodeNotFound": "We couldn't find this postcode. Enter the address yourself or pick it on the map.",
     "country": "Country",
     "province": "Province",
     "district": "District",

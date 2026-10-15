@@ -7,19 +7,27 @@ import { ApiResponse } from '@/types/auth';
 import { userService } from '@/services/user.service';
 import { AxiosError } from 'axios';
 import { Save, Loader2 } from 'lucide-react'; // Added Loader2 for loading state
-import { LocationPicker, GeocodedAddress, Location } from './LocationPicker';
+import { LocationPicker, AddressComponent, GeocodedAddress, Location } from './LocationPicker';
+import { AddressSearch, AddressSearchResult, toSearchResult } from './AddressSearch';
 import { PhoneField } from './PhoneField';
 import { AddressSelects } from './AddressSelects';
-import { Country, State, City } from 'country-state-city';
-import { useCallback, useRef, useEffect, useState } from 'react';
-import { extractStreetAndBuilding, getAddressComponent, getAddressShortName, normalizeLocationName } from '@/lib/address-parsing';
+import { useMapsLibrary } from '@vis.gl/react-google-maps';
+import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
+import { extractStreetAndBuilding, getAddressComponent, normalizeLocationName } from '@/lib/address-parsing';
+import { AddressRegion, resolveAddressRegion, resolveRegionFromGoogle } from '@/lib/address-region';
+import { DEFAULT_ADDRESS_LOCATION, fetchVisitorLocation } from '@/lib/visitor-location';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
-// Helper to normalize strings for comparison
-const normalizeName = (name: string) => {
-    return normalizeLocationName(name)
-};
+/** Postal-code examples per country; anything else shows no placeholder. */
+const POSTAL_CODE_PLACEHOLDERS: Record<string, string> = { GB: 'TW9 1AN', TR: '34000', US: '10001' };
+
+const POSTAL_LOOKUP_DEBOUNCE_MS = 800;
+
+const searchKey = (countryCode?: string, district?: string, street?: string) =>
+    [street, district, countryCode].filter(Boolean).join(', ');
+
+const comparablePostalCode = (value: string) => value.replace(/\s+/g, '').toUpperCase();
 
 // Schema for Address
 const createAddressSchema = (t: TFunction) => z.object({
@@ -83,21 +91,36 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
     const { t } = useTranslation();
     const [addressLoading, setAddressLoading] = useState(false);
     const [searchAddress, setSearchAddress] = useState<string | undefined>(undefined);
-    const ignoreSearchRef = useRef(false);
+    const [postalLookup, setPostalLookup] = useState<'idle' | 'loading' | 'notFound'>('idle');
+    const isNewAddress = !addressId;
 
+    // A new address starts in Richmond, London until the visitor's own
+    // location (if Cloudflare knows it) replaces it below.
     const defaultValues = {
-        countryCode: 'TR',
-        district: 'Fatih',
-        province: 'İstanbul',
+        countryCode: DEFAULT_ADDRESS_LOCATION.countryCode,
+        district: DEFAULT_ADDRESS_LOCATION.district,
+        province: DEFAULT_ADDRESS_LOCATION.province,
         phoneE164: '',
         postalCode: '',
         street: '',
         buildingNumber: '',
         apartmentNumber: '',
-        latitude: undefined,
-        longitude: undefined,
+        latitude: isNewAddress ? DEFAULT_ADDRESS_LOCATION.latitude : undefined,
+        longitude: isNewAddress ? DEFAULT_ADDRESS_LOCATION.longitude : undefined,
         ...initialValues
     };
+
+    const geocodingLib = useMapsLibrary('geocoding');
+    const geocoder = useMemo(() => (geocodingLib ? new geocodingLib.Geocoder() : null), [geocodingLib]);
+
+    // What the form -> map sync last saw. Values we fill in ourselves (from the
+    // map, search, postcode or visitor location) are recorded here first so
+    // they do not bounce back into another geocode.
+    const lastSyncedRef = useRef(searchKey(defaultValues.countryCode, defaultValues.district, defaultValues.street));
+    const lastPostalLookupRef = useRef(comparablePostalCode(defaultValues.postalCode ?? ''));
+    // Once the customer has touched the form, the visitor location must not
+    // overwrite their choice when it arrives late.
+    const userEditedRef = useRef(false);
 
     const {
         register,
@@ -112,105 +135,177 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         defaultValues: defaultValues as import('react-hook-form').DefaultValues<AddressFormValues>
     });
 
-    const watchedFields = watch(['countryCode', 'district', 'street']);
+    const [watchedCountry, watchedDistrict, watchedStreet, watchedPostalCode] = watch(['countryCode', 'district', 'street', 'postalCode']);
 
     useEffect(() => {
-        if (ignoreSearchRef.current) {
-            ignoreSearchRef.current = false;
-            return;
-        }
+        const key = searchKey(watchedCountry, watchedDistrict, watchedStreet);
+        if (!key || key === lastSyncedRef.current) return;
 
         const timer = setTimeout(() => {
-            const [countryCode, district, street] = watchedFields;
-            if (countryCode || district || street) {
-
-                const parts = [street, district, countryCode].filter(Boolean);
-                if (parts.length > 0) {
-                    setSearchAddress(parts.join(', '));
-                }
-            }
+            lastSyncedRef.current = key;
+            setSearchAddress(key);
         }, 1000);
 
         return () => clearTimeout(timer);
-    }, [watchedFields]);
+    }, [watchedCountry, watchedDistrict, watchedStreet]);
+
+    /** Fills fields without the form -> map sync or postcode lookup reacting to it. */
+    const applyFields = useCallback((fields: Partial<AddressRegion> & { street?: string; buildingNumber?: string; postalCode?: string; location?: Location }) => {
+        const next = {
+            countryCode: fields.countryCode ?? getValues('countryCode'),
+            district: fields.district ?? getValues('district'),
+            street: fields.street ?? getValues('street'),
+        };
+        lastSyncedRef.current = searchKey(next.countryCode, next.district, next.street);
+        if (fields.postalCode !== undefined) lastPostalLookupRef.current = comparablePostalCode(fields.postalCode);
+
+        if (fields.countryCode !== undefined) setValue('countryCode', fields.countryCode);
+        if (fields.province !== undefined) setValue('province', fields.province);
+        if (fields.district !== undefined) setValue('district', fields.district);
+        if (fields.postalCode !== undefined) setValue('postalCode', fields.postalCode);
+        if (fields.street !== undefined) setValue('street', fields.street);
+        if (fields.buildingNumber !== undefined) setValue('buildingNumber', fields.buildingNumber);
+        if (fields.location) {
+            setValue('latitude', fields.location.latitude);
+            setValue('longitude', fields.location.longitude);
+        }
+        setSearchAddress(undefined);
+    }, [getValues, setValue]);
 
     const handleAddressSelect = useCallback((address: GeocodedAddress) => {
-        ignoreSearchRef.current = true;
-
-        const components = address.address_components;
-        const getComponent = (type: string) => getAddressComponent(components, type);
-
-        const countryRaw = getComponent('country');
-        const countryIso = getAddressShortName(components, 'country').toUpperCase();
-        const administrativeAreaLevel1 = getComponent('administrative_area_level_1');
-        const administrativeAreaLevel2 = getComponent('administrative_area_level_2');
-        const locality = getComponent('locality');
-        const sublocality = getComponent('sublocality');
-        const postalCode = getComponent('postal_code');
+        userEditedRef.current = true;
+        const region = resolveRegionFromGoogle(address.address_components, getValues('countryCode'));
         const { street, building } = extractStreetAndBuilding(address);
 
-        // 1. Match Country
-        const allCountries = Country.getAllCountries();
-        // ISO code from Google is language independent, so prefer it over name matching.
-        let matchedCountry = allCountries.find(c => c.isoCode === countryIso) ||
-            allCountries.find(c =>
-                normalizeName(c.name) === normalizeName(countryRaw) ||
-                c.isoCode === countryRaw ||
-                (countryRaw && normalizeName(c.name).includes(normalizeName(countryRaw)))
+        applyFields({
+            ...region,
+            postalCode: getAddressComponent(address.address_components, 'postal_code'),
+            street: street || '',
+            ...(building ? { buildingNumber: building } : {}),
+        });
+    }, [applyFields, getValues]);
+
+    const handleSearchSelect = useCallback((result: AddressSearchResult) => {
+        applyFields({ location: result.location });
+        handleAddressSelect(result.address);
+    }, [applyFields, handleAddressSelect]);
+
+    // New address: start from where Cloudflare places the visitor, if known.
+    useEffect(() => {
+        if (!isNewAddress) return;
+        let cancelled = false;
+
+        void fetchVisitorLocation().then((visitor) => {
+            if (cancelled || userEditedRef.current || !visitor?.countryCode) return;
+
+            const region = resolveAddressRegion(
+                {
+                    countries: [visitor.countryCode],
+                    regions: [visitor.region ?? '', visitor.regionCode ?? ''],
+                    cities: [visitor.city ?? ''],
+                },
+                visitor.countryCode,
+            );
+            const hasCoordinates = visitor.latitude !== null && visitor.longitude !== null;
+            applyFields({
+                ...region,
+                ...(hasCoordinates ? { location: { latitude: visitor.latitude!, longitude: visitor.longitude! } } : {}),
+            });
+            // Without coordinates, let the map follow the visitor's region.
+            if (!hasCoordinates) setSearchAddress(searchKey(region.countryCode, region.district));
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isNewAddress, applyFields]);
+
+    // Postcode first, like UK addresses: a recognised postcode fills the rest.
+    useEffect(() => {
+        const postalCode = (watchedPostalCode ?? '').trim();
+        if (!geocoder || postalCode.length < 3 || comparablePostalCode(postalCode) === lastPostalLookupRef.current) return;
+
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            lastPostalLookupRef.current = comparablePostalCode(postalCode);
+            setPostalLookup('loading');
+
+            const country = getValues('countryCode');
+            const geocode = async (request: google.maps.GeocoderRequest) => {
+                try {
+                    return (await geocoder.geocode(request)).results;
+                } catch {
+                    return [];
+                }
+            };
+
+            let results = country ? await geocode({ componentRestrictions: { postalCode, country } }) : [];
+            if (results.length === 0) results = await geocode({ address: postalCode });
+            const match = results[0];
+            if (cancelled) return;
+            if (!match) {
+                setPostalLookup('notFound');
+                return;
+            }
+
+            const { location, address } = toSearchResult(match);
+            // A postcode is an area, not a house. The addresses nearest to its
+            // centre give the street (when the postcode result lacks one) and a
+            // house number to start from.
+            const nearby = await geocode({ location: { lat: location.latitude, lng: location.longitude } });
+            if (cancelled) return;
+            const nearbyAddresses = nearby.filter((result) =>
+                result.types.some((type) => ['street_address', 'premise', 'subpremise', 'route'].includes(type)),
             );
 
-        // Explicit fix for Türkiye -> Turkey if not found above
-        if (!matchedCountry && (countryRaw.toLowerCase() === 'türkiye' || countryRaw.toLowerCase() === 'turkiye')) {
-            matchedCountry = allCountries.find(c => c.isoCode === 'TR');
-        }
-
-        // Never silently switch to TR; keep the current country when nothing matched.
-        const countryCode = matchedCountry?.isoCode || getValues('countryCode');
-
-        // 2. Match State (Province)
-        let finalState = '';
-        let stateCode = '';
-
-        if (countryCode) {
-            const countryStates = State.getStatesOfCountry(countryCode);
-            const matchedState = countryStates.find(s =>
-                normalizeName(s.name) === normalizeName(administrativeAreaLevel1) ||
-                s.isoCode === administrativeAreaLevel1 ||
-                normalizeName(s.name).includes(normalizeName(administrativeAreaLevel1))
-            );
-
-            if (matchedState) {
-                finalState = matchedState.name;
-                stateCode = matchedState.isoCode;
+            let street = getAddressComponent(address.address_components, 'route');
+            if (!street && nearbyAddresses[0]) {
+                street = extractStreetAndBuilding(toSearchResult(nearbyAddresses[0]).address).street;
             }
-        }
 
-        // 3. Match City (District)
-        let finalCity = '';
-        const possibleCities = [locality, administrativeAreaLevel2, sublocality].filter(Boolean);
+            // Nearest numbered address on that street, inside the same postcode
+            // when Google has one there. It is a best guess the customer can
+            // correct; the pin moves onto it so number and pin agree.
+            const numberedOnStreet = nearbyAddresses.filter((result) => {
+                const components = result.address_components as AddressComponent[];
+                return Boolean(getAddressComponent(components, 'street_number')) &&
+                    (!street || normalizeLocationName(getAddressComponent(components, 'route')) === normalizeLocationName(street));
+            });
+            const nearestNumbered =
+                numberedOnStreet.find((result) =>
+                    comparablePostalCode(getAddressComponent(result.address_components as AddressComponent[], 'postal_code')) ===
+                    comparablePostalCode(postalCode),
+                ) ?? numberedOnStreet[0];
+            const nearestNumber = nearestNumbered
+                ? getAddressComponent(nearestNumbered.address_components as AddressComponent[], 'street_number')
+                : '';
 
-        if (countryCode && stateCode) {
-            const stateCities = City.getCitiesOfState(countryCode, stateCode);
-            const matchedCity = stateCities.find(c => possibleCities.some(pc => normalizeName(c.name) === normalizeName(pc)));
-            if (matchedCity) {
-                finalCity = matchedCity.name;
-            }
-        }
+            // A new street replaces the old street and number. On the same street
+            // a number the customer already entered is theirs and stays.
+            const currentStreet = getValues('street') ?? '';
+            const isNewStreet = Boolean(street) && normalizeLocationName(street) !== normalizeLocationName(currentStreet);
+            const fillNumber = Boolean(nearestNumber) && (isNewStreet || !getValues('buildingNumber'));
 
-        // Fallback
-        if (!finalCity && possibleCities.length > 0) finalCity = possibleCities[0];
-        if (!finalState && administrativeAreaLevel1) finalState = administrativeAreaLevel1;
+            const googlePostalCode = getAddressComponent(address.address_components, 'postal_code');
+            userEditedRef.current = true;
+            applyFields({
+                ...resolveRegionFromGoogle(address.address_components, country),
+                location: fillNumber && nearestNumbered ? toSearchResult(nearestNumbered).location : location,
+                // Keep what the customer typed unless Google returns the same code formatted properly.
+                postalCode: googlePostalCode && comparablePostalCode(googlePostalCode) === comparablePostalCode(postalCode)
+                    ? googlePostalCode
+                    : postalCode,
+                ...(isNewStreet ? { street, buildingNumber: '' } : {}),
+                ...(fillNumber ? { buildingNumber: nearestNumber } : {}),
+            });
+            setPostalLookup('idle');
+        }, POSTAL_LOOKUP_DEBOUNCE_MS);
 
-        setValue('countryCode', countryCode);
-        setValue('province', finalState);
-        setValue('district', finalCity);
-
-        setValue('postalCode', postalCode || '');
-        setValue('street', street || '');
-        if (building) setValue('buildingNumber', building);
-
-        setSearchAddress(undefined);
-    }, [setValue, getValues]);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [watchedPostalCode, geocoder, getValues, applyFields]);
 
     const onSubmit = async (data: AddressFormValues) => {
         setAddressLoading(true);
@@ -238,8 +333,13 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form
+            onSubmit={handleSubmit(onSubmit)}
+            onInputCapture={() => { userEditedRef.current = true; }}
+            className="space-y-4"
+        >
             <div className="space-y-2">
+                <AddressSearch onSelect={handleSearchSelect} />
                 <LocationPicker
                     value={
                         watch('latitude') && watch('longitude')
@@ -247,6 +347,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                             : undefined
                     }
                     onChange={(loc: Location) => {
+                        userEditedRef.current = true;
                         setValue('latitude', loc.latitude);
                         setValue('longitude', loc.longitude);
                     }}
@@ -288,7 +389,17 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                         />
                     )}
                 />
-                <Input label={t('address.postalCode')} placeholder="34000" {...register('postalCode')} error={errors.postalCode?.message} />
+                <div className="space-y-1">
+                    <Input
+                        label={t('address.postalCode')}
+                        placeholder={POSTAL_CODE_PLACEHOLDERS[watchedCountry] ?? ''}
+                        autoComplete="postal-code"
+                        {...register('postalCode')}
+                        error={errors.postalCode?.message}
+                    />
+                    {postalLookup === 'loading' && <p className="text-xs text-zinc-500">{t('address.postalCodeLooking')}</p>}
+                    {postalLookup === 'notFound' && <p className="text-xs text-amber-600">{t('address.postalCodeNotFound')}</p>}
+                </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label={t('address.street')} {...register('street')} error={errors.street?.message} />

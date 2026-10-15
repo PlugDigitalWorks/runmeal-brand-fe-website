@@ -96,7 +96,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, ensureSession } = useAuth();
-  const { selectedBranch, activeBranchId, invalidateMenu, refreshAvailability } = useBranch();
+  const { selectedBranch, activeBranchId, invalidateMenu, refreshAvailability, hasNoOrderTypes } = useBranch();
   const { isTableMode } = useTable();
   const { refreshAddresses } = useUser();
   const [cart, setCart] = useState<Cart | null>(null);
@@ -368,6 +368,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     notes?: string,
     productDetails?: Product
   ) => {
+    if (hasNoOrderTypes) {
+      toast.error(i18n.t('fulfillment.branchUnavailable'));
+      return;
+    }
     // Guests also keep a local cart, so this public check belongs before the
     // authenticated/local split rather than relying only on the cart API.
     if (activeBranchId) {

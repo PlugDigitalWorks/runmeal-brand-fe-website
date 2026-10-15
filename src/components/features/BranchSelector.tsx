@@ -5,11 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { useBranch } from '@/context/BranchContext';
 import { Check, ChevronDown, MapPin } from 'lucide-react';
 import { BranchContactLink, BranchInfoTabs } from '@/components/features/BranchInfoTabs';
-import { Money } from '@/components/ui/Money';
 import {
-    branchCanDeliver,
     hasPickupOrderType,
     isBranchSelectable,
+    isOutsideDeliveryArea,
     resolveBranchDetails,
 } from '@/lib/branch-details';
 import type { Branch, BrandBranch } from '@/types/branch';
@@ -29,7 +28,6 @@ function formatDistance(meters: number, language: string) {
 /** Name, address, distance and delivery note of one branch; shared by the cards and the dropdown rows. */
 function BranchSummary({ branch }: { branch: ListedBranch }) {
     const { t, i18n } = useTranslation();
-    const canDeliver = branchCanDeliver(branch);
     const distance = branch.distanceM;
 
     return (
@@ -41,7 +39,7 @@ function BranchSummary({ branch }: { branch: ListedBranch }) {
                     <MapPin size={11} /> {formatDistance(distance, i18n.resolvedLanguage || i18n.language)}
                 </div>
             )}
-            {canDeliver === false && (
+            {isOutsideDeliveryArea(branch) && (
                 <div className="text-[11px] mt-1">
                     <span className="font-medium text-red-500">{t('branch.noDeliveryHere')}</span>
                     {hasPickupOrderType(branch) && <span className="text-zinc-500"> · {t('branch.pickupAvailable')}</span>}
@@ -81,6 +79,11 @@ export function BranchSelector() {
         if (!isBranchSelectable(branch)) return;
         selectBranch(branch);
         setIsDropdownOpen(false);
+        // Give the picked branch its own shareable link. The history API
+        // updates the address bar without remounting the menu.
+        if (branch.slug) {
+            window.history.replaceState(null, '', `/${encodeURIComponent(branch.slug)}${window.location.search}`);
+        }
     };
 
     return (
@@ -158,12 +161,15 @@ export function BranchSelector() {
 
                     {selectedBranch && branchDetails && (
                         <div className="mt-4 text-sm text-zinc-500 space-y-1">
-                            <p>{t('branch.minimumOrder')}: <Money value={branchDetails.minimumDeliveryAmount} /></p>
-                            <p>
-                                {t('branch.payment')}:{' '}
-                                {branchDetails.paymentMethodKeys.map(key => t(`branch.paymentMethods.${key}`)).join(', ')}
-                            </p>
-                            <p>{branchDetails.orderTypeKeys.map(key => t(`branch.orderTypes.${key}`)).join(', ')}</p>
+                            {branchDetails.paymentMethodKeys.length > 0 && (
+                                <p>
+                                    {t('branch.payment')}:{' '}
+                                    {branchDetails.paymentMethodKeys.map(key => t(`branch.paymentMethods.${key}`)).join(', ')}
+                                </p>
+                            )}
+                            {branchDetails.orderTypeKeys.length > 0 && (
+                                <p>{branchDetails.orderTypeKeys.map(key => t(`branch.orderTypes.${key}`)).join(', ')}</p>
+                            )}
                             {/* The Contact tab above is desktop only, so mobile needs its own way in. */}
                             <BranchContactLink branch={selectedBranch} />
                         </div>

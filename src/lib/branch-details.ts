@@ -10,7 +10,6 @@ export interface ResolvedBranchDetails {
     workingHours: string | null;
     /** An open day without a configured time slot means the branch is open all day. */
     isOpen24Hours: boolean;
-    minimumDeliveryAmount: number;
     paymentMethodKeys: string[];
     orderTypeKeys: string[];
     phoneNumber: string | null;
@@ -43,7 +42,6 @@ export function resolveBranchDetails(branch: Branch | null | undefined): Resolve
     return {
         workingHours: slot ? `${slot.openTime} - ${slot.closeTime}` : null,
         isOpen24Hours: todayHours?.isOpen === true && !slot,
-        minimumDeliveryAmount: branch.minBasketPrice || 0,
         paymentMethodKeys,
         orderTypeKeys,
         phoneNumber: branch.phoneNumber || null,
@@ -66,10 +64,34 @@ export function hasPickupOrderType(branch: Branch | BrandBranch | null | undefin
     return settings?.pickup?.isActive === true || settings?.scheduledPickup?.isActive === true;
 }
 
+/** Delivery (now or scheduled) — the order types `canDeliver` is about. */
+export function hasDeliveryOrderType(branch: Branch | BrandBranch | null | undefined): boolean {
+    const settings = branch?.order_type_settings;
+    return settings?.delivery?.isActive === true || settings?.scheduledDelivery?.isActive === true;
+}
+
+/**
+ * Any order type the storefront can place. Table ordering doesn't count: it
+ * only starts from a scanned QR code.
+ */
+export function hasStorefrontOrderType(branch: Branch | BrandBranch | null | undefined): boolean {
+    return hasDeliveryOrderType(branch) || hasPickupOrderType(branch);
+}
+
+/**
+ * The branch delivers, just not to the customer's address. `canDeliver` is
+ * purely geographic, so a branch with delivery switched off would otherwise
+ * read as "no delivery to your address" too.
+ */
+export function isOutsideDeliveryArea(branch: Branch | BrandBranch | null | undefined): boolean {
+    return branchCanDeliver(branch) === false && hasDeliveryOrderType(branch);
+}
+
 /**
  * A branch that doesn't deliver to the customer can still be picked for pickup.
- * Table ordering doesn't count: it only starts from a scanned QR code.
+ * One with no storefront order type at all stays pickable: its menu can still
+ * be browsed.
  */
 export function isBranchSelectable(branch: Branch | BrandBranch): boolean {
-    return branchCanDeliver(branch) !== false || hasPickupOrderType(branch);
+    return !isOutsideDeliveryArea(branch) || hasPickupOrderType(branch);
 }

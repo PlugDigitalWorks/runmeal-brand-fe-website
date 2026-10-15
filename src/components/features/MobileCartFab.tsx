@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { useBranch } from '@/context/BranchContext';
 import { ShoppingCart, X } from 'lucide-react';
 import { CartContent } from './CartContent';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +12,7 @@ export function MobileCartFab() {
     const [isOpen, setIsOpen] = useState(false);
     const { cart, guestCartItems } = useCart();
     const { isAuthenticated } = useAuth();
+    const { hasNoOrderTypes } = useBranch();
     const { t } = useTranslation();
 
     // Calculate total items
@@ -21,6 +23,9 @@ export function MobileCartFab() {
     );
 
     const toggleCart = () => setIsOpen(!isOpen);
+
+    // A branch with every order type off only shows its menu.
+    if (hasNoOrderTypes) return null;
 
     // Don't show if empty? Optional. User didn't specify. 
     // Usually good to show empty cart too so they can check status.

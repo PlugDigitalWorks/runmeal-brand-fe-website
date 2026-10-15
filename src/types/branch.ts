@@ -1,6 +1,8 @@
 export interface Branch {
   id: string;
   name: string;
+  /** Unique within the brand; the storefront serves the branch at `/<slug>`. */
+  slug?: string | null;
   addressText: string;
   deliveryRadiusM: number;
   locationGeog: {
