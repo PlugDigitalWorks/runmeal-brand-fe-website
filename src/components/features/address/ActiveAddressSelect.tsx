@@ -11,9 +11,15 @@ import { userService } from '@/services/user.service';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
 import type { Address } from '@/types/address';
 
+/** "-" is the placeholder the address form stores for an empty number. */
+function hasValue(value?: string | null): value is string {
+    return !!value && value.trim() !== '-';
+}
+
 function streetLine(address: Address) {
-    const apartment = address.apartmentNumber && address.apartmentNumber !== '-' ? ` / ${address.apartmentNumber}` : '';
-    return `${address.street}, ${address.buildingNumber}${apartment}`;
+    const building = hasValue(address.buildingNumber) ? `, ${address.buildingNumber}` : '';
+    const apartment = hasValue(address.apartmentNumber) ? ` / ${address.apartmentNumber}` : '';
+    return `${address.street}${building}${apartment}`;
 }
 
 /**
