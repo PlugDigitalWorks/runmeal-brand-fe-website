@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { branchService } from '@/services/branch.service';
-import { isBranchSelectable } from '@/lib/branch-details';
+import { hasDeliveryOrderType, hasStorefrontOrderType, isBranchSelectable } from '@/lib/branch-details';
 import type { Branch, BranchAvailabilityResponse, BrandBranch } from '@/types/branch';
 import { useAuth } from './AuthContext';
 import { useTable } from './TableContext';
@@ -32,6 +32,12 @@ interface BranchContextType {
      */
     menuRevision: number;
     availability: BranchAvailabilityResponse | null;
+    /**
+     * The selected storefront branch has every order type switched off: the
+     * menu stays browsable, but nothing can be added and the cart is hidden.
+     * Never true in a QR journey, which orders through the table instead.
+     */
+    hasNoOrderTypes: boolean;
     isAvailabilityLoading: boolean;
     hasAvailabilityError: boolean;
     refreshAvailability: () => Promise<BranchAvailabilityResponse | null>;
@@ -76,6 +82,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
 
     const tableBranchId = isTableMode ? journey?.branchId ?? null : null;
     const activeBranchId = tableBranchId ?? selectedBranch?.id ?? null;
+    const hasNoOrderTypes = !isTableMode && selectedBranch !== null && !hasStorefrontOrderType(selectedBranch);
 
     const refreshAvailability = useCallback(async () => {
         if (!activeBranchId) {
@@ -191,7 +198,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
                         listed(currentBranch?.id) ||
                         listed(storedBranchId) ||
                         // Nearest branch that delivers to the active address.
-                        nextBranches.find((branch) => branch.canDeliver === true) ||
+                        nextBranches.find((branch) => branch.canDeliver === true && hasDeliveryOrderType(branch)) ||
                         (nextBranches.length === 1 && isBranchSelectable(nextBranches[0]) ? nextBranches[0] : null)
                     );
                 });
@@ -226,6 +233,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
             invalidateMenu,
             selectBranch,
             availability,
+            hasNoOrderTypes,
             isAvailabilityLoading,
             hasAvailabilityError,
             refreshAvailability,

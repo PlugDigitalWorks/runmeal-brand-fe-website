@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useBranch } from '@/context/BranchContext';
 import { Gift, Info } from 'lucide-react';
 import { CartContent } from './CartContent';
 import { walletService } from '@/services/wallet.service';
@@ -11,6 +12,7 @@ import { useMoney } from '@/hooks/useMoney';
 
 export function CartSidebar() {
     const { isAuthenticated, isGuest } = useAuth();
+    const { hasNoOrderTypes } = useBranch();
     const [balance, setBalance] = useState<number>(0);
     const { t } = useTranslation();
     const { symbol: currencySymbol } = useMoney();
@@ -58,8 +60,8 @@ export function CartSidebar() {
                 </div>
             )}
 
-            {/* Carts */}
-            <CartContent />
+            {/* Carts — a branch with every order type off only shows its menu. */}
+            {!hasNoOrderTypes && <CartContent />}
 
             {hasAccount && (
                 <div className="bg-white rounded-lg shadow-sm border border-zinc-100 overflow-hidden">

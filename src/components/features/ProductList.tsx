@@ -27,6 +27,7 @@ export function ProductList() {
         isAvailabilityLoading,
         hasAvailabilityError,
         refreshAvailability,
+        hasNoOrderTypes,
     } = useBranch();
     const { addToCart } = useCart();
     const { t } = useTranslation();
@@ -146,7 +147,7 @@ export function ProductList() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
-        if (!availability?.canAcceptOrders) {
+        if (hasNoOrderTypes || !availability?.canAcceptOrders) {
             toast.error(t('fulfillment.branchUnavailable'));
             return;
         }
@@ -173,21 +174,23 @@ export function ProductList() {
 
     if (loading) return <div className="text-center py-10">{t('common.loading')}</div>;
 
-    const canOrder = Boolean(activeBranchId && availability?.canAcceptOrders);
+    const canOrder = Boolean(activeBranchId && availability?.canAcceptOrders && !hasNoOrderTypes);
+    // No order type is a branch setting, not a passing state: nothing to check again.
+    const showAvailabilityRetry = !isAvailabilityLoading && !hasNoOrderTypes;
 
     return (
         <div className="bg-white rounded-lg shadow-sm border border-zinc-100 min-h-[500px]">
-            {activeBranchId && (isAvailabilityLoading || hasAvailabilityError || !availability?.canAcceptOrders) && (
+            {activeBranchId && (hasNoOrderTypes || isAvailabilityLoading || hasAvailabilityError || !availability?.canAcceptOrders) && (
                 <div className="m-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                     <div className="flex items-center justify-between gap-4">
                         <span>
-                            {isAvailabilityLoading
+                            {!hasNoOrderTypes && isAvailabilityLoading
                                 ? t('fulfillment.checkingAvailability')
-                                : hasAvailabilityError
+                                : !hasNoOrderTypes && hasAvailabilityError
                                     ? t('fulfillment.availabilityError')
                                     : t('fulfillment.branchUnavailable')}
                         </span>
-                        {!isAvailabilityLoading && (
+                        {showAvailabilityRetry && (
                             <button type="button" onClick={() => void refreshAvailability()} className="font-semibold underline">
                                 {t('fulfillment.retry')}
                             </button>

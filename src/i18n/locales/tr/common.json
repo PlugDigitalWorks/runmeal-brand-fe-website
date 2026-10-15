@@ -498,12 +498,11 @@
   "branch": {
     "loading": "Şubeler yükleniyor...",
     "availableBranches": "Siparişe açık şubeler",
-    "noDeliveryHere": "Bu adrese teslimat yok",
+    "noDeliveryHere": "Seçili adresinize teslimat yok",
     "pickupAvailable": "Gel-al ile sipariş verebilirsiniz",
     "allBranches": "Tüm şubeler ({{count}})",
     "noBranches": "Şube bulunamadı.",
     "selectToOrder": "Sipariş vermek için bir şube seçin.",
-    "minimumOrder": "Minimum sipariş tutarı",
     "payment": "Ödeme",
     "workingHours": "Çalışma Saatleri",
     "today": "Bugün",
