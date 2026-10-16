@@ -16,15 +16,8 @@
  */
 export type GoogleWalletPlatform = 'android' | 'desktop' | 'unsupported';
 
-/**
- * Off unless the build sets `NEXT_PUBLIC_GOOGLE_WALLET_ENABLED=true`. Until
- * Google approves the loyalty pass class only test accounts can save passes,
- * so the button ships on staging and stays hidden in production.
- */
-const isGoogleWalletEnabled = process.env.NEXT_PUBLIC_GOOGLE_WALLET_ENABLED === 'true';
-
 export function detectGoogleWalletPlatform(): GoogleWalletPlatform {
-    if (!isGoogleWalletEnabled || typeof navigator === 'undefined') return 'unsupported';
+    if (typeof navigator === 'undefined') return 'unsupported';
 
     const userAgent = navigator.userAgent || '';
     if (/Android/i.test(userAgent)) return 'android';
