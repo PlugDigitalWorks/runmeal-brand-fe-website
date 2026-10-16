@@ -23,9 +23,34 @@ const API_URL =
     ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000')
     : '/api';
 
-export const AUTH_API_URL = (
+const CONFIGURED_API_URL = (
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 ).replace(/\/+$/, '');
+
+/**
+ * Base for auth calls, whose refresh cookie must belong to the page's own site.
+ *
+ * On `*.runmeal.com` (and localhost) the API host is same-site, so it is called
+ * directly. A brand's custom domain (e.g. `order.dharmacoffee.uk`) is a
+ * different site: the browser would not send cookies to `api.runmeal.com`, so
+ * these calls go through `<origin>/api`, which the Cloudflare worker forwards
+ * to the API with the prefix stripped. On the server the API host is used.
+ */
+const resolveAuthApiUrl = (): string => {
+  if (typeof window === 'undefined') return CONFIGURED_API_URL;
+
+  const { hostname, origin } = window.location;
+  const isRunmealHost = hostname === 'runmeal.com' || hostname.endsWith('.runmeal.com');
+  const isLocalhost =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]' ||
+    hostname.endsWith('.localhost');
+
+  return isRunmealHost || isLocalhost ? CONFIGURED_API_URL : `${origin}/api`;
+};
+
+export const AUTH_API_URL = resolveAuthApiUrl();
 
 /**
  * Which app this session belongs to. The API scopes refresh cookies per client

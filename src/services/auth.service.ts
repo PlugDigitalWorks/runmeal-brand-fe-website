@@ -1,4 +1,4 @@
-import { api, authApi, AUTH_CLIENT, postSessionRefresh } from '@/lib/axios';
+import { api, authApi, AUTH_API_URL, AUTH_CLIENT, postSessionRefresh } from '@/lib/axios';
 import {
   LoginDto,
   RegisterDto,
@@ -44,6 +44,23 @@ const persistUser = (user: User) => {
   Cookies.set('user', JSON.stringify(user));
 };
 
+/**
+ * A handoff code is single-use, so a second exchange for the same code (e.g.
+ * React StrictMode running the callback effect twice) shares the first call
+ * instead of failing with AUTH_GOOGLE_HANDOFF_INVALID.
+ */
+let pendingHandoff: { code: string; promise: Promise<AuthResponse> } | null = null;
+
+const exchangeGoogleHandoff = (code: string): Promise<AuthResponse> => {
+  if (pendingHandoff?.code === code) return pendingHandoff.promise;
+
+  const promise = authApi
+    .post<ApiResponse<AuthResponse> | AuthResponse>('/auth/google/exchange', { handoff: code })
+    .then((response) => unwrapAuthData(response.data));
+  pendingHandoff = { code, promise };
+  return promise;
+};
+
 export const authService = {
   async register(data: RegisterDto) {
     const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', data);
@@ -68,7 +85,7 @@ export const authService = {
   },
 
   async login(data: LoginDto) {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', {
+    const response = await authApi.post<ApiResponse<AuthResponse>>('/auth/login', {
       ...data,
       method: data.method || 'password',
       client: data.client || AUTH_CLIENT,
@@ -80,7 +97,7 @@ export const authService = {
   },
 
   async requestOtpLogin(email: string, recaptchaToken?: string) {
-    const response = await api.post<ApiResponse<OtpRequestResponse> | OtpRequestResponse>('/auth/login', {
+    const response = await authApi.post<ApiResponse<OtpRequestResponse> | OtpRequestResponse>('/auth/login', {
       email,
       method: 'otp',
       client: AUTH_CLIENT,
@@ -161,7 +178,21 @@ export const authService = {
     return response.data.data;
   },
 
-  async completeGoogleLogin() {
+  /**
+   * Finishes a Google sign-in from the `handoff` code the API put on the
+   * `/login` return URL. It must go through the same base as
+   * `startGoogleLogin`, whose response set the binding cookie this call needs.
+   */
+  async completeGoogleLogin(handoff?: string) {
+    if (handoff) {
+      const authResponse = await exchangeGoogleHandoff(handoff);
+      persistAuthResponse(authResponse);
+      return authResponse.user;
+    }
+
+    // Temporary: an API that predates the handoff exchange returns only
+    // `auth=success` and leaves the refresh cookie itself. Remove once the
+    // API with `/auth/google/exchange` is live everywhere.
     await this.refreshSessionFromCookies();
     const response = await api.get<ApiResponse<User>>('/profile');
     persistUser(response.data.data);
@@ -170,7 +201,8 @@ export const authService = {
 
   async logout() {
     try {
-      await api.post('/auth/logout');
+      // Same base as login/refresh, so the API can clear the refresh cookie it set.
+      await api.post('/auth/logout', undefined, { baseURL: AUTH_API_URL });
     } catch (error) {
       console.error('Logout failed', error);
     } finally {
