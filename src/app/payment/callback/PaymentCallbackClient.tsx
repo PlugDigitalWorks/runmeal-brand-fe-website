@@ -12,6 +12,7 @@ import { orderService } from "@/services/order.service";
 import { OrderRedirectCountdown } from "@/components/features/OrderRedirectCountdown";
 import { ReceiptAccountPanel } from "@/components/features/ReceiptAccountPanel";
 import { getBrandId } from "@/lib/brand-store";
+import { formatOrderNumber } from "@/lib/order-display";
 import { paymentService } from "@/services/payment.service";
 import { tableService } from "@/services/table.service";
 import {
@@ -70,6 +71,7 @@ export default function PaymentCallbackClient() {
   const { resetCartState } = useCart();
   const { activeBranchId } = useBranch();
   const [order, setOrder] = useState<TableOrderView | null>(null);
+  const orderNumber = formatOrderNumber(order?.orderNumber);
   const paymentContextSnapshot = useSyncExternalStore(
     subscribeToTableCheckPayment,
     getTableCheckPaymentSnapshot,
@@ -181,14 +183,17 @@ export default function PaymentCallbackClient() {
 
   // The success URL alone proves nothing — the backend callback/webhook is
   // what marks a payment done. Reading the order back is the only way to show
-  // an authoritative result, and it needs the branch/brand context a table
-  // journey carries.
+  // an authoritative result (and its order number, which never rides in the
+  // URL). It needs the branch/brand context: a table journey carries it, a
+  // storefront order uses the selected branch and the site's brand.
+  const orderBranchId = journey?.branchId ?? activeBranchId;
+  const orderBrandId = journey?.brandId ?? getBrandId();
   useEffect(() => {
-    if (status !== "success" || isTableCheckPayment || !orderId || !journey) return;
+    if (status !== "success" || isTableCheckPayment || !orderId || !orderBranchId || !orderBrandId) return;
 
     let cancelled = false;
     orderService
-      .getOrderById(orderId, journey.branchId, journey.brandId)
+      .getOrderById(orderId, orderBranchId, orderBrandId)
       .then((fetched) => {
         if (!cancelled && fetched) setOrder(fetched as unknown as TableOrderView);
       })
@@ -201,7 +206,7 @@ export default function PaymentCallbackClient() {
     return () => {
       cancelled = true;
     };
-  }, [status, isTableCheckPayment, orderId, journey]);
+  }, [status, isTableCheckPayment, orderId, orderBranchId, orderBrandId]);
 
   const handleContinue = () => {
     if (status !== "success") {
@@ -352,18 +357,14 @@ export default function PaymentCallbackClient() {
                     <Money value={order.totalPrice} currency={order.currency} />
                   </dd>
                 </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-zinc-500">{t("payment.orderId")}</dt>
-                  <dd className="font-mono text-xs text-zinc-600">{order.id}</dd>
-                </div>
+                {orderNumber && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-zinc-500">{t("payment.orderId")}</dt>
+                    <dd className="font-semibold text-zinc-800">{orderNumber}</dd>
+                  </div>
+                )}
               </dl>
-            ) : (
-              !isTableCheckPayment && orderId && (
-                <p className="text-sm text-zinc-500 mb-6">
-                  {t("payment.orderId")}: {orderId}
-                </p>
-              )
-            )}
+            ) : null}
             {!isTableCheckPayment && orderHref && <OrderRedirectCountdown href={orderHref} />}
             {journey && order?.orderType === "TABLE_ORDER" && orderId && (
               <ReceiptAccountPanel orderId={orderId} />

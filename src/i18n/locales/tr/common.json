@@ -806,6 +806,7 @@
     },
     "success": {
       "title": "Siparişiniz alındı!",
+      "orderNumber": "Sipariş No",
       "sent": "Siparişiniz mutfağa iletildi.",
       "sentToTable": "Siparişiniz {{table}} için mutfağa iletildi.",
       "total": "Tutar",

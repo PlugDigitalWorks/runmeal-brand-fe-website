@@ -21,6 +21,8 @@ export interface CreateTablePayLaterOrderDto {
  */
 export interface Order {
     id: string;
+    /** Human-facing number (e.g. 1042). Display only; routes and requests use `id`. */
+    orderNumber: number;
     createdAt: string;
     updatedAt: string;
     deletedAt: string | null;

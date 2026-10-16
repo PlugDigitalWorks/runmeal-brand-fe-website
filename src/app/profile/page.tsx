@@ -17,6 +17,7 @@ import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 import { LoyaltyRewardsPanel } from '@/components/features/LoyaltyRewardsPanel';
 import { OrderPromotionSnapshots } from '@/components/features/OrderPromotionSnapshots';
 import { Money } from '@/components/ui/Money';
+import { getOrderDisplayId } from '@/lib/order-display';
 
 function ProfileContent() {
     const router = useRouter();
@@ -279,7 +280,7 @@ function ProfileContent() {
                                                                     )}
                                                                 </div>
                                                                 <div className="text-xs text-zinc-500 mt-0.5">
-                                                                    {t('profile.orderNo', { id: order.id.slice(-8) })}
+                                                                    {t('profile.orderNo', { id: getOrderDisplayId(order) })}
                                                                 </div>
                                                                 {order.scheduledDate && order.scheduledTime && (
                                                                     <div className="mt-1 text-xs font-medium text-primary">

@@ -36,6 +36,7 @@ import type {
 } from '@/types/table';
 import { Money } from '@/components/ui/Money';
 import { useMoney } from '@/hooks/useMoney';
+import { formatOrderNumber } from '@/lib/order-display';
 
 type SelectionMap = Record<string, number>;
 
@@ -468,7 +469,7 @@ export function TableCheckPanel({
                                     <div key={order.orderId} className="rounded-lg border border-zinc-100 p-4">
                                         <div className="mb-3 flex items-center justify-between gap-3">
                                             <p className="text-sm font-semibold text-zinc-700">
-                                                {t('table.check.order', { number: orderIndex + 1 })}
+                                                {t('table.check.order', { number: formatOrderNumber(order.orderNumber) ?? orderIndex + 1 })}
                                             </p>
                                             {order.isOwnOrder && (
                                                 <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">

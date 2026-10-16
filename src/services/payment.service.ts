@@ -7,6 +7,8 @@ export type OrderType = 'DELIVERY' | 'SCHEDULED_DELIVERY' | 'PICKUP' | 'SCHEDULE
 export interface PaymentInitializationResponse {
     paymentId: string;
     orderId?: string;
+    /** Display only; set together with `orderId` on pay-on-delivery orders. */
+    orderNumber?: number;
     checkoutFormContent?: string;
     paymentUrl?: string;
 }

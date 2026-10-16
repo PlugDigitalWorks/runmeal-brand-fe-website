@@ -702,7 +702,7 @@
     "backHome": "Back to Home",
     "viewOrder": "View Order",
     "continueShopping": "Continue Shopping",
-    "orderId": "Order ID",
+    "orderId": "Order No.",
     "paymentId": "Payment ID",
     "table": "Table",
     "receipt": {
@@ -806,6 +806,7 @@
     },
     "success": {
       "title": "Order received!",
+      "orderNumber": "Order No.",
       "sent": "Your order has been sent to the kitchen.",
       "sentToTable": "Your order has been sent to the kitchen for {{table}}.",
       "total": "Amount",
