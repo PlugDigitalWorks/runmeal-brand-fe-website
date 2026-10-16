@@ -594,6 +594,10 @@
     "enterField": "{{field}} girin",
     "editDeliveryAddress": "Teslimat Adresini Düzenle",
     "addNewAddress": "Yeni Adres Ekle",
+    "activeAddress": "Teslimat adresi",
+    "selectActiveAddress": "Teslimat adresi seçin",
+    "noSavedAddress": "Kayıtlı adresiniz yok.",
+    "manageAddresses": "Adresleri Yönet",
     "streetNeighborhood": "Sokak / Mahalle",
     "street": "Sokak",
     "buildingNo": "Bina No",
@@ -607,6 +611,7 @@
     "rateLimited": "Çok hızlı istek gönderiyorsunuz. Lütfen biraz bekleyin.",
     "validation": {
       "countryRequired": "Ülke gereklidir",
+      "locationRequired": "Konumu arama, posta kodu veya haritadan seçin",
       "districtRequired": "İlçe/şehir gereklidir",
       "provinceRequired": "İl/eyalet gereklidir",
       "phoneRequired": "Telefon gereklidir",
@@ -801,6 +806,7 @@
     },
     "success": {
       "title": "Siparişiniz alındı!",
+      "orderNumber": "Sipariş No",
       "sent": "Siparişiniz mutfağa iletildi.",
       "sentToTable": "Siparişiniz {{table}} için mutfağa iletildi.",
       "total": "Tutar",

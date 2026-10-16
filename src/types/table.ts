@@ -54,6 +54,8 @@ export type TablePaymentChoice = 'PAY_NOW' | 'PAY_LATER';
  */
 export interface TableOrderView {
     id: string;
+    /** Display only. */
+    orderNumber?: number;
     orderType?: string;
     paymentMethod?: string;
     status?: string;
@@ -84,6 +86,8 @@ export interface CustomerTableCheckItem {
 
 export interface CustomerTableCheckOrder {
     orderId: string;
+    /** Display only. */
+    orderNumber: number;
     createdAt: string;
     status: string;
     totalAmount: number;

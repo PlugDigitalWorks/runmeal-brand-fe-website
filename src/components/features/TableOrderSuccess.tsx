@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle } from 'lucide-react';
 import type { TableOrderView } from '@/types/table';
 import { Money } from '@/components/ui/Money';
+import { formatOrderNumber } from '@/lib/order-display';
 
 /**
  * Order confirmation for a table journey.
@@ -24,6 +25,7 @@ export function TableOrderSuccess({
 }) {
     const { t } = useTranslation();
     const isPayAtCounter = order.paymentMethod === 'PAY_AT_COUNTER';
+    const orderNumber = formatOrderNumber(order.orderNumber);
 
     return (
         <div className="flex min-h-[50vh] items-center justify-center px-4">
@@ -40,6 +42,12 @@ export function TableOrderSuccess({
                 </p>
 
                 <dl className="mt-6 space-y-2 rounded-lg border border-zinc-100 bg-zinc-50 p-4 text-left text-sm">
+                    {orderNumber && (
+                        <div className="flex justify-between gap-3">
+                            <dt className="text-zinc-500">{t('table.success.orderNumber')}</dt>
+                            <dd className="font-semibold text-zinc-800">{orderNumber}</dd>
+                        </div>
+                    )}
                     <div className="flex justify-between gap-3">
                         <dt className="text-zinc-500">{t('table.success.total')}</dt>
                         <dd className="font-bold text-zinc-800">

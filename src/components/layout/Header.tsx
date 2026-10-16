@@ -10,6 +10,7 @@ import { RUNMEAL_LOGO } from '@/lib/constants';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { HeaderNavigation } from '@/components/layout/HeaderNavigation';
 import { useStampAvailability } from '@/hooks/useLoyaltyStamps';
+import { ActiveAddressSelect } from '@/components/features/address/ActiveAddressSelect';
 
 export function Header() {
     const { user, isAuthenticated, isGuest, logout } = useAuth();
@@ -52,6 +53,8 @@ export function Header() {
                     )}
                     {showAccount ? (
                         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+                            {/* A QR journey is bound to the scanned table's branch; delivery address does not apply. */}
+                            {!isTableMode && <ActiveAddressSelect />}
                             {isStampActive && (
                                 <Link
                                     href="/rewards"

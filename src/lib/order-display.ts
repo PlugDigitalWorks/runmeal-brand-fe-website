@@ -21,9 +21,24 @@ export function formatOrderDateTime(value: string | null | undefined, locale: st
     });
 }
 
-/** Orders have no human-facing number yet, so the tail of the id stands in for one. */
-export function getOrderDisplayId(order: Pick<Order, 'id'>): string {
-    return order.id.slice(-8);
+/**
+ * `#1042`, or null when the backend has not sent a number. Display only:
+ * routes, requests and keys keep the order's UUID.
+ */
+export function formatOrderNumber(orderNumber: number | null | undefined): string | null {
+    return hasOrderNumber(orderNumber) ? `#${orderNumber}` : null;
+}
+
+function hasOrderNumber(orderNumber: number | null | undefined): orderNumber is number {
+    return typeof orderNumber === 'number' && Number.isFinite(orderNumber);
+}
+
+/**
+ * What goes after the `#` in "Order #{{id}}": the order number, or the tail of
+ * the id for an order that arrives without one.
+ */
+export function getOrderDisplayId(order: { id: string; orderNumber?: number | null }): string {
+    return hasOrderNumber(order.orderNumber) ? String(order.orderNumber) : order.id.slice(-8);
 }
 
 export function getOrderItemQty(item: OrderItem): number {

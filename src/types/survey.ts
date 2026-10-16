@@ -18,6 +18,8 @@ export interface SurveyQuestion {
  */
 export interface PendingSurvey {
   orderId: string;
+  /** Display only; the survey is still keyed by `orderId`. */
+  orderNumber: number;
   branchId: string;
   branchName: string | null;
   orderStatus: string;

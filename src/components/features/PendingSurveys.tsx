@@ -13,6 +13,7 @@ import {
     toSurveyAnswers,
 } from '@/types/survey';
 import { Money } from '@/components/ui/Money';
+import { getOrderDisplayId } from '@/lib/order-display';
 
 interface ApiErrorLike {
     response?: { status?: number; data?: { message?: string | string[] } };
@@ -152,9 +153,9 @@ export function PendingSurveys() {
                                 <p className="break-words font-semibold text-zinc-900">
                                     {survey.branchName || t('survey.unknownBranch')}
                                 </p>
-                                {/* Same short id the orders tab shows, so the two screens match. */}
+                                {/* Same order number the orders tab shows, so the two screens match. */}
                                 <p className="mt-0.5 text-xs font-medium text-zinc-600">
-                                    {t('survey.orderNo', { id: survey.orderId.slice(-8) })}
+                                    {t('survey.orderNo', { id: getOrderDisplayId({ id: survey.orderId, orderNumber: survey.orderNumber }) })}
                                 </p>
                                 <p className="mt-0.5 text-xs text-zinc-500">
                                     {new Date(survey.orderDate).toLocaleDateString(i18n.resolvedLanguage === 'en' ? 'en-US' : 'tr-TR', {
