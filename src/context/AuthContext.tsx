@@ -21,7 +21,7 @@ interface AuthContextType {
     registerWithOtp: (data: Omit<RegisterDto, 'password'>) => Promise<void>;
     verifyOtp: (email: string, code: string) => Promise<void>;
     loginWithGoogle: () => Promise<void>;
-    completeGoogleLogin: () => Promise<User>;
+    completeGoogleLogin: (handoff?: string) => Promise<User>;
     register: (data: RegisterDto) => Promise<void>;
     logout: () => Promise<void>;
     // Modal Control
@@ -143,10 +143,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const completeGoogleLogin = async () => {
+    const completeGoogleLogin = async (handoff?: string) => {
         setIsLoading(true);
         try {
-            const currentUser = await authService.completeGoogleLogin();
+            const currentUser = await authService.completeGoogleLogin(handoff);
             setUser(currentUser);
             setIsAuthenticated(true);
             return currentUser;
