@@ -9,6 +9,7 @@ import { CartProvider } from "@/context/CartContext";
 import { TableProvider } from "@/context/TableContext";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { ReturnPathTracker } from "@/components/features/ReturnPathTracker";
 import { CmsNavigationProvider } from "@/context/CmsNavigationContext";
 import { GoogleMapsProvider } from "@/providers/GoogleMapsProvider";
 import { AuthModal } from "@/components/features/AuthModal";
@@ -103,6 +104,7 @@ export default function RootLayout({
                         </div>
                         <Toaster position="bottom-left" />
                         <AuthModal />
+                        <ReturnPathTracker />
                       </CmsNavigationProvider>
                     </CartProvider>
                   </BranchProvider>
