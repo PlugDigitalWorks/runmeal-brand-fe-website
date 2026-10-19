@@ -49,6 +49,34 @@ function BranchSummary({ branch }: { branch: ListedBranch }) {
     );
 }
 
+/** The only branch of a brand: no card to pick, just where it is. */
+function SingleBranchSummary({ branch }: { branch: ListedBranch }) {
+    const { t, i18n } = useTranslation();
+    const distance = branch.distanceM;
+
+    return (
+        <div className="space-y-1 text-sm">
+            {branch.addressText && (
+                <p className="flex items-start gap-1.5 text-zinc-500">
+                    <MapPin size={14} className="mt-0.5 shrink-0 text-primary" />
+                    <span>
+                        {branch.addressText}
+                        {typeof distance === 'number' && (
+                            <span className="text-orange-500"> · {formatDistance(distance, i18n.resolvedLanguage || i18n.language)}</span>
+                        )}
+                    </span>
+                </p>
+            )}
+            {isOutsideDeliveryArea(branch) && (
+                <p className="text-xs">
+                    <span className="font-medium text-red-500">{t('branch.noDeliveryHere')}</span>
+                    {hasPickupOrderType(branch) && <span className="text-zinc-500"> · {t('branch.pickupAvailable')}</span>}
+                </p>
+            )}
+        </div>
+    );
+}
+
 /**
  * The branch panel that sits above the menu on the storefront: every open
  * branch of the brand, the first few as cards and the rest in a dropdown.
@@ -64,6 +92,9 @@ export function BranchSelector() {
     const branchDetails = React.useMemo(() => resolveBranchDetails(selectedBranch), [selectedBranch]);
     const cardBranches = branches.slice(0, MAX_BRANCH_CARDS);
     const hasMore = branches.length > MAX_BRANCH_CARDS;
+    // A brand with one branch has nothing to pick: its address goes under the
+    // title instead of a lone, already-selected card.
+    const isSingleBranch = branches.length === 1 && selectedBranch?.id === branches[0].id;
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -98,6 +129,8 @@ export function BranchSelector() {
                         <p className="text-sm text-zinc-500">{t('branch.loading')}</p>
                     ) : branches.length === 0 ? (
                         <p className="text-sm text-zinc-500">{t('branch.noBranches')}</p>
+                    ) : isSingleBranch ? (
+                        <SingleBranchSummary branch={branches[0]} />
                     ) : (
                         <>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
