@@ -4,6 +4,7 @@ import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
 import { OtpChallenge } from '@/components/features/OtpChallenge';
 import { useAuth } from '@/context/AuthContext';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
+import { takeReturnPath } from '@/lib/return-path';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2, UserPlus } from 'lucide-react';
 import Link from 'next/link';
@@ -64,7 +65,7 @@ export default function RegisterPage() {
     try {
       await verifyOtp(sentEmail, code);
       toast.success(t('auth.otp.success'));
-      router.push('/');
+      router.push(takeReturnPath());
     } catch (error) {
       toast.error(resolveApiErrorMessage(error, t('auth.authenticationFailed')));
     } finally {

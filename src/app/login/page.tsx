@@ -5,6 +5,7 @@ import { OtpChallenge } from '@/components/features/OtpChallenge';
 import { RecaptchaWidget } from '@/components/features/RecaptchaWidget';
 import { useAuth } from '@/context/AuthContext';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
+import { takeReturnPath } from '@/lib/return-path';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2, User } from 'lucide-react';
 import Link from 'next/link';
@@ -63,7 +64,7 @@ export default function LoginPage() {
       } else {
         await login({ email: data.email, password: data.password, recaptchaToken: recaptchaToken ?? undefined });
         toast.success(t('auth.login.success'));
-        router.push('/');
+        router.push(takeReturnPath());
       }
     } catch (error) {
       toast.error(resolveApiErrorMessage(error, t('auth.login.error')));
@@ -79,7 +80,7 @@ export default function LoginPage() {
     try {
       await verifyOtp(sentEmail, code);
       toast.success(t('auth.otp.success'));
-      router.push('/');
+      router.push(takeReturnPath());
     } catch (error) {
       toast.error(resolveApiErrorMessage(error, t('auth.authenticationFailed')));
     } finally {
@@ -117,7 +118,7 @@ export default function LoginPage() {
     if (authStatus === 'success') {
       setIsLoading(true);
       completeGoogleLogin(handoff)
-        .then(() => { toast.success(t('auth.login.googleSuccess')); router.push('/'); })
+        .then(() => { toast.success(t('auth.login.googleSuccess')); router.push(takeReturnPath()); })
         .catch((error) => toast.error(
           handoff
             ? resolveApiErrorMessage(error, t('auth.login.googleFailed'))
