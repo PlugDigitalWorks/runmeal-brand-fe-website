@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useTable } from '@/context/TableContext';
+import { useBrand } from '@/context/BrandContext';
 import { Gift, LogOut, QrCode, User } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -16,6 +17,7 @@ export function Header() {
     const { user, isAuthenticated, isGuest, logout } = useAuth();
     const { isTableMode, journey } = useTable();
     const { t } = useTranslation();
+    const { brand } = useBrand();
 
     // A QR guest is technically authenticated (throwaway CUSTOMER account), but
     // has no name, no profile and nothing to log out of — treat them as a
@@ -30,14 +32,32 @@ export function Header() {
                 <div className="flex min-w-0 shrink items-center gap-3 md:gap-8">
                     {/* Logo */}
                     <Link href="/" className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-90">
-                        <Image
-                            src={RUNMEAL_LOGO}
-                            alt="Runmeal"
-                            width={120}
-                            height={32}
-                            className="h-7 w-auto max-[360px]:h-6 sm:h-8"
-                            priority
-                        />
+                        {/* The brand's own logo; a brand without one gets its name. The
+                            Runmeal logo only shows when no brand was resolved (local dev). */}
+                        {brand?.logoUrl ? (
+                            <Image
+                                src={brand.logoUrl}
+                                alt={brand.name}
+                                width={160}
+                                height={40}
+                                unoptimized
+                                className="h-7 w-auto max-w-[140px] object-contain object-left max-[360px]:h-6 sm:h-8 sm:max-w-[180px]"
+                                priority
+                            />
+                        ) : brand ? (
+                            <span className="max-w-[140px] truncate text-lg font-bold text-zinc-900 sm:max-w-[220px] sm:text-xl">
+                                {brand.name}
+                            </span>
+                        ) : (
+                            <Image
+                                src={RUNMEAL_LOGO}
+                                alt="Runmeal"
+                                width={120}
+                                height={32}
+                                className="h-7 w-auto max-[360px]:h-6 sm:h-8"
+                                priority
+                            />
+                        )}
                     </Link>
 
                     <HeaderNavigation />

@@ -30,36 +30,49 @@ export function Footer() {
     const { t } = useTranslation();
     const { footer } = useCmsNavigation();
 
-    // A brand with no CMS footer pages should not get an empty bar.
-    if (footer.length === 0) return null;
-
     return (
         <footer className="mt-auto border-t border-zinc-100 bg-white">
-            <div className="container mx-auto px-4 py-8">
-                <nav aria-label={t('cms.footerNavigation')}>
-                    <ul className="flex flex-wrap gap-x-8 gap-y-6">
-                        {footer.map((node) => (
-                            <li key={node.id} className="min-w-[8rem]">
-                                <FooterLink
-                                    item={node}
-                                    className="text-sm font-semibold text-zinc-900 hover:text-primary transition-colors"
-                                />
-                                {node.children.length > 0 && (
-                                    <ul className="mt-2 space-y-1.5">
-                                        {node.children.map((child) => (
-                                            <li key={child.id}>
-                                                <FooterLink
-                                                    item={child}
-                                                    className="text-sm text-zinc-500 hover:text-primary transition-colors"
-                                                />
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
+            {/* A brand with no CMS footer pages only gets the attribution line. */}
+            {footer.length > 0 && (
+                <div className="container mx-auto px-4 py-8">
+                    <nav aria-label={t('cms.footerNavigation')}>
+                        <ul className="flex flex-wrap gap-x-8 gap-y-6">
+                            {footer.map((node) => (
+                                <li key={node.id} className="min-w-[8rem]">
+                                    <FooterLink
+                                        item={node}
+                                        className="text-sm font-semibold text-zinc-900 hover:text-primary transition-colors"
+                                    />
+                                    {node.children.length > 0 && (
+                                        <ul className="mt-2 space-y-1.5">
+                                            {node.children.map((child) => (
+                                                <li key={child.id}>
+                                                    <FooterLink
+                                                        item={child}
+                                                        className="text-sm text-zinc-500 hover:text-primary transition-colors"
+                                                    />
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </nav>
+                </div>
+            )}
+            <div className={footer.length > 0 ? 'border-t border-zinc-100' : undefined}>
+                <p className="container mx-auto px-4 py-4 text-center text-xs text-zinc-400">
+                    Powered by{' '}
+                    <a
+                        href="https://runmeal.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-zinc-500 hover:text-primary transition-colors"
+                    >
+                        Runmeal
+                    </a>
+                </p>
             </div>
         </footer>
     );
