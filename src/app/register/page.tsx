@@ -1,5 +1,6 @@
 'use client';
 
+import { AuthRedirectingScreen } from '@/components/features/AuthRedirectingScreen';
 import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
 import { OtpChallenge } from '@/components/features/OtpChallenge';
 import { useAuth } from '@/context/AuthContext';
@@ -25,6 +26,7 @@ export default function RegisterPage() {
   const [method, setMethod] = useState<RegisterMethod>('otp');
   const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const isRecaptchaEnabled = Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
 
@@ -64,6 +66,7 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       await verifyOtp(sentEmail, code);
+      setIsRedirecting(true);
       toast.success(t('auth.otp.success'));
       router.push(takeReturnPath());
     } catch (error) {
@@ -89,6 +92,8 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
+
+  if (isRedirecting) return <AuthRedirectingScreen />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4 py-10">

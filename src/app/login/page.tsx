@@ -1,5 +1,6 @@
 'use client';
 
+import { AuthRedirectingScreen } from '@/components/features/AuthRedirectingScreen';
 import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
 import { OtpChallenge } from '@/components/features/OtpChallenge';
 import { RecaptchaWidget } from '@/components/features/RecaptchaWidget';
@@ -26,6 +27,9 @@ export default function LoginPage() {
   const [method, setMethod] = useState<LoginMethod>('otp');
   const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Set once auth succeeds (or the Google callback is being redeemed): the
+  // form stays hidden until the router has left this page.
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
@@ -63,6 +67,7 @@ export default function LoginPage() {
         toast.success(t('auth.otp.sent'));
       } else {
         await login({ email: data.email, password: data.password, recaptchaToken: recaptchaToken ?? undefined });
+        setIsRedirecting(true);
         toast.success(t('auth.login.success'));
         router.push(takeReturnPath());
       }
@@ -79,6 +84,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await verifyOtp(sentEmail, code);
+      setIsRedirecting(true);
       toast.success(t('auth.otp.success'));
       router.push(takeReturnPath());
     } catch (error) {
@@ -116,19 +122,23 @@ export default function LoginPage() {
     const handoff = params.get('handoff') || undefined;
     window.history.replaceState(null, '', '/login');
     if (authStatus === 'success') {
-      setIsLoading(true);
+      setIsRedirecting(true);
       completeGoogleLogin(handoff)
         .then(() => { toast.success(t('auth.login.googleSuccess')); router.push(takeReturnPath()); })
-        .catch((error) => toast.error(
-          handoff
-            ? resolveApiErrorMessage(error, t('auth.login.googleFailed'))
-            : t('auth.login.googleRestoreError'),
-        ))
-        .finally(() => setIsLoading(false));
+        .catch((error) => {
+          setIsRedirecting(false);
+          toast.error(
+            handoff
+              ? resolveApiErrorMessage(error, t('auth.login.googleFailed'))
+              : t('auth.login.googleRestoreError'),
+          );
+        });
       return;
     }
     toast.error(reason || t('auth.login.googleFailed'));
   }, [completeGoogleLogin, router, t]);
+
+  if (isRedirecting) return <AuthRedirectingScreen />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4 py-10">
