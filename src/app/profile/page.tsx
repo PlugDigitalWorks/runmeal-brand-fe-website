@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, Plus, Trash2, X, Edit2, ChevronDown, Package, User as UserIcon, Mail, Shield, Wallet, ClipboardCheck, ReceiptText } from 'lucide-react';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@/context/UserContext';
 import { Address } from '@/types/address';
@@ -28,6 +28,7 @@ function ProfileContent() {
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [isAddingAddress, setIsAddingAddress] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const addressFormRef = useRef<HTMLDivElement>(null);
     const [orders, setOrders] = useState<Order[]>([]);
     const [activeTab, setActiveTab] = useState<'addresses' | 'orders' | 'rewards' | 'surveys'>('addresses');
     const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
@@ -50,17 +51,27 @@ function ProfileContent() {
         }
     }, [searchParams]);
 
+    // `?action=new` (the header's "add address" link) opens an empty form once;
+    // the param is dropped so cancel or save does not reopen it.
     useEffect(() => {
-        if (searchParams.get('action') === 'new' && !isAddingAddress) {
-            // Build valid URL without the query param to prevent loop/re-trigger if needed, or just set state
-            setTimeout(() => setIsAddingAddress(true), 0);
-        }
-    }, [searchParams, isAddingAddress]);
+        if (searchParams.get('action') !== 'new') return;
+        setTimeout(() => {
+            setEditingId(null);
+            setIsAddingAddress(true);
+        }, 0);
+        router.replace('/profile?tab=addresses', { scroll: false });
+    }, [searchParams, router]);
 
     const onEditClick = (addr: Address) => {
         setEditingId(addr.id);
         setIsAddingAddress(true);
     };
+
+    // The form opens above the list; bring it into view when an address
+    // further down is picked for editing.
+    useEffect(() => {
+        if (editingId) addressFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, [editingId]);
 
     const onCancelEdit = () => {
         setIsAddingAddress(false);
@@ -393,12 +404,15 @@ function ProfileContent() {
                             </div>
 
                             {isAddingAddress && (
-                                <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-200">
+                                <div ref={addressFormRef} className="scroll-mt-24 bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-200">
                                     <div className="px-6 py-4 border-b border-zinc-100 bg-zinc-50/50">
                                         <h3 className="font-semibold text-zinc-900">{editingId ? t('profile.editAddress') : t('profile.newAddress')}</h3>
                                     </div>
                                     <div className="p-6">
+                                        {/* The form reads its values once on mount: a new key
+                                            remounts it when switching between new and edited addresses. */}
                                         <AddressForm
+                                            key={editingId ?? 'new'}
                                             address={editingAddress}
                                             onCancel={onCancelEdit}
                                             onSuccess={handleSuccess}
