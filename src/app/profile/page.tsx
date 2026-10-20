@@ -18,6 +18,7 @@ import { LoyaltyRewardsPanel } from '@/components/features/LoyaltyRewardsPanel';
 import { OrderPromotionSnapshots } from '@/components/features/OrderPromotionSnapshots';
 import { Money } from '@/components/ui/Money';
 import { getOrderDisplayId } from '@/lib/order-display';
+import { formatAddressFirstLine } from '@/lib/address-parsing';
 
 function ProfileContent() {
     const router = useRouter();
@@ -398,8 +399,7 @@ function ProfileContent() {
                                     </div>
                                     <div className="p-6">
                                         <AddressForm
-                                            initialValues={editingAddress ? { ...editingAddress, phoneE164: editingAddress.phoneE164 ?? '' } : undefined}
-                                            addressId={editingId}
+                                            address={editingAddress}
                                             onCancel={onCancelEdit}
                                             onSuccess={handleSuccess}
                                         />
@@ -425,9 +425,8 @@ function ProfileContent() {
                                                 <MapPin className="h-5 w-5" />
                                             </div>
                                             <div>
-                                                <h4 className="font-semibold text-zinc-900">{addr.street}</h4>
+                                                <h4 className="font-semibold text-zinc-900">{formatAddressFirstLine(addr)}</h4>
                                                 <p className="text-sm text-zinc-600 mt-1 leading-relaxed">
-                                                    {addr.buildingNumber}/{addr.apartmentNumber}<br />
                                                     {addr.postalCode} {addr.district}, {addr.province}<br />
                                                     {addr.phoneE164 ? <>{addr.phoneE164}<br /></> : null}
                                                     {addr.countryCode}

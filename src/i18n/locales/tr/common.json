@@ -599,11 +599,7 @@
     "selectActiveAddress": "Teslimat adresi seçin",
     "noSavedAddress": "Kayıtlı adresiniz yok.",
     "manageAddresses": "Adresleri Yönet",
-    "streetNeighborhood": "Sokak / Mahalle",
-    "street": "Sokak",
-    "buildingNo": "Bina No",
-    "apartmentNo": "Daire No",
-    "provinceCity": "İl / Şehir",
+    "firstLine": "Adres satırı",
     "phone": "Telefon",
     "postalCode": "Posta Kodu",
     "saveAddress": "Adresi Kaydet",
@@ -618,9 +614,7 @@
       "phoneRequired": "Telefon gereklidir",
       "phoneFormat": "Geçerli bir telefon numarası girin",
       "postalCodeRequired": "Posta kodu gereklidir",
-      "streetRequired": "Sokak gereklidir",
-      "buildingRequired": "Bina numarası gereklidir",
-      "apartmentRequired": "Daire numarası gereklidir"
+      "firstLineRequired": "Adres satırını girin (sokak, bina ve daire no)"
     }
   },
   "checkout": {

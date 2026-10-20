@@ -98,7 +98,38 @@ export const extractStreetAndBuilding = (address: GeocodedAddress) => {
   };
 };
 
-export const formatSavedAddress = (address: Pick<Address, 'street' | 'district' | 'province'>) =>
+/** "-" is the placeholder stored for an empty building or apartment number. */
+const hasAddressPart = (value?: string | null): value is string => !!value && value.trim() !== '-';
+
+/** Countries that write the house number before the street ("10 Downing Street"). */
+const NUMBER_FIRST_COUNTRIES = new Set(['GB', 'IE', 'US', 'CA', 'AU', 'NZ', 'FR', 'ZA']);
+
+/**
+ * The customer's first address line built from a geocoded street and house
+ * number, in the order that country writes it: "10 Downing Street",
+ * "Moda Cd. No: 5", "Hauptstraße 5".
+ */
+export const composeFirstLine = (street: string, building: string, countryCode?: string) => {
+  if (!building) return street;
+  if (!street) return building;
+  const country = countryCode?.toUpperCase() ?? '';
+  if (NUMBER_FIRST_COUNTRIES.has(country)) return `${building} ${street}`;
+  if (country === 'TR') return `${street} No: ${building}`;
+  return `${street} ${building}`;
+};
+
+/**
+ * A saved address's first line. The form now stores the whole line in
+ * `street` with no numbers; older rows still split it into street, building
+ * and apartment, so those are joined back on.
+ */
+export const formatAddressFirstLine = (address: Pick<Address, 'street' | 'buildingNumber' | 'apartmentNumber'>) => {
+  const building = hasAddressPart(address.buildingNumber) ? `, ${address.buildingNumber}` : '';
+  const apartment = hasAddressPart(address.apartmentNumber) ? ` / ${address.apartmentNumber}` : '';
+  return `${address.street}${building}${apartment}`;
+};
+
+export const formatSavedAddress =(address: Pick<Address, 'street' | 'district' | 'province'>) =>
   [address.street, address.district, address.province].filter(Boolean).join(', ');
 
 export const buildAddressDtoFromSelection = (

@@ -7,8 +7,8 @@ export interface Address {
   phoneE164?: string | null;
   postalCode: string;
   street: string;
-  buildingNumber: string;
-  apartmentNumber: string;
+  buildingNumber: string | null;
+  apartmentNumber: string | null;
   latitude: number;
   longitude: number;
   isActive: boolean;
@@ -28,8 +28,8 @@ export interface CreateAddressDto {
   phoneE164?: string;
   postalCode: string;
   street: string;
-  buildingNumber: string;
-  apartmentNumber: string;
+  buildingNumber?: string | null;
+  apartmentNumber?: string | null;
   latitude: number;
   longitude: number;
   isActive?: boolean;

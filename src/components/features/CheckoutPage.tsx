@@ -37,6 +37,7 @@ import { FulfillmentSlotPicker } from './FulfillmentSlotPicker';
 import type { ScheduledOrderType } from '@/types/branch';
 import { Money } from '@/components/ui/Money';
 import { useMoney } from '@/hooks/useMoney';
+import { formatAddressFirstLine } from '@/lib/address-parsing';
 
 export function CheckoutPage() {
     const router = useRouter();
@@ -634,8 +635,7 @@ export function CheckoutPage() {
                                                     <div className="min-w-0 flex-1 space-y-1">
                                                         <div className="flex items-center justify-between gap-3">
                                                             <p className="font-medium text-zinc-800 break-words">
-                                                                {address.street}, {address.buildingNumber}
-                                                                {address.apartmentNumber !== '-' && ` / ${address.apartmentNumber}`}
+                                                                {formatAddressFirstLine(address)}
                                                             </p>
                                                             {isSelected && <CheckCircle size={18} className="shrink-0 text-primary" />}
                                                         </div>
