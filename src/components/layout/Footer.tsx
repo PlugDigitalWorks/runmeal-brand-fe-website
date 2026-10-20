@@ -32,7 +32,7 @@ export function Footer() {
 
     return (
         <footer className="mt-auto border-t border-zinc-100 bg-white">
-            {/* A brand with no CMS footer pages only gets the attribution line. */}
+            {/* A brand with no CMS footer pages only gets the legal links and the attribution line. */}
             {footer.length > 0 && (
                 <div className="container mx-auto px-4 py-8">
                     <nav aria-label={t('cms.footerNavigation')}>
@@ -62,17 +62,27 @@ export function Footer() {
                 </div>
             )}
             <div className={footer.length > 0 ? 'border-t border-zinc-100' : undefined}>
-                <p className="container mx-auto px-4 py-4 text-center text-xs text-zinc-400">
-                    Powered by{' '}
-                    <a
-                        href="https://runmeal.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-semibold text-zinc-500 hover:text-primary transition-colors"
-                    >
-                        Runmeal
-                    </a>
-                </p>
+                <div className="container mx-auto flex flex-col items-center gap-2 px-4 py-4 text-xs text-zinc-400 sm:flex-row sm:justify-between">
+                    <nav aria-label={t('legal.navigation')} className="flex gap-4">
+                        <Link href="/privacy" className="hover:text-primary transition-colors">
+                            {t('legal.privacy')}
+                        </Link>
+                        <Link href="/terms" className="hover:text-primary transition-colors">
+                            {t('legal.terms')}
+                        </Link>
+                    </nav>
+                    <p>
+                        Powered by{' '}
+                        <a
+                            href="https://runmeal.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-semibold text-zinc-500 hover:text-primary transition-colors"
+                        >
+                            Runmeal
+                        </a>
+                    </p>
+                </div>
             </div>
         </footer>
     );
