@@ -5,6 +5,8 @@ import { Loader2, Search } from 'lucide-react';
 import { KeyboardEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useBranch } from '@/context/BranchContext';
+
 import type { AddressComponent, GeocodedAddress, Location } from './LocationPicker';
 
 export interface AddressSearchResult {
@@ -35,14 +37,24 @@ export const toSearchResult = (result: google.maps.GeocoderResult): AddressSearc
     },
 });
 
+const countryOf = (result: google.maps.GeocoderResult) =>
+    result.address_components.find((component) => component.types.includes('country'))?.short_name.toUpperCase();
+
 /**
- * Worldwide address search above the map. Suggestions come from Places
- * Autocomplete; if the key has no Places API (New) access, the geocoder answers
- * instead. A pick is resolved through the geocoder either way, so the form
- * always receives the same address-component shape as a map click.
+ * Address search above the map, limited to the countries the brand's branches
+ * are in — an address anywhere else could never be delivered to. Suggestions
+ * come from Places Autocomplete; if the key has no Places API (New) access, the
+ * geocoder answers instead. A pick is resolved through the geocoder either way,
+ * so the form always receives the same address-component shape as a map click.
  */
 export function AddressSearch({ onSelect }: AddressSearchProps) {
     const { t } = useTranslation();
+    const { branches } = useBranch();
+    // Empty until the branches load (or when none has a country): search worldwide.
+    const countries = useMemo(
+        () => [...new Set(branches.map((branch) => branch.countryCode?.toUpperCase()).filter(Boolean))] as string[],
+        [branches],
+    );
     const placesLib = useMapsLibrary('places');
     const geocodingLib = useMapsLibrary('geocoding');
     const geocoder = useMemo(() => (geocodingLib ? new geocodingLib.Geocoder() : null), [geocodingLib]);
@@ -62,8 +74,15 @@ export function AddressSearch({ onSelect }: AddressSearchProps) {
     const geocodeSuggestions = async (input: string): Promise<Suggestion[]> => {
         if (!geocoder) return [];
         try {
-            const { results } = await geocoder.geocode({ address: input });
-            return results.slice(0, MAX_SUGGESTIONS).map((result) => ({
+            // The geocoder restricts to one country only; with several, filter its answers instead.
+            const { results } = await geocoder.geocode({
+                address: input,
+                ...(countries.length === 1 && { componentRestrictions: { country: countries[0] } }),
+            });
+            const inCountry = countries.length > 0
+                ? results.filter((result) => countries.includes(countryOf(result) ?? ''))
+                : results;
+            return inCountry.slice(0, MAX_SUGGESTIONS).map((result) => ({
                 id: result.place_id,
                 label: result.formatted_address,
                 result: toSearchResult(result),
@@ -81,6 +100,8 @@ export function AddressSearch({ onSelect }: AddressSearchProps) {
                 const { suggestions: predictions } = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
                     input,
                     sessionToken: sessionTokenRef.current,
+                    // Places accepts at most 15 region codes.
+                    ...(countries.length > 0 && { includedRegionCodes: countries.slice(0, 15) }),
                 });
                 return predictions.slice(0, MAX_SUGGESTIONS).flatMap((suggestion) => {
                     const prediction = suggestion.placePrediction;

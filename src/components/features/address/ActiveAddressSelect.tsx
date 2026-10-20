@@ -9,18 +9,8 @@ import { toast } from 'sonner';
 import { useUser } from '@/context/UserContext';
 import { userService } from '@/services/user.service';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
+import { formatAddressFirstLine } from '@/lib/address-parsing';
 import type { Address } from '@/types/address';
-
-/** "-" is the placeholder the address form stores for an empty number. */
-function hasValue(value?: string | null): value is string {
-    return !!value && value.trim() !== '-';
-}
-
-function streetLine(address: Address) {
-    const building = hasValue(address.buildingNumber) ? `, ${address.buildingNumber}` : '';
-    const apartment = hasValue(address.apartmentNumber) ? ` / ${address.apartmentNumber}` : '';
-    return `${address.street}${building}${apartment}`;
-}
 
 /**
  * Header dropdown that switches the customer's active delivery address.
@@ -75,7 +65,7 @@ export function ActiveAddressSelect() {
         }
     };
 
-    const label = activeAddress ? streetLine(activeAddress) : t('address.selectActiveAddress');
+    const label = activeAddress ? formatAddressFirstLine(activeAddress) : t('address.selectActiveAddress');
 
     return (
         <div className="relative min-w-0" ref={containerRef}>
@@ -85,7 +75,7 @@ export function ActiveAddressSelect() {
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
                 aria-label={t('address.activeAddress')}
-                title={activeAddress ? `${streetLine(activeAddress)} · ${activeAddress.district}, ${activeAddress.province}` : label}
+                title={activeAddress ? `${formatAddressFirstLine(activeAddress)} · ${activeAddress.district}, ${activeAddress.province}` : label}
                 className="flex min-w-0 items-center gap-1 rounded-lg border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-700 transition-colors hover:border-primary hover:text-primary sm:gap-1.5 sm:px-2.5 sm:py-1.5 sm:text-sm"
             >
                 <MapPin className="h-3.5 w-3.5 shrink-0 text-primary sm:h-4 sm:w-4" />
@@ -117,7 +107,7 @@ export function ActiveAddressSelect() {
                                         >
                                             <MapPin size={16} className={`mt-0.5 shrink-0 ${isSelected ? 'text-primary' : 'text-zinc-400'}`} />
                                             <span className="min-w-0 flex-1">
-                                                <span className="block truncate font-medium text-zinc-800">{streetLine(address)}</span>
+                                                <span className="block truncate font-medium text-zinc-800">{formatAddressFirstLine(address)}</span>
                                                 <span className="block truncate text-xs text-zinc-500">
                                                     {address.district}, {address.province}
                                                 </span>

@@ -599,11 +599,7 @@
     "selectActiveAddress": "Select delivery address",
     "noSavedAddress": "You have no saved addresses.",
     "manageAddresses": "Manage Addresses",
-    "streetNeighborhood": "Street / Neighborhood",
-    "street": "Street",
-    "buildingNo": "Building No",
-    "apartmentNo": "Apartment No",
-    "provinceCity": "Province / City",
+    "firstLine": "Address line 1",
     "phone": "Phone",
     "postalCode": "Postal Code",
     "saveAddress": "Save Address",
@@ -618,9 +614,7 @@
       "phoneRequired": "Phone is required",
       "phoneFormat": "Enter a valid phone number",
       "postalCodeRequired": "Postal Code is required",
-      "streetRequired": "Street is required",
-      "buildingRequired": "Building is required",
-      "apartmentRequired": "Apartment No is required"
+      "firstLineRequired": "Enter the first line of the address"
     }
   },
   "checkout": {

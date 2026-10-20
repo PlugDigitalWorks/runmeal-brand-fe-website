@@ -4,6 +4,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { ApiResponse } from '@/types/auth';
+import type { Address } from '@/types/address';
 import { userService } from '@/services/user.service';
 import { AxiosError } from 'axios';
 import { Save, Loader2, MapPin } from 'lucide-react'; // Added Loader2 for loading state
@@ -12,7 +13,7 @@ import { AddressSearch, AddressSearchResult, toSearchResult } from './AddressSea
 import { PhoneField } from './PhoneField';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
 import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
-import { extractStreetAndBuilding, getAddressComponent, normalizeLocationName } from '@/lib/address-parsing';
+import { composeFirstLine, extractStreetAndBuilding, formatAddressFirstLine, getAddressComponent, normalizeLocationName } from '@/lib/address-parsing';
 import { AddressRegion, resolveAddressRegion, resolveRegionFromGoogle } from '@/lib/address-region';
 import { DEFAULT_ADDRESS_LOCATION, fetchVisitorLocation } from '@/lib/visitor-location';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +21,8 @@ import type { TFunction } from 'i18next';
 
 /** Postal-code examples per country; anything else shows no placeholder. */
 const POSTAL_CODE_PLACEHOLDERS: Record<string, string> = { GB: 'TW9 1AN', TR: '34000', US: '10001' };
+/** First-line examples per country; anything else shows no placeholder. */
+const FIRST_LINE_PLACEHOLDERS: Record<string, string> = { GB: 'Flat 2, 10 Hill Street', TR: 'Moda Cd. No: 5 D: 3', US: '350 5th Ave, Apt 4B' };
 
 const POSTAL_LOOKUP_DEBOUNCE_MS = 800;
 
@@ -38,9 +41,8 @@ const createAddressSchema = (t: TFunction) => z.object({
         .min(1, t('address.validation.phoneRequired'))
         .refine((value) => /^\+[1-9]\d{7,14}$/.test(value), t('address.validation.phoneFormat')),
     postalCode: z.string().min(1, t('address.validation.postalCodeRequired')),
-    street: z.string().min(1, t('address.validation.streetRequired')),
-    buildingNumber: z.string().min(1, t('address.validation.buildingRequired')),
-    apartmentNumber: z.string().trim().min(1, t('address.validation.apartmentRequired')),
+    // The whole first line — street, house and flat number — lives in `street`.
+    street: z.string().trim().min(2, t('address.validation.firstLineRequired')),
     latitude: z.any().transform(val => Number(val)),
     longitude: z.any().transform(val => Number(val)),
 });
@@ -48,8 +50,8 @@ const createAddressSchema = (t: TFunction) => z.object({
 export type AddressFormValues = z.infer<ReturnType<typeof createAddressSchema>>;
 
 interface AddressFormProps {
-    initialValues?: Partial<AddressFormValues>;
-    addressId?: string | null;
+    /** The saved address being edited; omitted for a new one. */
+    address?: Address;
     onCancel: () => void;
     onSuccess: () => Promise<void>;
 }
@@ -86,11 +88,12 @@ const Button = ({ children, isLoading, variant = 'primary', className, ...props 
     );
 };
 
-export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: AddressFormProps) {
+export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) {
     const { t } = useTranslation();
     const [addressLoading, setAddressLoading] = useState(false);
     const [searchAddress, setSearchAddress] = useState<string | undefined>(undefined);
     const [postalLookup, setPostalLookup] = useState<'idle' | 'loading' | 'notFound'>('idle');
+    const addressId = address?.id;
     const isNewAddress = !addressId;
 
     // A new address starts in Richmond, London until the visitor's own
@@ -102,11 +105,18 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         phoneE164: '',
         postalCode: '',
         street: '',
-        buildingNumber: '',
-        apartmentNumber: '',
         latitude: isNewAddress ? DEFAULT_ADDRESS_LOCATION.latitude : undefined,
         longitude: isNewAddress ? DEFAULT_ADDRESS_LOCATION.longitude : undefined,
-        ...initialValues
+        ...(address && {
+            countryCode: address.countryCode,
+            district: address.district,
+            province: address.province,
+            phoneE164: address.phoneE164 ?? '',
+            postalCode: address.postalCode,
+            street: formatAddressFirstLine(address),
+            latitude: address.latitude,
+            longitude: address.longitude,
+        }),
     };
 
     const geocodingLib = useMapsLibrary('geocoding');
@@ -154,7 +164,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
     }, [watchedCountry, watchedDistrict, watchedStreet]);
 
     /** Fills fields without the form -> map sync or postcode lookup reacting to it. */
-    const applyFields = useCallback((fields: Partial<AddressRegion> & { street?: string; buildingNumber?: string; postalCode?: string; location?: Location }) => {
+    const applyFields = useCallback((fields: Partial<AddressRegion> & { street?: string; postalCode?: string; location?: Location }) => {
         const next = {
             countryCode: fields.countryCode ?? getValues('countryCode'),
             district: fields.district ?? getValues('district'),
@@ -168,7 +178,6 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         if (fields.district !== undefined) setValue('district', fields.district);
         if (fields.postalCode !== undefined) setValue('postalCode', fields.postalCode);
         if (fields.street !== undefined) setValue('street', fields.street);
-        if (fields.buildingNumber !== undefined) setValue('buildingNumber', fields.buildingNumber);
         if (fields.location) {
             setValue('latitude', fields.location.latitude);
             setValue('longitude', fields.location.longitude);
@@ -184,8 +193,7 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
         applyFields({
             ...region,
             postalCode: getAddressComponent(address.address_components, 'postal_code'),
-            street: street || '',
-            ...(building ? { buildingNumber: building } : {}),
+            street: composeFirstLine(street, building, region.countryCode),
         });
     }, [applyFields, getValues]);
 
@@ -284,23 +292,24 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                 ? getAddressComponent(nearestNumbered.address_components as AddressComponent[], 'street_number')
                 : '';
 
-            // A new street replaces the old street and number. On the same street
-            // a number the customer already entered is theirs and stays.
-            const currentStreet = getValues('street') ?? '';
-            const isNewStreet = Boolean(street) && normalizeLocationName(street) !== normalizeLocationName(currentStreet);
-            const fillNumber = Boolean(nearestNumber) && (isNewStreet || !getValues('buildingNumber'));
+            // A first line the customer already wrote on this street is theirs
+            // and stays; otherwise it is replaced with the street and number.
+            const currentLine = getValues('street') ?? '';
+            const keepsLine = Boolean(currentLine.trim()) &&
+                (!street || normalizeLocationName(currentLine).includes(normalizeLocationName(street)));
+            const region = resolveRegionFromGoogle(address.address_components, country);
+            const fillsLine = Boolean(street) && !keepsLine;
 
             const googlePostalCode = getAddressComponent(address.address_components, 'postal_code');
             userEditedRef.current = true;
             applyFields({
-                ...resolveRegionFromGoogle(address.address_components, country),
-                location: fillNumber && nearestNumbered ? toSearchResult(nearestNumbered).location : location,
+                ...region,
+                location: fillsLine && nearestNumbered ? toSearchResult(nearestNumbered).location : location,
                 // Keep what the customer typed unless Google returns the same code formatted properly.
                 postalCode: googlePostalCode && comparablePostalCode(googlePostalCode) === comparablePostalCode(postalCode)
                     ? googlePostalCode
                     : postalCode,
-                ...(isNewStreet ? { street, buildingNumber: '' } : {}),
-                ...(fillNumber ? { buildingNumber: nearestNumber } : {}),
+                ...(fillsLine ? { street: composeFirstLine(street, nearestNumber, region.countryCode) } : {}),
             });
             setPostalLookup('idle');
         }, POSTAL_LOOKUP_DEBOUNCE_MS);
@@ -313,16 +322,16 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
 
     const onSubmit = async (data: AddressFormValues) => {
         setAddressLoading(true);
+        // The numbers are part of the first line now; null clears what an
+        // older row kept in the separate fields.
+        const payload = { ...data, buildingNumber: null, apartmentNumber: null };
         try {
             if (addressId) {
-                // Update existing
-                await userService.updateAddress(addressId, data);
-                await onSuccess();
+                await userService.updateAddress(addressId, payload);
             } else {
-                // Create new
-                await userService.createAddress({ ...data, isActive: true });
-                await onSuccess();
+                await userService.createAddress({ ...payload, isActive: true });
             }
+            await onSuccess();
         } catch (err) {
             const error = err as AxiosError<ApiResponse<unknown>>;
             console.error('Failed to save address', error);
@@ -401,13 +410,13 @@ export function AddressForm({ initialValues, addressId, onCancel, onSuccess }: A
                     {postalLookup === 'notFound' && <p className="text-xs text-amber-600">{t('address.postalCodeNotFound')}</p>}
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label={t('address.street')} {...register('street')} error={errors.street?.message} />
-                <Input label={t('address.buildingNo')} {...register('buildingNumber')} error={errors.buildingNumber?.message} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label={t('address.apartmentNo')} placeholder={t('address.apartmentNo')} {...register('apartmentNumber')} error={errors.apartmentNumber?.message} />
-            </div>
+            <Input
+                label={t('address.firstLine')}
+                placeholder={FIRST_LINE_PLACEHOLDERS[watchedCountry] ?? ''}
+                autoComplete="address-line1"
+                {...register('street')}
+                error={errors.street?.message}
+            />
 
             <div className="flex justify-end pt-2 gap-2">
                 <Button type="button" variant="outline" onClick={onCancel}>
