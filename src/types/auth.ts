@@ -73,8 +73,11 @@ export interface VerifyOtpDto {
   code: string;
 }
 
-export interface GoogleLoginStartResponse {
-  method: 'google';
+/** Sign-in providers that send the browser away and come back to /login with a handoff. */
+export type OAuthProvider = 'google' | 'apple';
+
+export interface OAuthLoginStartResponse {
+  method: OAuthProvider;
   redirectUrl: string;
 }
 

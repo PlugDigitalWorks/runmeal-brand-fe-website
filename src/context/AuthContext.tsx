@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { authService } from '@/services/auth.service';
-import { User, LoginDto, RegisterDto } from '@/types/auth';
+import { User, LoginDto, RegisterDto, OAuthProvider } from '@/types/auth';
 
 interface AuthContextType {
     user: User | null;
@@ -20,8 +20,9 @@ interface AuthContextType {
     requestOtpLogin: (email: string, recaptchaToken?: string) => Promise<void>;
     registerWithOtp: (data: Omit<RegisterDto, 'password'>) => Promise<void>;
     verifyOtp: (email: string, code: string) => Promise<void>;
-    loginWithGoogle: () => Promise<void>;
-    completeGoogleLogin: (handoff?: string) => Promise<User>;
+    /** Sends the browser to Google or Apple; it comes back to /login with a handoff. */
+    loginWithOAuth: (provider: OAuthProvider) => Promise<void>;
+    completeOAuthLogin: (provider: OAuthProvider, handoff?: string) => Promise<User>;
     register: (data: RegisterDto) => Promise<void>;
     logout: () => Promise<void>;
     // Modal Control
@@ -132,10 +133,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const loginWithGoogle = async () => {
+    const loginWithOAuth = async (provider: OAuthProvider) => {
         setIsLoading(true);
         try {
-            const response = await authService.startGoogleLogin();
+            const response = await authService.startOAuthLogin(provider);
             window.location.assign(response.redirectUrl);
         } catch (error) {
             setIsLoading(false);
@@ -143,10 +144,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const completeGoogleLogin = async (handoff?: string) => {
+    const completeOAuthLogin = async (provider: OAuthProvider, handoff?: string) => {
         setIsLoading(true);
         try {
-            const currentUser = await authService.completeGoogleLogin(handoff);
+            const currentUser = await authService.completeOAuthLogin(provider, handoff);
             setUser(currentUser);
             setIsAuthenticated(true);
             return currentUser;
@@ -190,8 +191,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             requestOtpLogin,
             registerWithOtp,
             verifyOtp,
-            loginWithGoogle,
-            completeGoogleLogin,
+            loginWithOAuth,
+            completeOAuthLogin,
             register,
             logout,
             isAuthModalOpen,
