@@ -1,7 +1,7 @@
 'use client';
 
 import { AuthRedirectingScreen } from '@/components/features/AuthRedirectingScreen';
-import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
+import { OAuthButtons } from '@/components/features/OAuthButtons';
 import { OtpChallenge } from '@/components/features/OtpChallenge';
 import { useAuth } from '@/context/AuthContext';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
@@ -116,7 +116,7 @@ export default function RegisterPage() {
           />
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <GoogleAuthButton label={t('auth.register.googleSignup')} />
+            <OAuthButtons mode="register" />
             <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-200" /></div><div className="relative flex justify-center text-sm"><span className="bg-white px-2 text-zinc-500">{t('auth.register.orEmail')}</span></div></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><label className="text-sm font-medium text-zinc-700" htmlFor="firstName">{t('auth.register.firstName')}</label><input {...register('firstName')} id="firstName" autoComplete="given-name" placeholder={t('auth.register.firstNamePlaceholder')} className="w-full rounded-md border border-zinc-200 px-3 py-2 text-zinc-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.firstName && <p className="text-xs text-red-500">{errors.firstName.message}</p>}</div>

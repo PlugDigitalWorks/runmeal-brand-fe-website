@@ -1,12 +1,13 @@
 'use client';
 
 import { AuthRedirectingScreen } from '@/components/features/AuthRedirectingScreen';
-import { GoogleAuthButton } from '@/components/features/GoogleAuthButton';
+import { OAuthButtons } from '@/components/features/OAuthButtons';
 import { OtpChallenge } from '@/components/features/OtpChallenge';
 import { RecaptchaWidget } from '@/components/features/RecaptchaWidget';
 import { useAuth } from '@/context/AuthContext';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
 import { takeReturnPath } from '@/lib/return-path';
+import { OAuthProvider } from '@/types/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2, User } from 'lucide-react';
 import Link from 'next/link';
@@ -20,21 +21,24 @@ import { z } from 'zod';
 type LoginFormValues = { email: string; password?: string };
 type LoginMethod = 'otp' | 'password';
 
+/** The API's `reason` when the customer cancels on Apple's page (AUTH_APPLE_CANCELLED). */
+const APPLE_CANCELLED_REASON = 'Apple sign-in was cancelled.';
+
 export default function LoginPage() {
-  const { login, requestOtpLogin, verifyOtp, completeGoogleLogin } = useAuth();
+  const { login, requestOtpLogin, verifyOtp, completeOAuthLogin } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
   const [method, setMethod] = useState<LoginMethod>('otp');
   const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  // Set once auth succeeds (or the Google callback is being redeemed): the
+  // Set once auth succeeds (or a Google/Apple callback is being redeemed): the
   // form stays hidden until the router has left this page.
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
   const isRecaptchaEnabled = Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
-  const handledGoogleCallbackRef = useRef(false);
+  const handledOAuthCallbackRef = useRef(false);
 
   const schema = z.object({
     email: z.string().email(t('auth.validation.emailInvalid')),
@@ -112,31 +116,38 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
-    if (handledGoogleCallbackRef.current) return;
+    if (handledOAuthCallbackRef.current) return;
     const params = new URLSearchParams(window.location.search);
     const authStatus = params.get('auth');
     if (!authStatus) return;
-    handledGoogleCallbackRef.current = true;
+    handledOAuthCallbackRef.current = true;
     const reason = params.get('reason');
     // The handoff code is a one-time credential: take it off the URL first.
     const handoff = params.get('handoff') || undefined;
+    // `provider` names the exchange route; a return without it is Google's.
+    const provider: OAuthProvider = params.get('provider') === 'apple' ? 'apple' : 'google';
     window.history.replaceState(null, '', '/login');
     if (authStatus === 'success') {
       setIsRedirecting(true);
-      completeGoogleLogin(handoff)
-        .then(() => { toast.success(t('auth.login.googleSuccess')); router.push(takeReturnPath()); })
+      completeOAuthLogin(provider, handoff)
+        .then(() => { toast.success(t(`auth.login.${provider}Success`)); router.push(takeReturnPath()); })
         .catch((error) => {
           setIsRedirecting(false);
           toast.error(
             handoff
-              ? resolveApiErrorMessage(error, t('auth.login.googleFailed'))
+              ? resolveApiErrorMessage(error, t(`auth.login.${provider}Failed`))
               : t('auth.login.googleRestoreError'),
           );
         });
       return;
     }
-    toast.error(reason || t('auth.login.googleFailed'));
-  }, [completeGoogleLogin, router, t]);
+    // Backing out of Apple's page is the customer's choice, not an error.
+    if (reason === APPLE_CANCELLED_REASON) {
+      toast(t('apiErrors.AUTH_APPLE_CANCELLED'));
+      return;
+    }
+    toast.error(reason || t('auth.login.oauthFailed'));
+  }, [completeOAuthLogin, router, t]);
 
   if (isRedirecting) return <AuthRedirectingScreen />;
 
@@ -163,7 +174,7 @@ export default function LoginPage() {
           />
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <GoogleAuthButton />
+            <OAuthButtons />
             <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-200" /></div><div className="relative flex justify-center text-sm"><span className="bg-white px-2 text-zinc-500">{t('auth.login.orEmail')}</span></div></div>
 
             <div className="space-y-4">

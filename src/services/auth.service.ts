@@ -7,7 +7,8 @@ import {
   ApiResponse,
   ResetPasswordDto,
   RefreshResponse,
-  GoogleLoginStartResponse,
+  OAuthLoginStartResponse,
+  OAuthProvider,
   OtpRequestResponse,
   VerifyOtpDto,
 } from '@/types/auth';
@@ -47,17 +48,17 @@ const persistUser = (user: User) => {
 /**
  * A handoff code is single-use, so a second exchange for the same code (e.g.
  * React StrictMode running the callback effect twice) shares the first call
- * instead of failing with AUTH_GOOGLE_HANDOFF_INVALID.
+ * instead of failing with AUTH_GOOGLE_HANDOFF_INVALID / AUTH_APPLE_HANDOFF_INVALID.
  */
-let pendingHandoff: { code: string; promise: Promise<AuthResponse> } | null = null;
+let pendingHandoff: { provider: OAuthProvider; code: string; promise: Promise<AuthResponse> } | null = null;
 
-const exchangeGoogleHandoff = (code: string): Promise<AuthResponse> => {
-  if (pendingHandoff?.code === code) return pendingHandoff.promise;
+const exchangeHandoff = (provider: OAuthProvider, code: string): Promise<AuthResponse> => {
+  if (pendingHandoff?.provider === provider && pendingHandoff.code === code) return pendingHandoff.promise;
 
   const promise = authApi
-    .post<ApiResponse<AuthResponse> | AuthResponse>('/auth/google/exchange', { handoff: code })
+    .post<ApiResponse<AuthResponse> | AuthResponse>(`/auth/${provider}/exchange`, { handoff: code })
     .then((response) => unwrapAuthData(response.data));
-  pendingHandoff = { code, promise };
+  pendingHandoff = { provider, code, promise };
   return promise;
 };
 
@@ -150,10 +151,11 @@ export const authService = {
     return data;
   },
 
-  async startGoogleLogin() {
-    const response = await authApi.post<ApiResponse<GoogleLoginStartResponse>>(
+  /** Google and Apple start the same way; the response also sets the provider's binding cookie. */
+  async startOAuthLogin(provider: OAuthProvider) {
+    const response = await authApi.post<ApiResponse<OAuthLoginStartResponse>>(
       '/auth/login',
-      { method: 'google', client: AUTH_CLIENT },
+      { method: provider, client: AUTH_CLIENT },
     );
 
     return response.data.data;
@@ -179,13 +181,14 @@ export const authService = {
   },
 
   /**
-   * Finishes a Google sign-in from the `handoff` code the API put on the
-   * `/login` return URL. It must go through the same base as
-   * `startGoogleLogin`, whose response set the binding cookie this call needs.
+   * Finishes a Google or Apple sign-in from the `handoff` code the API put on
+   * the `/login` return URL (`provider` names the exchange route). It must go
+   * through the same base as `startOAuthLogin`, whose response set the binding
+   * cookie this call needs.
    */
-  async completeGoogleLogin(handoff?: string) {
+  async completeOAuthLogin(provider: OAuthProvider, handoff?: string) {
     if (handoff) {
-      const authResponse = await exchangeGoogleHandoff(handoff);
+      const authResponse = await exchangeHandoff(provider, handoff);
       persistAuthResponse(authResponse);
       return authResponse.user;
     }
