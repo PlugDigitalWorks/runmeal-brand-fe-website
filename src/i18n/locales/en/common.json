@@ -953,5 +953,10 @@
     "total": "Total",
     "paymentMethod": "Payment method",
     "payAtCounter": "Pay at Counter"
+  },
+  "legal": {
+    "privacy": "Privacy policy",
+    "terms": "Terms of use",
+    "navigation": "Legal"
   }
 }

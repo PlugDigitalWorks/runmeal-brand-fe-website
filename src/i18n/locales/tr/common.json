@@ -953,5 +953,10 @@
     "total": "Toplam",
     "paymentMethod": "Ödeme şekli",
     "payAtCounter": "Kasada Ödeme"
+  },
+  "legal": {
+    "privacy": "Gizlilik politikası",
+    "terms": "Kullanım koşulları",
+    "navigation": "Yasal"
   }
 }
