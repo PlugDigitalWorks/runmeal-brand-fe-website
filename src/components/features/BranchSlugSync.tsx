@@ -19,7 +19,9 @@ export function BranchSlugSync({ slug }: { slug: string }) {
         if (appliedRef.current || branches.length === 0) return;
         appliedRef.current = true;
 
-        const branch = branches.find((candidate) => candidate.slug === slug);
+        // Case-insensitive, so a hand-typed QR link (`?to=Richmond`) still matches.
+        const wanted = slug.toLowerCase();
+        const branch = branches.find((candidate) => candidate.slug?.toLowerCase() === wanted);
         if (!branch || !isBranchSelectable(branch)) {
             router.replace('/');
             return;

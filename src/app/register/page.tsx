@@ -5,12 +5,12 @@ import { OAuthButtons } from '@/components/features/OAuthButtons';
 import { OtpChallenge } from '@/components/features/OtpChallenge';
 import { useAuth } from '@/context/AuthContext';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
-import { takeReturnPath } from '@/lib/return-path';
+import { rememberReturnPath, resolveAuthTarget, takeReturnPath } from '@/lib/return-path';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -20,13 +20,14 @@ type RegisterFormValues = { firstName: string; lastName: string; email: string; 
 type RegisterMethod = 'otp' | 'password';
 
 export default function RegisterPage() {
-  const { register: registerUser, registerWithOtp, requestOtpLogin, verifyOtp } = useAuth();
+  const { register: registerUser, registerWithOtp, requestOtpLogin, verifyOtp, isAuthenticated, isGuest, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
   const [method, setMethod] = useState<RegisterMethod>('otp');
   const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const handledTargetRef = useRef(false);
   const [showPassword, setShowPassword] = useState(false);
   const isRecaptchaEnabled = Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
 
@@ -92,6 +93,22 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
+
+  // `?to=loyalty` or `?to=<branch slug>` (a printed QR): where to land after
+  // signing up. Stored as the return path so it survives the Google/Apple
+  // round trip and register -> login; a customer already signed in goes now.
+  useEffect(() => {
+    if (handledTargetRef.current || isAuthLoading) return;
+    handledTargetRef.current = true;
+    const target = resolveAuthTarget(new URLSearchParams(window.location.search).get('to'));
+    if (!target) return;
+    if (isAuthenticated && !isGuest) {
+      setIsRedirecting(true);
+      router.replace(target);
+      return;
+    }
+    rememberReturnPath(target);
+  }, [isAuthLoading, isAuthenticated, isGuest, router]);
 
   if (isRedirecting) return <AuthRedirectingScreen />;
 
