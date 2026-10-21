@@ -32,6 +32,13 @@ const nextConfig: NextConfig = {
     ],
     dangerouslyAllowLocalIP: isDev,
   },
+  // The loyalty card used to live at /rewards; keep old links and bookmarks working.
+  async redirects() {
+    return [
+      { source: "/rewards", destination: "/loyalty", permanent: true },
+      { source: "/rewards/history", destination: "/loyalty/history", permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       {

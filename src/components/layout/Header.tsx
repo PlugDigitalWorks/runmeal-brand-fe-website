@@ -77,7 +77,7 @@ export function Header() {
                             {!isTableMode && <ActiveAddressSelect />}
                             {isStampActive && (
                                 <Link
-                                    href="/rewards"
+                                    href="/loyalty"
                                     aria-label={t('rewards.tab')}
                                     title={t('rewards.tab')}
                                     className="shrink-0 rounded-full p-2 text-primary transition-colors hover:bg-primary/10"
