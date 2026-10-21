@@ -445,6 +445,9 @@ function ProfileContent() {
                                                     {addr.phoneE164 ? <>{addr.phoneE164}<br /></> : null}
                                                     {addr.countryCode}
                                                 </p>
+                                                {addr.note && (
+                                                    <p className="mt-2 text-sm italic text-zinc-500 whitespace-pre-line break-words">{addr.note}</p>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">

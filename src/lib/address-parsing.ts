@@ -120,13 +120,12 @@ export const composeFirstLine = (street: string, building: string, countryCode?:
 
 /**
  * A saved address's first line. The form now stores the whole line in
- * `street` with no numbers; older rows still split it into street, building
- * and apartment, so those are joined back on.
+ * `street` with no number; older rows still keep the building number apart,
+ * so it is joined back on.
  */
-export const formatAddressFirstLine = (address: Pick<Address, 'street' | 'buildingNumber' | 'apartmentNumber'>) => {
+export const formatAddressFirstLine = (address: Pick<Address, 'street' | 'buildingNumber'>) => {
   const building = hasAddressPart(address.buildingNumber) ? `, ${address.buildingNumber}` : '';
-  const apartment = hasAddressPart(address.apartmentNumber) ? ` / ${address.apartmentNumber}` : '';
-  return `${address.street}${building}${apartment}`;
+  return `${address.street}${building}`;
 };
 
 export const formatSavedAddress =(address: Pick<Address, 'street' | 'district' | 'province'>) =>
@@ -177,7 +176,6 @@ export const buildAddressDtoFromSelection = (
     postalCode: getAddressComponent(components, 'postal_code') || '00000',
     street: validAddressField(street.replace(/\s*\bNo[:.\s-]*[0-9A-Za-z/-]+\b/i, ''), 'Unknown'),
     buildingNumber: streetNumber || '-',
-    apartmentNumber: '-',
     latitude: selection.latitude,
     longitude: selection.longitude,
     isActive: true,

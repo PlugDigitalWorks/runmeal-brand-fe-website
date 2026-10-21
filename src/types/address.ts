@@ -8,7 +8,8 @@ export interface Address {
   postalCode: string;
   street: string;
   buildingNumber: string | null;
-  apartmentNumber: string | null;
+  /** Free-text note for the courier ("Doorbell broken, please call"); null when none. */
+  note?: string | null;
   latitude: number;
   longitude: number;
   isActive: boolean;
@@ -29,7 +30,8 @@ export interface CreateAddressDto {
   postalCode: string;
   street: string;
   buildingNumber?: string | null;
-  apartmentNumber?: string | null;
+  /** At most 500 characters; "" clears it. */
+  note?: string;
   latitude: number;
   longitude: number;
   isActive?: boolean;

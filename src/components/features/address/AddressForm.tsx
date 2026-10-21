@@ -25,6 +25,8 @@ const POSTAL_CODE_PLACEHOLDERS: Record<string, string> = { GB: 'TW9 1AN', TR: '3
 const FIRST_LINE_PLACEHOLDERS: Record<string, string> = { GB: 'Flat 2, 10 Hill Street', TR: 'Moda Cd. No: 5 D: 3', US: '350 5th Ave, Apt 4B' };
 
 const POSTAL_LOOKUP_DEBOUNCE_MS = 800;
+/** The API's limit for the courier note. */
+const NOTE_MAX_LENGTH = 500;
 /** The address search above the map is off for now: postcode and address lines place the pin. */
 const SHOW_ADDRESS_SEARCH = false;
 
@@ -45,6 +47,7 @@ const createAddressSchema = (t: TFunction) => z.object({
     postalCode: z.string().min(1, t('address.validation.postalCodeRequired')),
     // The whole first line — street, house and flat number — lives in `street`.
     street: z.string().trim().min(2, t('address.validation.firstLineRequired')),
+    note: z.string().trim().max(NOTE_MAX_LENGTH, t('address.validation.noteMax', { max: NOTE_MAX_LENGTH })),
     latitude: z.any().transform(val => Number(val)),
     longitude: z.any().transform(val => Number(val)),
 });
@@ -107,6 +110,7 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
         phoneE164: '',
         postalCode: '',
         street: '',
+        note: '',
         latitude: isNewAddress ? DEFAULT_ADDRESS_LOCATION.latitude : undefined,
         longitude: isNewAddress ? DEFAULT_ADDRESS_LOCATION.longitude : undefined,
         ...(address && {
@@ -116,6 +120,7 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
             phoneE164: address.phoneE164 ?? '',
             postalCode: address.postalCode,
             street: formatAddressFirstLine(address),
+            note: address.note ?? '',
             latitude: address.latitude,
             longitude: address.longitude,
         }),
@@ -326,7 +331,8 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
         setAddressLoading(true);
         // The numbers are part of the first line now; null clears what an
         // older row kept in the separate fields.
-        const payload = { ...data, buildingNumber: null, apartmentNumber: null };
+        // `note` always goes along: "" clears a saved note.
+        const payload = { ...data, buildingNumber: null };
         try {
             if (addressId) {
                 await userService.updateAddress(addressId, payload);
@@ -419,6 +425,20 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
                 {...register('street')}
                 error={errors.street?.message}
             />
+            <div className="space-y-2">
+                <label htmlFor="address-note" className="text-sm font-medium leading-none">
+                    {t('address.note')} <span className="font-normal text-zinc-400">({t('address.optional')})</span>
+                </label>
+                <textarea
+                    id="address-note"
+                    rows={3}
+                    maxLength={NOTE_MAX_LENGTH}
+                    placeholder={t('address.notePlaceholder')}
+                    {...register('note')}
+                    className={`flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 ${errors.note ? 'border-red-500 focus-visible:ring-red-500' : 'border-zinc-200 focus-visible:ring-zinc-950'}`}
+                />
+                {errors.note && <p className="text-xs font-medium text-red-500">{errors.note.message}</p>}
+            </div>
 
             <div className="flex justify-end pt-2 gap-2">
                 <Button type="button" variant="outline" onClick={onCancel}>

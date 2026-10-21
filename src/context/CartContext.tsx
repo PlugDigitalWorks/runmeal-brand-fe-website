@@ -280,7 +280,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               postalCode: '00000',
               street: addressParts[0] || guestAddress.formattedAddress,
               buildingNumber: '-',
-              apartmentNumber: '-',
               latitude: guestAddress.latitude,
               longitude: guestAddress.longitude,
               isActive: true // This will make it the active address
