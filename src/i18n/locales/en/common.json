@@ -516,6 +516,8 @@
     "noDeliveryHere": "No delivery to your selected address",
     "pickupAvailable": "You can order for pickup",
     "allBranches": "All branches ({{count}})",
+    "searchPlaceholder": "Search by branch name or address",
+    "noSearchResults": "No branch matches your search.",
     "noBranches": "No branches found.",
     "selectToOrder": "Please select a branch to order.",
     "payment": "Payment",
