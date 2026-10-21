@@ -21,8 +21,13 @@ import type { TFunction } from 'i18next';
 
 /** Postal-code examples per country; anything else shows no placeholder. */
 const POSTAL_CODE_PLACEHOLDERS: Record<string, string> = { GB: 'TW9 1AN', TR: '34000', US: '10001' };
-/** First-line examples per country; anything else shows no placeholder. */
-const FIRST_LINE_PLACEHOLDERS: Record<string, string> = { GB: 'Flat 2, 10 Hill Street', TR: 'Moda Cd. No: 5 D: 3', US: '350 5th Ave, Apt 4B' };
+/** Address line examples per country; anything else shows no placeholder. */
+const FIRST_LINE_PLACEHOLDERS: Record<string, string> = { GB: '10 Hill Street', TR: 'Moda Cd. No: 5', US: '350 5th Ave' };
+const SECOND_LINE_PLACEHOLDERS: Record<string, string> = { GB: 'Flat 2', TR: 'D: 3', US: 'Apt 4B' };
+/** The API's `street` holds both lines joined with ", ". */
+const STREET_MAX_LENGTH = 256;
+const SECOND_LINE_MAX_LENGTH = 120;
+const joinAddressLines = (line1: string, line2: string) => [line1.trim(), line2.trim()].filter(Boolean).join(', ');
 
 const POSTAL_LOOKUP_DEBOUNCE_MS = 800;
 /** The API's limit for the courier note. */
@@ -45,11 +50,20 @@ const createAddressSchema = (t: TFunction) => z.object({
         .min(1, t('address.validation.phoneRequired'))
         .refine((value) => /^\+[1-9]\d{7,14}$/.test(value), t('address.validation.phoneFormat')),
     postalCode: z.string().min(1, t('address.validation.postalCodeRequired')),
-    // The whole first line — street, house and flat number — lives in `street`.
-    street: z.string().trim().min(2, t('address.validation.firstLineRequired')),
+    // Address line 1; it also drives the map. Line 2 is optional and both are
+    // sent joined as the API's single `street`.
+    street: z.string().trim()
+        .min(2, t('address.validation.firstLineRequired'))
+        .max(STREET_MAX_LENGTH, t('address.validation.lineMax', { max: STREET_MAX_LENGTH })),
+    line2: z.string().trim().max(SECOND_LINE_MAX_LENGTH, t('address.validation.lineMax', { max: SECOND_LINE_MAX_LENGTH })),
     note: z.string().trim().max(NOTE_MAX_LENGTH, t('address.validation.noteMax', { max: NOTE_MAX_LENGTH })),
     latitude: z.any().transform(val => Number(val)),
     longitude: z.any().transform(val => Number(val)),
+}).superRefine((values, ctx) => {
+    // A saved address can already fill line 1 close to the limit.
+    if (joinAddressLines(values.street, values.line2).length > STREET_MAX_LENGTH) {
+        ctx.addIssue({ code: 'custom', path: ['line2'], message: t('address.validation.linesTooLong', { max: STREET_MAX_LENGTH }) });
+    }
 });
 
 export type AddressFormValues = z.infer<ReturnType<typeof createAddressSchema>>;
@@ -110,6 +124,7 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
         phoneE164: '',
         postalCode: '',
         street: '',
+        line2: '',
         note: '',
         latitude: isNewAddress ? DEFAULT_ADDRESS_LOCATION.latitude : undefined,
         longitude: isNewAddress ? DEFAULT_ADDRESS_LOCATION.longitude : undefined,
@@ -119,6 +134,7 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
             province: address.province,
             phoneE164: address.phoneE164 ?? '',
             postalCode: address.postalCode,
+            // A saved address keeps one joined line; it comes back whole in line 1.
             street: formatAddressFirstLine(address),
             note: address.note ?? '',
             latitude: address.latitude,
@@ -329,10 +345,10 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
 
     const onSubmit = async (data: AddressFormValues) => {
         setAddressLoading(true);
-        // The numbers are part of the first line now; null clears what an
-        // older row kept in the separate fields.
-        // `note` always goes along: "" clears a saved note.
-        const payload = { ...data, buildingNumber: null };
+        // Line 1 and 2 go joined as the API's `street`; null clears the building
+        // number an older row kept apart; `note` always goes along ("" clears it).
+        const { line2, ...fields } = data;
+        const payload = { ...fields, street: joinAddressLines(fields.street, line2), buildingNumber: null };
         try {
             if (addressId) {
                 await userService.updateAddress(addressId, payload);
@@ -422,8 +438,17 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
                 label={t('address.firstLine')}
                 placeholder={FIRST_LINE_PLACEHOLDERS[watchedCountry] ?? ''}
                 autoComplete="address-line1"
+                maxLength={STREET_MAX_LENGTH}
                 {...register('street')}
                 error={errors.street?.message}
+            />
+            <Input
+                label={`${t('address.secondLine')} (${t('address.optional')})`}
+                placeholder={SECOND_LINE_PLACEHOLDERS[watchedCountry] ?? ''}
+                autoComplete="address-line2"
+                maxLength={SECOND_LINE_MAX_LENGTH}
+                {...register('line2')}
+                error={errors.line2?.message}
             />
             <div className="space-y-2">
                 <label htmlFor="address-note" className="text-sm font-medium leading-none">
