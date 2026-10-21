@@ -7,6 +7,7 @@ import { RecaptchaWidget } from '@/components/features/RecaptchaWidget';
 import { useAuth } from '@/context/AuthContext';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
 import { takeReturnPath } from '@/lib/return-path';
+import { useAuthTargetFromQuery } from '@/hooks/useAuthTargetFromQuery';
 import { OAuthProvider } from '@/types/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2, User } from 'lucide-react';
@@ -39,6 +40,7 @@ export default function LoginPage() {
   const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
   const isRecaptchaEnabled = Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
   const handledOAuthCallbackRef = useRef(false);
+  const isLeavingForTarget = useAuthTargetFromQuery();
 
   const schema = z.object({
     email: z.string().email(t('auth.validation.emailInvalid')),
@@ -149,7 +151,7 @@ export default function LoginPage() {
     toast.error(reason || t('auth.login.oauthFailed'));
   }, [completeOAuthLogin, router, t]);
 
-  if (isRedirecting) return <AuthRedirectingScreen />;
+  if (isRedirecting || isLeavingForTarget) return <AuthRedirectingScreen />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4 py-10">
