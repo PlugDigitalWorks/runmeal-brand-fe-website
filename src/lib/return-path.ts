@@ -31,6 +31,25 @@ function isSafeReturnPath(path: string) {
   return path.startsWith('/') && !path.startsWith('//') && !path.startsWith('/\\') && !isAuthPath(path.split(/[?#]/)[0]);
 }
 
+/** `?to=` values that name a screen instead of a branch. */
+const NAMED_AUTH_TARGETS: Record<string, string> = { loyalty: '/rewards' };
+
+/**
+ * The page a `?to=` link sends the customer to once they are signed in, e.g.
+ * a printed QR for `/register?to=loyalty` (the loyalty card) or
+ * `/register?to=richmond` (that branch's storefront). Anything that is not a
+ * named screen is taken as a branch slug. Null when absent or unusable.
+ */
+export function resolveAuthTarget(to: string | null): string | null {
+  const value = to?.trim();
+  if (!value) return null;
+  const named = NAMED_AUTH_TARGETS[value.toLowerCase()];
+  if (named) return named;
+  // A branch slug is one path segment; anything else is not a branch link.
+  if (/[/\\?#]/.test(value)) return null;
+  return `/${encodeURIComponent(value)}`;
+}
+
 export function rememberReturnPath(path: string) {
   if (!isSafeReturnPath(path)) return;
   try {
