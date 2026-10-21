@@ -25,6 +25,8 @@ const POSTAL_CODE_PLACEHOLDERS: Record<string, string> = { GB: 'TW9 1AN', TR: '3
 const FIRST_LINE_PLACEHOLDERS: Record<string, string> = { GB: 'Flat 2, 10 Hill Street', TR: 'Moda Cd. No: 5 D: 3', US: '350 5th Ave, Apt 4B' };
 
 const POSTAL_LOOKUP_DEBOUNCE_MS = 800;
+/** The address search above the map is off for now: postcode and address lines place the pin. */
+const SHOW_ADDRESS_SEARCH = false;
 
 const searchKey = (countryCode?: string, district?: string, street?: string) =>
     [street, district, countryCode].filter(Boolean).join(', ');
@@ -352,7 +354,7 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
             className="space-y-4"
         >
             <div className="space-y-2">
-                <AddressSearch onSelect={handleSearchSelect} />
+                {SHOW_ADDRESS_SEARCH && <AddressSearch onSelect={handleSearchSelect} />}
                 <LocationPicker
                     value={
                         watch('latitude') && watch('longitude')

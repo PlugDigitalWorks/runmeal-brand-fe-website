@@ -3,7 +3,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBranch } from '@/context/BranchContext';
-import { Check, ChevronDown, MapPin } from 'lucide-react';
+import { Check, ChevronDown, MapPin, Search } from 'lucide-react';
 import { BranchContactLink, BranchInfoTabs } from '@/components/features/BranchInfoTabs';
 import {
     hasPickupOrderType,
@@ -11,6 +11,7 @@ import {
     isOutsideDeliveryArea,
     resolveBranchDetails,
 } from '@/lib/branch-details';
+import { normalizeLocationName } from '@/lib/address-parsing';
 import type { Branch, BrandBranch } from '@/types/branch';
 
 /** Branches shown as cards; the rest are picked from the dropdown. */
@@ -87,11 +88,20 @@ export function BranchSelector() {
     const { t } = useTranslation();
     const { selectedBranch, branches, selectBranch, isLoading } = useBranch();
     const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+    const [branchQuery, setBranchQuery] = React.useState('');
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 
     const branchDetails = React.useMemo(() => resolveBranchDetails(selectedBranch), [selectedBranch]);
     const cardBranches = branches.slice(0, MAX_BRANCH_CARDS);
     const hasMore = branches.length > MAX_BRANCH_CARDS;
+    // Matches the name or address, ignoring case and accents ("sisli" finds "Şişli").
+    const filteredBranches = React.useMemo(() => {
+        const query = normalizeLocationName(branchQuery);
+        if (!query) return branches;
+        return branches.filter((branch) =>
+            normalizeLocationName(`${branch.name} ${branch.addressText ?? ''}`).includes(query),
+        );
+    }, [branches, branchQuery]);
     // A brand with one branch has nothing to pick: its address goes under the
     // title instead of a lone, already-selected card.
     const isSingleBranch = branches.length === 1 && selectedBranch?.id === branches[0].id;
@@ -100,6 +110,7 @@ export function BranchSelector() {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsDropdownOpen(false);
+                setBranchQuery('');
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -110,6 +121,7 @@ export function BranchSelector() {
         if (!isBranchSelectable(branch)) return;
         selectBranch(branch);
         setIsDropdownOpen(false);
+        setBranchQuery('');
         // Give the picked branch its own shareable link. The history API
         // updates the address bar without remounting the menu.
         if (branch.slug) {
@@ -161,15 +173,42 @@ export function BranchSelector() {
                                 <div className="relative mt-3 inline-block" ref={dropdownRef}>
                                     <button
                                         type="button"
-                                        onClick={() => setIsDropdownOpen((open) => !open)}
+                                        onClick={() => {
+                                            setIsDropdownOpen((open) => !open);
+                                            setBranchQuery('');
+                                        }}
                                         className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
                                     >
                                         {t('branch.allBranches', { count: branches.length })}
                                         <ChevronDown size={14} className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                                     </button>
                                     {isDropdownOpen && (
-                                        <div className="absolute top-full left-0 mt-2 w-80 max-w-[calc(100vw-4rem)] bg-white border border-zinc-200 rounded-lg shadow-xl z-10 max-h-72 overflow-y-auto">
-                                            {branches.map((branch) => {
+                                        <div className="absolute top-full left-0 mt-2 w-80 max-w-[calc(100vw-4rem)] bg-white border border-zinc-200 rounded-lg shadow-xl z-10 max-h-80 overflow-y-auto">
+                                            <div className="sticky top-0 z-10 border-b border-zinc-100 bg-white p-2">
+                                                <div className="relative">
+                                                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                                                    <input
+                                                        type="search"
+                                                        value={branchQuery}
+                                                        onChange={(event) => setBranchQuery(event.target.value)}
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === 'Escape') {
+                                                                setIsDropdownOpen(false);
+                                                                setBranchQuery('');
+                                                            }
+                                                        }}
+                                                        placeholder={t('branch.searchPlaceholder')}
+                                                        aria-label={t('branch.searchPlaceholder')}
+                                                        autoFocus
+                                                        autoComplete="off"
+                                                        className="h-9 w-full rounded-md border border-zinc-200 pl-8 pr-3 text-sm outline-none placeholder:text-zinc-400 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                    />
+                                                </div>
+                                            </div>
+                                            {filteredBranches.length === 0 && (
+                                                <p className="px-4 py-3 text-sm text-zinc-500">{t('branch.noSearchResults')}</p>
+                                            )}
+                                            {filteredBranches.map((branch) => {
                                                 const selectable = isBranchSelectable(branch);
                                                 return (
                                                     <button

@@ -516,6 +516,8 @@
     "noDeliveryHere": "Seçili adresinize teslimat yok",
     "pickupAvailable": "Gel-al ile sipariş verebilirsiniz",
     "allBranches": "Tüm şubeler ({{count}})",
+    "searchPlaceholder": "Şube adı veya adres ara",
+    "noSearchResults": "Aramanızla eşleşen şube yok.",
     "noBranches": "Şube bulunamadı.",
     "selectToOrder": "Sipariş vermek için bir şube seçin.",
     "payment": "Ödeme",
