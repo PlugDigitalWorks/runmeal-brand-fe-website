@@ -17,7 +17,7 @@ import { GiftRevealOverlay } from '@/components/features/GiftRevealOverlay';
  *
  * Cards come from `GET /loyalty/stamps/me/:brandId` and are rendered as sent —
  * stamps are only ever earned in-store, so nothing here increments a counter
- * optimistically. The scannable code lives on its own screen (`/rewards`);
+ * optimistically. The scannable code lives on its own screen (`/loyalty`);
  * everything here either links to it or hands off to it.
  *
  * A newly completed card plays the gift reveal once per browser session —
@@ -71,7 +71,7 @@ export function LoyaltyRewardsPanel() {
     // The reveal hands off to the QR — that is what the customer needs next.
     const closeReveal = () => {
         setRevealCard(null);
-        router.push('/rewards');
+        router.push('/loyalty');
     };
 
     return (
@@ -86,7 +86,7 @@ export function LoyaltyRewardsPanel() {
 
                 <button
                     type="button"
-                    onClick={() => router.push('/rewards/history')}
+                    onClick={() => router.push('/loyalty/history')}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:border-primary hover:text-primary"
                 >
                     <History size={13} /> {t('rewards.history.link')}
@@ -98,7 +98,7 @@ export function LoyaltyRewardsPanel() {
                 isLoading={isQrLoading}
                 hasError={hasQrError}
                 onRetry={refreshQr}
-                onExpand={() => router.push('/rewards')}
+                onExpand={() => router.push('/loyalty')}
             />
 
             {readyCount > 0 && (

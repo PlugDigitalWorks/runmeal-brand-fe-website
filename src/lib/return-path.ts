@@ -32,7 +32,7 @@ function isSafeReturnPath(path: string) {
 }
 
 /** `?to=` values that name a screen instead of a branch. */
-const NAMED_AUTH_TARGETS: Record<string, string> = { loyalty: '/rewards' };
+const NAMED_AUTH_TARGETS: Record<string, string> = { loyalty: '/loyalty' };
 
 /**
  * The page a `?to=` link sends the customer to once they are signed in, e.g.
