@@ -17,6 +17,7 @@ vi.mock('@/services/notification.service', () => ({
 import { NotificationsProvider, useNotifications } from '@/context/NotificationsContext';
 import { pushService } from '@/services/push.service';
 import { notificationService } from '@/services/notification.service';
+import { resetNotificationChimeForTests } from '@/lib/notification-chime';
 import { PushOptIn } from './PushOptIn';
 
 const SUBSCRIPTION_JSON = { endpoint: 'https://push.example.com/x', expirationTime: null, keys: { p256dh: 'p', auth: 'a' } };
@@ -181,6 +182,40 @@ describe('unread badge', () => {
         });
 
         await waitFor(() => expect(screen.getByTestId('badge')).toHaveTextContent('1'));
+    });
+
+    it.each([
+        [true, 'rings and says so, so the notification is shown silently'],
+        [false, 'says it could not, so the system sound stays'],
+    ])('answers the service worker whether it could ring the sound (allowed: %s, %s)', async (allowed) => {
+        resetNotificationChimeForTests();
+        Object.defineProperty(window, 'Audio', {
+            configurable: true,
+            value: class {
+                preload = '';
+                muted = false;
+                currentTime = 0;
+                pause() {}
+                play() {
+                    return allowed ? Promise.resolve() : Promise.reject(new DOMException('blocked', 'NotAllowedError'));
+                }
+            },
+        });
+        renderOptIn();
+        await waitFor(() => expect(notificationService.unreadCount).toHaveBeenCalled());
+        const channel = new MessageChannel();
+        const reply = new Promise((resolve) => {
+            channel.port1.onmessage = (message) => resolve(message.data);
+        });
+
+        act(() => {
+            navigator.serviceWorker.dispatchEvent(
+                new MessageEvent('message', { data: { type: 'play-notification-sound' }, ports: [channel.port2] }),
+            );
+        });
+
+        await expect(reply).resolves.toEqual({ played: allowed });
+        channel.port1.close();
     });
 
     it('is never loaded for a guest', async () => {

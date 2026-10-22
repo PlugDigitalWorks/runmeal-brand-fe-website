@@ -139,7 +139,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             setUnreadCount(count);
             if (reloadListOnIncrease && previous !== null && count > previous) {
                 setListVersion((version) => version + 1);
-                playNotificationChime();
+                void playNotificationChime();
             }
         } catch (error) {
             console.error('[notifications] Could not load the unread count', getApiErrorDetails(error).code);
@@ -153,7 +153,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         void loadUnreadCount(false);
     }, [loadUnreadCount]);
 
-    // Browsers only allow sound after the first tap; get ready for it.
+    // Browsers only allow sound after the first tap; load and unlock it then.
     useEffect(() => {
         if (userId) prepareNotificationChime();
     }, [userId]);
@@ -163,9 +163,15 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (!userId || typeof navigator === 'undefined' || !navigator.serviceWorker) return;
         const onMessage = (event: MessageEvent) => {
-            if (event.data?.type !== 'notification-received') return;
-            reloadNotifications();
-            playNotificationChime();
+            if (event.data?.type === 'notification-received') {
+                reloadNotifications();
+                return;
+            }
+            // The service worker picks one tab to ring and silences the
+            // notification when it did, so the system sound does not double it.
+            if (event.data?.type === 'play-notification-sound') {
+                void playNotificationChime().then((played) => event.ports[0]?.postMessage({ played }));
+            }
         };
         navigator.serviceWorker.addEventListener('message', onMessage);
         return () => navigator.serviceWorker.removeEventListener('message', onMessage);

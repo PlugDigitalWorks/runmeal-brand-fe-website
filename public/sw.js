@@ -38,13 +38,45 @@ self.addEventListener('push', (event) => {
     };
     if (payload.id) options.tag = String(payload.id);
 
-    // Open tabs refresh their badge and list; they never see the text from here.
-    const announce = self.clients
-        .matchAll({ type: 'window', includeUncontrolled: true })
-        .then((windows) => windows.forEach((client) => client.postMessage({ type: 'notification-received' })));
-
-    event.waitUntil(Promise.all([self.registration.showNotification(title, options), announce]));
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windows) => {
+            const tabs = windows.filter((client) => new URL(client.url).origin === self.location.origin);
+            // Open tabs refresh their badge and list; they never see the text from here.
+            tabs.forEach((client) => client.postMessage({ type: 'notification-received' }));
+            // One open tab rings the site's own sound (the one in front first);
+            // the notification is then silent, so the system sound does not
+            // ring over it. With no tab able to play, the system sound stays.
+            const played = await ringInOneTab(tabs);
+            return self.registration.showNotification(title, played ? { ...options, silent: true } : options);
+        }),
+    );
 });
+
+/** How long a tab gets to say whether it played the sound. */
+const CHIME_REPLY_TIMEOUT_MS = 500;
+
+function askTabToRing(client) {
+    return new Promise((resolve) => {
+        const channel = new MessageChannel();
+        const timer = setTimeout(() => resolve(false), CHIME_REPLY_TIMEOUT_MS);
+        channel.port1.onmessage = (message) => {
+            clearTimeout(timer);
+            resolve(Boolean(message.data && message.data.played));
+        };
+        client.postMessage({ type: 'play-notification-sound' }, [channel.port2]);
+    });
+}
+
+async function ringInOneTab(tabs) {
+    const ordered = [...tabs].sort(
+        (a, b) => Number(Boolean(b.focused)) - Number(Boolean(a.focused)) ||
+            Number(b.visibilityState === 'visible') - Number(a.visibilityState === 'visible'),
+    );
+    for (const client of ordered) {
+        if (await askTabToRing(client)) return true;
+    }
+    return false;
+}
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();

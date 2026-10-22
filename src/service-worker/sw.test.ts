@@ -21,7 +21,7 @@ function loadWorker(windows: FakeClient[] = []) {
         },
         skipWaiting: vi.fn(),
         location: new URL(`${ORIGIN}/sw.js`),
-        registration: { showNotification: vi.fn(async () => undefined) },
+        registration: { showNotification: vi.fn<(title: string, options?: { silent?: boolean }) => Promise<void>>(async () => undefined) },
         clients: {
             claim: vi.fn(async () => undefined),
             matchAll: vi.fn(async () => windows),
@@ -95,18 +95,71 @@ describe('service worker', () => {
         },
     );
 
-    it('tells open tabs a notification arrived, without the text', async () => {
-        const tab = { ...fakeClient(`${ORIGIN}/notifications`), postMessage: vi.fn() };
-        const { listeners } = loadWorker([tab]);
-        const waits: Promise<unknown>[] = [];
+    /** An open tab of the site that answers the sound request with `played`. */
+    const ringingTab = (url: string, played: boolean | null, extra: Record<string, unknown> = {}) => ({
+        ...fakeClient(url),
+        ...extra,
+        postMessage: vi.fn((message: { type: string }, ports?: MessagePort[]) => {
+            if (message.type === 'play-notification-sound' && played !== null) ports?.[0].postMessage({ played });
+        }),
+    });
 
+    async function push(listeners: Record<string, Listener>) {
+        const waits: Promise<unknown>[] = [];
         listeners.push({
             data: { json: () => ({ id: 'n-3', title: 'Gizli başlık', body: 'Gizli metin', path: '/notifications' }) },
             waitUntil: (promise: Promise<unknown>) => waits.push(promise),
         });
         await Promise.all(waits);
+    }
+
+    it('tells open tabs a notification arrived, without the text', async () => {
+        const tab = ringingTab(`${ORIGIN}/notifications`, false);
+        const { listeners } = loadWorker([tab]);
+
+        await push(listeners);
 
         expect(tab.postMessage).toHaveBeenCalledWith({ type: 'notification-received' });
+        expect(JSON.stringify(tab.postMessage.mock.calls)).not.toContain('Gizli');
+    });
+
+    it('lets an open tab ring the sound and shows the notification silently', async () => {
+        const { fakeSelf, listeners } = loadWorker([ringingTab(`${ORIGIN}/menu`, true)]);
+
+        await push(listeners);
+
+        expect(fakeSelf.registration.showNotification).toHaveBeenCalledWith('Gizli başlık', expect.objectContaining({ silent: true }));
+    });
+
+    it('keeps the system sound when no tab could play it', async () => {
+        const { fakeSelf, listeners } = loadWorker([ringingTab(`${ORIGIN}/menu`, false)]);
+
+        await push(listeners);
+
+        const options = fakeSelf.registration.showNotification.mock.calls[0][1];
+        expect(options?.silent).toBeUndefined();
+    });
+
+    it('keeps the system sound when a tab does not answer in time', async () => {
+        const { fakeSelf, listeners } = loadWorker([ringingTab(`${ORIGIN}/menu`, null)]);
+
+        await push(listeners);
+
+        const options = fakeSelf.registration.showNotification.mock.calls[0][1];
+        expect(options?.silent).toBeUndefined();
+    });
+
+    it('asks only one tab, the one in front first', async () => {
+        const background = ringingTab(`${ORIGIN}/a`, true, { focused: false, visibilityState: 'hidden' });
+        const front = ringingTab(`${ORIGIN}/b`, true, { focused: true, visibilityState: 'visible' });
+        const { listeners } = loadWorker([background, front]);
+
+        await push(listeners);
+
+        const asked = (tab: typeof front) =>
+            tab.postMessage.mock.calls.some(([message]) => (message as { type: string }).type === 'play-notification-sound');
+        expect(asked(front)).toBe(true);
+        expect(asked(background)).toBe(false);
     });
 
     it('never sends a push with an unsafe path anywhere but the home page', async () => {
