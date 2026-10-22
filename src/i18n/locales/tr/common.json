@@ -615,7 +615,11 @@
     "selectActiveAddress": "Teslimat adresi seçin",
     "noSavedAddress": "Kayıtlı adresiniz yok.",
     "manageAddresses": "Adresleri Yönet",
-    "firstLine": "Adres satırı",
+    "firstLine": "Adres satırı 1",
+    "secondLine": "Adres satırı 2",
+    "note": "Adres notu",
+    "optional": "isteğe bağlı",
+    "notePlaceholder": "Örn. Zil bozuk, gelince arayın.",
     "phone": "Telefon",
     "postalCode": "Posta Kodu",
     "saveAddress": "Adresi Kaydet",
@@ -630,7 +634,10 @@
       "phoneRequired": "Telefon gereklidir",
       "phoneFormat": "Geçerli bir telefon numarası girin",
       "postalCodeRequired": "Posta kodu gereklidir",
-      "firstLineRequired": "Adres satırını girin (sokak, bina ve daire no)"
+      "firstLineRequired": "Adres satırını girin (sokak, bina ve daire no)",
+      "lineMax": "En fazla {{max}} karakter olabilir",
+      "linesTooLong": "Adres satırları birlikte en fazla {{max}} karakter olabilir",
+      "noteMax": "Not en fazla {{max}} karakter olabilir"
     }
   },
   "checkout": {

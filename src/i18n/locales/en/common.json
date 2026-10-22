@@ -616,6 +616,10 @@
     "noSavedAddress": "You have no saved addresses.",
     "manageAddresses": "Manage Addresses",
     "firstLine": "Address line 1",
+    "secondLine": "Address line 2",
+    "note": "Address note",
+    "optional": "optional",
+    "notePlaceholder": "e.g. Doorbell is broken, please call on arrival.",
     "phone": "Phone",
     "postalCode": "Postal Code",
     "saveAddress": "Save Address",
@@ -630,7 +634,10 @@
       "phoneRequired": "Phone is required",
       "phoneFormat": "Enter a valid phone number",
       "postalCodeRequired": "Postal Code is required",
-      "firstLineRequired": "Enter the first line of the address"
+      "firstLineRequired": "Enter the first line of the address",
+      "lineMax": "At most {{max}} characters",
+      "linesTooLong": "Both address lines together can be at most {{max}} characters",
+      "noteMax": "The note can be at most {{max}} characters"
     }
   },
   "checkout": {
