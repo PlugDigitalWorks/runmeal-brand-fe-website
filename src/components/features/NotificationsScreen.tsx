@@ -27,7 +27,7 @@ export function NotificationsScreen() {
     const { t, i18n } = useTranslation();
     const router = useRouter();
     const { isAuthenticated, isGuest, isLoading: isAuthLoading } = useAuth();
-    const { language, refreshUnreadCount } = useNotifications();
+    const { language, refreshUnreadCount, listVersion } = useNotifications();
 
     const [items, setItems] = useState<CustomerNotification[]>([]);
     const [page, setPage] = useState(1);
@@ -60,6 +60,8 @@ export function NotificationsScreen() {
         }
     }, [language]);
 
+    // Loads on open, and again whenever listVersion moves: a push arrived or
+    // the bell was pressed while this list was open.
     useEffect(() => {
         if (!isSignedIn) return;
         const timer = setTimeout(() => {
@@ -67,7 +69,7 @@ export function NotificationsScreen() {
             void refreshUnreadCount();
         }, 0);
         return () => clearTimeout(timer);
-    }, [isSignedIn, loadFirstPage, refreshUnreadCount]);
+    }, [isSignedIn, loadFirstPage, refreshUnreadCount, listVersion]);
 
     const loadMore = async () => {
         setIsLoadingMore(true);

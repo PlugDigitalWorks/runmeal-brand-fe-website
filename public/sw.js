@@ -38,7 +38,12 @@ self.addEventListener('push', (event) => {
     };
     if (payload.id) options.tag = String(payload.id);
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    // Open tabs refresh their badge and list; they never see the text from here.
+    const announce = self.clients
+        .matchAll({ type: 'window', includeUncontrolled: true })
+        .then((windows) => windows.forEach((client) => client.postMessage({ type: 'notification-received' })));
+
+    event.waitUntil(Promise.all([self.registration.showNotification(title, options), announce]));
 });
 
 self.addEventListener('notificationclick', (event) => {

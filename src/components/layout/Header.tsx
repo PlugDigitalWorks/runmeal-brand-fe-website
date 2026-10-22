@@ -19,7 +19,7 @@ export function Header() {
     const { isTableMode, journey } = useTable();
     const { t } = useTranslation();
     const { brand } = useBrand();
-    const { unreadCount } = useNotifications();
+    const { unreadCount, reloadNotifications } = useNotifications();
 
     // A QR guest is technically authenticated (throwaway CUSTOMER account), but
     // has no name, no profile and nothing to log out of — treat them as a
@@ -89,6 +89,8 @@ export function Header() {
                             )}
                             <Link
                                 href="/notifications"
+                                // Already on the page, the link alone would do nothing: reload the list.
+                                onClick={reloadNotifications}
                                 aria-label={unreadCount > 0 ? t('notifications.unreadBadge', { count: unreadCount }) : t('notifications.headerLink')}
                                 title={t('notifications.headerLink')}
                                 className="relative shrink-0 rounded-full p-2 text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-primary"

@@ -31,10 +31,12 @@ function installBrowser({ push = true, permission = 'default' }: { push?: boolea
         unsubscribe: vi.fn(),
     }));
     const registration = { pushManager: { getSubscription: vi.fn(async () => null), subscribe } };
-    Object.defineProperty(navigator, 'serviceWorker', {
-        configurable: true,
-        value: { register: vi.fn(async () => registration), ready: Promise.resolve(registration), getRegistration: vi.fn() },
+    const serviceWorker = Object.assign(new EventTarget(), {
+        register: vi.fn(async () => registration),
+        ready: Promise.resolve(registration),
+        getRegistration: vi.fn(),
     });
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: serviceWorker });
     if (push) Object.defineProperty(window, 'PushManager', { configurable: true, value: function PushManager() {} });
     else delete (window as { PushManager?: unknown }).PushManager;
     requestPermission = vi.fn(async () => 'granted');
@@ -145,6 +147,39 @@ describe('unread badge', () => {
         act(() => {
             window.dispatchEvent(new Event('focus'));
         });
+        await waitFor(() => expect(screen.getByTestId('badge')).toHaveTextContent('1'));
+    });
+
+    it('reloads the list when the count rises on focus (customers without push)', async () => {
+        function ListVersion() {
+            const { listVersion } = useNotifications();
+            return <span data-testid="version">{listVersion}</span>;
+        }
+        vi.mocked(notificationService.unreadCount).mockResolvedValueOnce(0).mockResolvedValueOnce(2);
+        render(
+            <NotificationsProvider>
+                <ListVersion />
+            </NotificationsProvider>,
+        );
+        await waitFor(() => expect(notificationService.unreadCount).toHaveBeenCalledTimes(1));
+        expect(screen.getByTestId('version')).toHaveTextContent('0');
+
+        act(() => {
+            window.dispatchEvent(new Event('focus'));
+        });
+
+        await waitFor(() => expect(screen.getByTestId('version')).toHaveTextContent('1'));
+    });
+
+    it('refreshes when the service worker reports a new notification', async () => {
+        vi.mocked(notificationService.unreadCount).mockResolvedValueOnce(0).mockResolvedValueOnce(1);
+        renderOptIn();
+        await waitFor(() => expect(notificationService.unreadCount).toHaveBeenCalledTimes(1));
+
+        act(() => {
+            navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'notification-received' } }));
+        });
+
         await waitFor(() => expect(screen.getByTestId('badge')).toHaveTextContent('1'));
     });
 

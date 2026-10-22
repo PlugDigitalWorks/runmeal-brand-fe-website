@@ -1,11 +1,12 @@
 'use client';
 
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBrand } from '@/context/BrandContext';
 import { useTranslation } from 'react-i18next';
 import { getApiErrorDetails } from '@/lib/api-errors';
 import { enableWebPush, isWebPushSupported, PushSyncResult, syncWebPushSubscription } from '@/lib/web-push';
+import { playNotificationChime, prepareNotificationChime } from '@/lib/notification-chime';
 import { pushService } from '@/services/push.service';
 import { notificationService } from '@/services/notification.service';
 
@@ -16,6 +17,9 @@ import { notificationService } from '@/services/notification.service';
  * - `enabled`: this browser receives the customer's notifications.
  */
 export type PushOfferState = 'hidden' | 'prompt' | 'denied' | 'enabled';
+
+/** While the tab is visible, how often the badge is checked: the only signal for customers without push. */
+const UNREAD_POLL_MS = 60_000;
 
 interface NotificationsContextType {
     /** Push and "My notifications" are for signed-in customers only, never QR guests. */
@@ -29,6 +33,10 @@ interface NotificationsContextType {
     enablePush: () => Promise<void>;
     unreadCount: number;
     refreshUnreadCount: () => Promise<void>;
+    /** Bumped whenever the list may have changed: a push arrived, or the bell was pressed. */
+    listVersion: number;
+    /** Reloads the badge and tells an open "My notifications" list to load again. */
+    reloadNotifications: () => void;
 }
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
@@ -45,6 +53,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     const [pushErrorCode, setPushErrorCode] = useState<string | null>(null);
     const [isEnablingPush, setIsEnablingPush] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [listVersion, setListVersion] = useState(0);
+    const lastUnreadRef = useRef<number | null>(null);
 
     const applyResult = useCallback((result: PushSyncResult) => {
         switch (result.status) {
@@ -119,29 +129,68 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }
     }, [applyResult]);
 
-    const refreshUnreadCount = useCallback(async () => {
+    /** `reloadListOnIncrease`: a higher count means new notifications, so an open list loads them too. */
+    const loadUnreadCount = useCallback(async (reloadListOnIncrease: boolean) => {
         if (!userId) return;
         try {
-            setUnreadCount(await notificationService.unreadCount());
+            const count = await notificationService.unreadCount();
+            const previous = lastUnreadRef.current;
+            lastUnreadRef.current = count;
+            setUnreadCount(count);
+            if (reloadListOnIncrease && previous !== null && count > previous) {
+                setListVersion((version) => version + 1);
+                playNotificationChime();
+            }
         } catch (error) {
             console.error('[notifications] Could not load the unread count', getApiErrorDetails(error).code);
         }
     }, [userId]);
 
-    // The badge: on sign-in and whenever the page regains focus.
+    const refreshUnreadCount = useCallback(() => loadUnreadCount(false), [loadUnreadCount]);
+
+    const reloadNotifications = useCallback(() => {
+        setListVersion((version) => version + 1);
+        void loadUnreadCount(false);
+    }, [loadUnreadCount]);
+
+    // Browsers only allow sound after the first tap; get ready for it.
     useEffect(() => {
+        if (userId) prepareNotificationChime();
+    }, [userId]);
+
+    // A push that arrives while the site is open: the service worker tells
+    // every open tab, which then reloads its badge and list.
+    useEffect(() => {
+        if (!userId || typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+        const onMessage = (event: MessageEvent) => {
+            if (event.data?.type !== 'notification-received') return;
+            reloadNotifications();
+            playNotificationChime();
+        };
+        navigator.serviceWorker.addEventListener('message', onMessage);
+        return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+    }, [userId, reloadNotifications]);
+
+    // The badge: on sign-in, whenever the page regains focus, and every
+    // minute while it is visible. A rise also reloads an open list.
+    useEffect(() => {
+        lastUnreadRef.current = null;
         if (!userId) {
             const timer = setTimeout(() => setUnreadCount(0), 0);
             return () => clearTimeout(timer);
         }
-        const timer = setTimeout(() => void refreshUnreadCount(), 0);
-        const onFocus = () => void refreshUnreadCount();
+        const timer = setTimeout(() => void loadUnreadCount(true), 0);
+        const onFocus = () => void loadUnreadCount(true);
+        const poll = setInterval(() => {
+            if (document.visibilityState === 'visible') void loadUnreadCount(true);
+        }, UNREAD_POLL_MS);
         window.addEventListener('focus', onFocus);
         return () => {
             clearTimeout(timer);
+            clearInterval(poll);
             window.removeEventListener('focus', onFocus);
         };
-    }, [userId, refreshUnreadCount]);
+    }, [userId, loadUnreadCount]);
 
     return (
         <NotificationsContext.Provider
@@ -154,6 +203,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                 enablePush,
                 unreadCount,
                 refreshUnreadCount,
+                listVersion,
+                reloadNotifications,
             }}
         >
             {children}

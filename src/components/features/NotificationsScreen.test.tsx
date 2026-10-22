@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '@/i18n/config';
 
 const auth = { isAuthenticated: true, isGuest: false, isLoading: false };
-const notifications = { language: 'tr' as 'tr' | 'en', refreshUnreadCount: vi.fn(async () => undefined), pushState: 'hidden' };
+const notifications = { language: 'tr' as 'tr' | 'en', refreshUnreadCount: vi.fn(async () => undefined), pushState: 'hidden', listVersion: 0 };
 const replace = vi.fn();
 
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => auth }));
@@ -27,6 +27,7 @@ const page = (data: Array<{ id: string; title: string; body: string; readAt: str
 beforeEach(async () => {
     Object.assign(auth, { isAuthenticated: true, isGuest: false, isLoading: false });
     notifications.language = 'tr';
+    notifications.listVersion = 0;
     vi.mocked(notificationService.markRead).mockResolvedValue(undefined);
     vi.mocked(notificationService.markAllRead).mockResolvedValue(undefined);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -114,6 +115,23 @@ describe('NotificationsScreen', () => {
         expect(await screen.findByText('İkinci')).toBeInTheDocument();
         expect(notificationService.listMine).toHaveBeenLastCalledWith('tr', 2);
         expect(screen.queryByRole('button', { name: 'Daha fazla göster' })).not.toBeInTheDocument();
+    });
+
+    it('loads the list again when a push arrives or the bell is pressed', async () => {
+        vi.mocked(notificationService.listMine)
+            .mockResolvedValueOnce(page([{ id: 'n-1', title: 'Eski', body: 'a', readAt: 'x' }]))
+            .mockResolvedValueOnce(page([
+                { id: 'n-2', title: 'Yeni', body: 'b', readAt: null },
+                { id: 'n-1', title: 'Eski', body: 'a', readAt: 'x' },
+            ]));
+        const { rerender } = render(<NotificationsScreen />);
+        await screen.findByText('Eski');
+
+        notifications.listVersion = 1;
+        rerender(<NotificationsScreen />);
+
+        expect(await screen.findByText('Yeni')).toBeInTheDocument();
+        expect(notificationService.listMine).toHaveBeenCalledTimes(2);
     });
 
     it('sends guests to the login page and loads nothing', async () => {

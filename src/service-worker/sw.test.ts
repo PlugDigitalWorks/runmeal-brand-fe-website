@@ -95,6 +95,20 @@ describe('service worker', () => {
         },
     );
 
+    it('tells open tabs a notification arrived, without the text', async () => {
+        const tab = { ...fakeClient(`${ORIGIN}/notifications`), postMessage: vi.fn() };
+        const { listeners } = loadWorker([tab]);
+        const waits: Promise<unknown>[] = [];
+
+        listeners.push({
+            data: { json: () => ({ id: 'n-3', title: 'Gizli başlık', body: 'Gizli metin', path: '/notifications' }) },
+            waitUntil: (promise: Promise<unknown>) => waits.push(promise),
+        });
+        await Promise.all(waits);
+
+        expect(tab.postMessage).toHaveBeenCalledWith({ type: 'notification-received' });
+    });
+
     it('never sends a push with an unsafe path anywhere but the home page', async () => {
         const { fakeSelf, listeners } = loadWorker();
         const waits: Promise<unknown>[] = [];
