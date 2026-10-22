@@ -31,6 +31,14 @@ interface NotificationsContextType {
     pushErrorCode: string | null;
     isEnablingPush: boolean;
     enablePush: () => Promise<void>;
+    /**
+     * Opens the browser's own permission prompt as part of a click the
+     * customer makes anyway (placing an order, signing in). Call it
+     * synchronously from the click handler, before any await: browsers only
+     * show the prompt inside a user gesture. Does nothing for guests, when
+     * already granted or blocked, or when push is off.
+     */
+    askForPushOnUserAction: () => void;
     unreadCount: number;
     refreshUnreadCount: () => Promise<void>;
     /** Bumped whenever the list may have changed: a push arrived, or the bell was pressed. */
@@ -51,6 +59,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     const [pushState, setPushState] = useState<PushOfferState>('hidden');
     const [pushErrorCode, setPushErrorCode] = useState<string | null>(null);
+    // Whether the API has push switched on: checked once, signed in or not.
+    const [isPushAvailable, setIsPushAvailable] = useState<boolean | null>(null);
     const [isEnablingPush, setIsEnablingPush] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [listVersion, setListVersion] = useState(0);
@@ -84,6 +94,24 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    // Push is only offered when the API has it on. Checked once per visit,
+    // before sign-in too so the login page can ask; never for QR guests.
+    useEffect(() => {
+        if (isLoading || isGuest || isPushAvailable !== null) return;
+        if (!isWebPushSupported() || Notification.permission !== 'default') return;
+        let cancelled = false;
+        pushService.getPublicKey().then(
+            () => !cancelled && setIsPushAvailable(true),
+            (error) => {
+                console.error('[push] Push is not available here', getApiErrorDetails(error).code);
+                if (!cancelled) setIsPushAvailable(false);
+            },
+        );
+        return () => {
+            cancelled = true;
+        };
+    }, [isLoading, isGuest, isPushAvailable]);
+
     // Work out what to offer once the customer is known. Already granted:
     // re-bind the subscription to this customer on every sign-in and app start.
     useEffect(() => {
@@ -105,19 +133,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                 return;
             }
             // Not asked yet: only offer it when the API has push switched on.
-            try {
-                await pushService.getPublicKey();
-                if (!cancelled) setPushState('prompt');
-            } catch (error) {
-                console.error('[push] Push is not available here', getApiErrorDetails(error).code);
-                if (!cancelled) setPushState('hidden');
-            }
+            if (!cancelled) setPushState(isPushAvailable ? 'prompt' : 'hidden');
         })();
 
         return () => {
             cancelled = true;
         };
-    }, [userId, applyResult]);
+    }, [userId, applyResult, isPushAvailable]);
 
     const enablePush = useCallback(async () => {
         setIsEnablingPush(true);
@@ -147,6 +169,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }, [userId]);
 
     const refreshUnreadCount = useCallback(() => loadUnreadCount(false), [loadUnreadCount]);
+
+    const askForPushOnUserAction = useCallback(() => {
+        if (isGuest || !isPushAvailable || !isWebPushSupported() || Notification.permission !== 'default') return;
+        // Called inside the click, so the browser shows its prompt. Signed in:
+        // subscribe now; on the login page the sign-in that follows does it.
+        void Notification.requestPermission().then(async (permission) => {
+            if (permission === 'denied') {
+                setPushState('denied');
+                return;
+            }
+            if (permission === 'granted' && userId) applyResult(await syncWebPushSubscription());
+        });
+    }, [isGuest, isPushAvailable, userId, applyResult]);
 
     const reloadNotifications = useCallback(() => {
         setListVersion((version) => version + 1);
@@ -207,6 +242,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                 pushErrorCode,
                 isEnablingPush,
                 enablePush,
+                askForPushOnUserAction,
                 unreadCount,
                 refreshUnreadCount,
                 listVersion,

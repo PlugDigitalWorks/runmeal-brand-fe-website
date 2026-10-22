@@ -139,6 +139,71 @@ describe('PushOptIn', () => {
     });
 });
 
+describe('askForPushOnUserAction (a click the customer makes anyway)', () => {
+    function OrderButton() {
+        const { askForPushOnUserAction } = useNotifications();
+        return (
+            <button type="button" onClick={askForPushOnUserAction}>
+                Sipariş ver
+            </button>
+        );
+    }
+    const renderButton = () =>
+        render(
+            <NotificationsProvider>
+                <OrderButton />
+            </NotificationsProvider>,
+        );
+    const click = async () => {
+        const user = userEvent.setup();
+        // Let the one-off public key check finish first.
+        await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+        await user.click(screen.getByRole('button', { name: 'Sipariş ver' }));
+    };
+
+    it('opens the browser prompt and subscribes a signed-in customer', async () => {
+        renderButton();
+        await click();
+
+        expect(requestPermission).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(pushService.register).toHaveBeenCalledWith(SUBSCRIPTION_JSON));
+    });
+
+    it('opens the prompt on the login page, leaving the subscription to the sign-in', async () => {
+        Object.assign(auth, { user: null, isAuthenticated: false });
+        renderButton();
+        await click();
+
+        expect(requestPermission).toHaveBeenCalledTimes(1);
+        await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+        expect(pushService.register).not.toHaveBeenCalled();
+    });
+
+    it('never asks a QR guest', async () => {
+        auth.isGuest = true;
+        renderButton();
+        await click();
+
+        expect(requestPermission).not.toHaveBeenCalled();
+    });
+
+    it('does not ask when the API has push switched off', async () => {
+        vi.mocked(pushService.getPublicKey).mockRejectedValue({ response: { status: 404, data: {} } });
+        renderButton();
+        await click();
+
+        expect(requestPermission).not.toHaveBeenCalled();
+    });
+
+    it.each(['granted', 'denied'] as const)('does not ask again once permission is %s', async (permission) => {
+        installBrowser({ permission });
+        renderButton();
+        await click();
+
+        expect(requestPermission).not.toHaveBeenCalled();
+    });
+});
+
 describe('unread badge', () => {
     it('loads the count for a signed-in customer and refreshes it when the page regains focus', async () => {
         vi.mocked(notificationService.unreadCount).mockResolvedValueOnce(3).mockResolvedValueOnce(1);

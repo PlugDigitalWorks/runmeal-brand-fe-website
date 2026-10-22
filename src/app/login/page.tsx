@@ -5,6 +5,7 @@ import { OAuthButtons } from '@/components/features/OAuthButtons';
 import { OtpChallenge } from '@/components/features/OtpChallenge';
 import { RecaptchaWidget } from '@/components/features/RecaptchaWidget';
 import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/context/NotificationsContext';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
 import { takeReturnPath } from '@/lib/return-path';
 import { useAuthTargetFromQuery } from '@/hooks/useAuthTargetFromQuery';
@@ -27,6 +28,8 @@ const APPLE_CANCELLED_REASON = 'Apple sign-in was cancelled.';
 
 export default function LoginPage() {
   const { login, requestOtpLogin, verifyOtp, completeOAuthLogin } = useAuth();
+  // The submit click opens the browser's notification prompt; signing in then subscribes.
+  const { askForPushOnUserAction } = useNotifications();
   const router = useRouter();
   const { t } = useTranslation();
   const [method, setMethod] = useState<LoginMethod>('otp');
@@ -199,7 +202,7 @@ export default function LoginPage() {
             </div>
 
             <RecaptchaWidget onTokenChange={setRecaptchaToken} resetKey={recaptchaResetKey} />
-            <button type="submit" disabled={isLoading || (isRecaptchaEnabled && !recaptchaToken)} className="flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="submit" onClick={askForPushOnUserAction} disabled={isLoading || (isRecaptchaEnabled && !recaptchaToken)} className="flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading ? (method === 'otp' ? t('auth.otp.sendingCode') : t('auth.login.submitting')) : (method === 'otp' ? t('auth.otp.sendCode') : t('auth.login.submit'))}
             </button>
