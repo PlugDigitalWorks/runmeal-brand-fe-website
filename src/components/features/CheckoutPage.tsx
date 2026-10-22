@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
+import { useNotifications } from '@/context/NotificationsContext';
 import { useCart } from '@/context/CartContext';
 import { useBranch } from '@/context/BranchContext';
 import { paymentService, type OrderType, type PaymentMethod } from '@/services/payment.service';
@@ -43,6 +44,7 @@ export function CheckoutPage() {
     const router = useRouter();
     const { t } = useTranslation();
     const { isAuthenticated, isGuest, isLoading: isAuthLoading } = useAuth();
+    const { askForPushOnUserAction } = useNotifications();
     const { user, addresses, refreshAddresses, isLoading: isUserLoading } = useUser();
     const {
         cart,
@@ -350,6 +352,10 @@ export function CheckoutPage() {
             toast.error(t('checkout.toast.paymentUnavailable'));
             return;
         }
+
+        // The order is going ahead: the moment to offer status updates. Must
+        // run before the first await, while the click still counts as a gesture.
+        askForPushOnUserAction();
 
         setIsProcessing(true);
         try {

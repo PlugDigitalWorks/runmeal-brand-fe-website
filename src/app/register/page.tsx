@@ -4,6 +4,7 @@ import { AuthRedirectingScreen } from '@/components/features/AuthRedirectingScre
 import { OAuthButtons } from '@/components/features/OAuthButtons';
 import { OtpChallenge } from '@/components/features/OtpChallenge';
 import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/context/NotificationsContext';
 import { resolveApiErrorMessage } from '@/lib/api-errors';
 import { takeReturnPath } from '@/lib/return-path';
 import { useAuthTargetFromQuery } from '@/hooks/useAuthTargetFromQuery';
@@ -22,6 +23,8 @@ type RegisterMethod = 'otp' | 'password';
 
 export default function RegisterPage() {
   const { register: registerUser, registerWithOtp, requestOtpLogin, verifyOtp } = useAuth();
+  // The submit click opens the browser's notification prompt; signing in then subscribes.
+  const { askForPushOnUserAction } = useNotifications();
   const router = useRouter();
   const { t } = useTranslation();
   const [method, setMethod] = useState<RegisterMethod>('otp');
@@ -130,7 +133,7 @@ export default function RegisterPage() {
               <div className="space-y-2"><label className="text-sm font-medium text-zinc-700" htmlFor="password">{t('auth.password')}</label><div className="relative"><input {...register('password')} id="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="••••••••" className="w-full rounded-md border border-zinc-200 px-3 py-2 pr-10 text-zinc-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /><button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}</div>
             )}
 
-            <button type="submit" disabled={isLoading} className="flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{isLoading ? (method === 'otp' ? t('auth.otp.sendingCode') : t('auth.register.submitting')) : (method === 'otp' ? t('auth.otp.sendCode') : t('auth.register.submit'))}</button>
+            <button type="submit" onClick={askForPushOnUserAction} disabled={isLoading} className="flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{isLoading ? (method === 'otp' ? t('auth.otp.sendingCode') : t('auth.register.submitting')) : (method === 'otp' ? t('auth.otp.sendCode') : t('auth.register.submit'))}</button>
             <button type="button" onClick={() => { setMethod(method === 'otp' ? 'password' : 'otp'); clearErrors(); }} className="w-full text-sm font-medium text-primary hover:text-primary/80">{method === 'otp' ? t('auth.otp.usePassword') : t('auth.otp.useCode')}</button>
             <div className="text-center text-sm text-zinc-500">{t('auth.register.haveAccount')} <Link href="/login" className="font-medium text-primary hover:text-primary/80">{t('auth.register.signIn')}</Link></div>
           </form>
