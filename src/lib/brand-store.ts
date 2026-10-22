@@ -39,6 +39,8 @@ export type ResolvedBrand = {
   /** ISO 4217 code every price of this brand is in, e.g. "GBP". */
   currency?: string;
   currencySymbol?: string;
+  /** The brand's content language: notifications are requested in it. */
+  language?: 'tr' | 'en';
 };
 
 type BrandResolveResponse = {

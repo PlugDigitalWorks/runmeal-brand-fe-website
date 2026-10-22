@@ -221,7 +221,10 @@
     "TABLE_PAY_LATER_DISABLED": "Pay later is not enabled for this table.",
     "TABLE_PAY_NOW_DISABLED": "Pay now is not enabled for this table.",
     "USER_ACTIVE_ADDRESS_LOCATION_MISSING": "The active address is missing location data.",
-    "VALIDATION_FAILED": "Some of the submitted values are not valid."
+    "VALIDATION_FAILED": "Some of the submitted values are not valid.",
+    "PUSH_ENDPOINT_NOT_ALLOWED": "This browser's push service is not supported.",
+    "PUSH_GUEST_NOT_ALLOWED": "Sign in to turn on notifications.",
+    "NOTIFICATION_NOT_FOUND": "Notification not found."
   },
   "auth": {
     "validation": {
@@ -967,5 +970,28 @@
     "privacy": "Privacy policy",
     "terms": "Terms of use",
     "navigation": "Legal"
+  },
+  "notifications": {
+    "title": "My notifications",
+    "headerLink": "Notifications",
+    "unreadBadge": "{{count}} unread notifications",
+    "unread": "Unread",
+    "empty": "You have no notifications yet.",
+    "loading": "Loading notifications...",
+    "loadFailed": "Notifications could not be loaded.",
+    "retry": "Try again",
+    "loadMore": "Show more",
+    "markAllRead": "Mark all as read",
+    "viewAll": "See all notifications",
+    "push": {
+      "title": "Turn on notifications",
+      "description": "Get your order status and offers as notifications.",
+      "enable": "Turn on notifications",
+      "enabling": "Turning on...",
+      "notNow": "Not now",
+      "enabled": "Notifications are on in this browser.",
+      "denied": "Notifications are blocked in this browser. To turn them on, allow notifications for this site in your browser settings.",
+      "failed": "Notifications could not be turned on. Please try again."
+    }
   }
 }

@@ -32,6 +32,19 @@ const nextConfig: NextConfig = {
     ],
     dangerouslyAllowLocalIP: isDev,
   },
+  // The push service worker must never be served stale, or a fix to it would
+  // wait for the HTTP cache to expire on every customer's browser.
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
+  },
   // The loyalty card used to live at /rewards; keep old links and bookmarks working.
   async redirects() {
     return [

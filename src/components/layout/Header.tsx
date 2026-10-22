@@ -12,6 +12,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { HeaderNavigation } from '@/components/layout/HeaderNavigation';
 import { useStampAvailability } from '@/hooks/useLoyaltyStamps';
 import { ActiveAddressSelect } from '@/components/features/address/ActiveAddressSelect';
+import { NotificationBell } from '@/components/features/NotificationBell';
 
 export function Header() {
     const { user, isAuthenticated, isGuest, logout } = useAuth();
@@ -85,6 +86,7 @@ export function Header() {
                                     <Gift size={18} />
                                 </Link>
                             )}
+                            <NotificationBell />
                             <Link
                                 href="/profile"
                                 aria-label={t('header.account')}
