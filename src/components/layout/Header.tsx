@@ -3,8 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useTable } from '@/context/TableContext';
 import { useBrand } from '@/context/BrandContext';
-import { useNotifications } from '@/context/NotificationsContext';
-import { Bell, Gift, LogOut, QrCode, User } from 'lucide-react';
+import { Gift, LogOut, QrCode, User } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTranslation } from 'react-i18next';
@@ -13,13 +12,13 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { HeaderNavigation } from '@/components/layout/HeaderNavigation';
 import { useStampAvailability } from '@/hooks/useLoyaltyStamps';
 import { ActiveAddressSelect } from '@/components/features/address/ActiveAddressSelect';
+import { NotificationBell } from '@/components/features/NotificationBell';
 
 export function Header() {
     const { user, isAuthenticated, isGuest, logout } = useAuth();
     const { isTableMode, journey } = useTable();
     const { t } = useTranslation();
     const { brand } = useBrand();
-    const { unreadCount, reloadNotifications } = useNotifications();
 
     // A QR guest is technically authenticated (throwaway CUSTOMER account), but
     // has no name, no profile and nothing to log out of — treat them as a
@@ -87,21 +86,7 @@ export function Header() {
                                     <Gift size={18} />
                                 </Link>
                             )}
-                            <Link
-                                href="/notifications"
-                                // Already on the page, the link alone would do nothing: reload the list.
-                                onClick={reloadNotifications}
-                                aria-label={unreadCount > 0 ? t('notifications.unreadBadge', { count: unreadCount }) : t('notifications.headerLink')}
-                                title={t('notifications.headerLink')}
-                                className="relative shrink-0 rounded-full p-2 text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-primary"
-                            >
-                                <Bell size={18} />
-                                {unreadCount > 0 && (
-                                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-white">
-                                        {unreadCount > 99 ? '99+' : unreadCount}
-                                    </span>
-                                )}
-                            </Link>
+                            <NotificationBell />
                             <Link
                                 href="/profile"
                                 aria-label={t('header.account')}

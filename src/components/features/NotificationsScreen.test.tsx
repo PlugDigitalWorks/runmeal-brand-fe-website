@@ -12,6 +12,7 @@ vi.mock('@/context/NotificationsContext', () => ({ useNotifications: () => notif
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace }) }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 vi.mock('@/services/notification.service', () => ({
+    NOTIFICATION_PAGE_LIMIT: 20,
     notificationService: { listMine: vi.fn(), markRead: vi.fn(), markAllRead: vi.fn(), unreadCount: vi.fn() },
 }));
 
@@ -46,7 +47,7 @@ describe('NotificationsScreen', () => {
         expect(await screen.findByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
         expect(screen.getByText('Kampanya başladı')).toBeInTheDocument();
         expect(document.querySelector('img')).toBeNull();
-        expect(notificationService.listMine).toHaveBeenCalledWith('en', 1);
+        expect(notificationService.listMine).toHaveBeenCalledWith('en', 1, 20);
         expect(notifications.refreshUnreadCount).toHaveBeenCalled();
     });
 
@@ -113,7 +114,7 @@ describe('NotificationsScreen', () => {
         await user.click(await screen.findByRole('button', { name: 'Daha fazla göster' }));
 
         expect(await screen.findByText('İkinci')).toBeInTheDocument();
-        expect(notificationService.listMine).toHaveBeenLastCalledWith('tr', 2);
+        expect(notificationService.listMine).toHaveBeenLastCalledWith('tr', 2, 20);
         expect(screen.queryByRole('button', { name: 'Daha fazla göster' })).not.toBeInTheDocument();
     });
 

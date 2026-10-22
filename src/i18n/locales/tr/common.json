@@ -982,6 +982,7 @@
     "retry": "Tekrar dene",
     "loadMore": "Daha fazla göster",
     "markAllRead": "Tümünü okundu yap",
+    "viewAll": "Tüm bildirimleri gör",
     "push": {
       "title": "Bildirimleri açın",
       "description": "Siparişinin durumunu ve kampanyaları bildirimle öğren.",

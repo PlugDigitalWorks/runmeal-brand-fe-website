@@ -982,6 +982,7 @@
     "retry": "Try again",
     "loadMore": "Show more",
     "markAllRead": "Mark all as read",
+    "viewAll": "See all notifications",
     "push": {
       "title": "Turn on notifications",
       "description": "Get your order status and offers as notifications.",
