@@ -13,6 +13,7 @@ import {
   VerifyOtpDto,
 } from '@/types/auth';
 import Cookies from 'js-cookie';
+import { removeWebPushSubscription } from '@/lib/web-push';
 
 const unwrapAuthData = <T>(payload: ApiResponse<T> | T): T => {
   if (payload && typeof payload === 'object' && 'data' in payload) {
@@ -203,6 +204,9 @@ export const authService = {
   },
 
   async logout() {
+    // While the token still works: detach this browser's push subscription so
+    // the next person on it gets nothing. Signing out never waits on it failing.
+    await removeWebPushSubscription().catch(() => undefined);
     try {
       // Same base as login/refresh, so the API can clear the refresh cookie it set.
       await api.post('/auth/logout', undefined, { baseURL: AUTH_API_URL });

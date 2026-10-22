@@ -221,7 +221,10 @@
     "TABLE_PAY_LATER_DISABLED": "Bu masa için sonra öde etkin değil.",
     "TABLE_PAY_NOW_DISABLED": "Bu masa için şimdi öde etkin değil.",
     "USER_ACTIVE_ADDRESS_LOCATION_MISSING": "Aktif adreste konum bilgisi eksik.",
-    "VALIDATION_FAILED": "Gönderilen bazı değerler geçerli değil."
+    "VALIDATION_FAILED": "Gönderilen bazı değerler geçerli değil.",
+    "PUSH_ENDPOINT_NOT_ALLOWED": "Bu tarayıcının bildirim servisi desteklenmiyor.",
+    "PUSH_GUEST_NOT_ALLOWED": "Bildirimleri açmak için giriş yapın.",
+    "NOTIFICATION_NOT_FOUND": "Bildirim bulunamadı."
   },
   "auth": {
     "validation": {
@@ -967,5 +970,27 @@
     "privacy": "Gizlilik politikası",
     "terms": "Kullanım koşulları",
     "navigation": "Yasal"
+  },
+  "notifications": {
+    "title": "Bildirimlerim",
+    "headerLink": "Bildirimler",
+    "unreadBadge": "{{count}} okunmamış bildirim",
+    "unread": "Okunmadı",
+    "empty": "Henüz bildiriminiz yok.",
+    "loading": "Bildirimler yükleniyor...",
+    "loadFailed": "Bildirimler yüklenemedi.",
+    "retry": "Tekrar dene",
+    "loadMore": "Daha fazla göster",
+    "markAllRead": "Tümünü okundu yap",
+    "push": {
+      "title": "Bildirimleri açın",
+      "description": "Siparişinin durumunu ve kampanyaları bildirimle öğren.",
+      "enable": "Bildirimleri aç",
+      "enabling": "Açılıyor...",
+      "notNow": "Şimdi değil",
+      "enabled": "Bu tarayıcıda bildirimler açık.",
+      "denied": "Bildirimler bu tarayıcıda engellenmiş. Açmak için tarayıcı ayarlarında bu siteye bildirim izni verin.",
+      "failed": "Bildirimler açılamadı. Lütfen tekrar deneyin."
+    }
   }
 }

@@ -184,7 +184,11 @@ const processQueue = (error: unknown, token: string | null = null) => {
 // Shared promise for ongoing refresh to avoid race conditions
 let refreshPromise: Promise<string> | null = null;
 
-const refreshAccessToken = async (): Promise<string> => {
+/**
+ * Refreshes the access token through the shared refresh queue. Exported for
+ * clients that do not go through axios (the order status stream).
+ */
+export const refreshAccessToken = async (): Promise<string> => {
   if (refreshPromise) return refreshPromise;
 
   isRefreshing = true;

@@ -10,6 +10,8 @@ import { orderService, Order, OrderDetails } from '@/services/order.service';
 import { OrderPromotionSnapshots } from '@/components/features/OrderPromotionSnapshots';
 import { DiscountedLinePrice } from '@/components/ui/DiscountedLinePrice';
 import { RUNMEAL_LOGO } from '@/lib/constants';
+import { watchOrderStatus } from '@/lib/order-status-stream';
+import { PushOptIn } from '@/components/features/PushOptIn';
 import {
     formatOrderDateTime,
     getOrderDisplayId,
@@ -47,6 +49,10 @@ function OrderDetailContent() {
     const [branch, setBranch] = useState<Branch | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // The branch the order belongs to, once known: the live status stream needs it.
+    const [orderBranchId, setOrderBranchId] = useState<string | null>(null);
+    // Bumped to load the order again with a normal request (after the stream gives up).
+    const [reloadKey, setReloadKey] = useState(0);
 
     const locale = i18n.resolvedLanguage === 'en' ? 'en-US' : 'tr-TR';
 
@@ -77,6 +83,7 @@ function OrderDetailContent() {
                 const details = await orderService.getOrderById(orderId, branchId, brandId);
                 if (cancelled) return;
                 setOrder(details);
+                setOrderBranchId(branchId);
 
                 try {
                     const branchDetails = await branchService.getBranchDetails(branchId);
@@ -99,7 +106,21 @@ function OrderDetailContent() {
         return () => {
             cancelled = true;
         };
-    }, [orderId, searchParams, t]);
+    }, [orderId, searchParams, t, reloadKey]);
+
+    // Live status for everyone on this screen, QR guests included. An `error`
+    // event ends the stream; the order is then loaded again the normal way.
+    useEffect(() => {
+        if (!orderId || !orderBranchId) return;
+        return watchOrderStatus({
+            orderId,
+            branchId: orderBranchId,
+            onStatus: (event) => {
+                setOrder((current) => (current && current.status !== event.status ? { ...current, status: event.status } : current));
+            },
+            onStreamError: () => setReloadKey((key) => key + 1),
+        });
+    }, [orderId, orderBranchId]);
 
     const subtotal = useMemo(
         () => (order ? getOrderSubtotal(order, order.items ?? []) : 0),
@@ -137,6 +158,8 @@ function OrderDetailContent() {
         <div className="container mx-auto max-w-3xl px-4 py-8">
 
             <div className="space-y-6">
+                {/* Signed-in customers only: offers status updates by push. */}
+                <PushOptIn />
                 <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
                         <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-100 bg-zinc-50">
@@ -154,7 +177,7 @@ function OrderDetailContent() {
                                         {t('orders.orderNo', { id: getOrderDisplayId(order) })}
                                     </p>
                                 </div>
-                                <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium capitalize ${statusClasses(order.status)}`}>
+                                <span aria-live="polite" className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium capitalize ${statusClasses(order.status)}`}>
                                     {order.status}
                                 </span>
                             </div>

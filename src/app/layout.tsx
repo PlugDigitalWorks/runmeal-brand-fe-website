@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { BrandProvider } from "@/context/BrandContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { UserProvider } from "@/context/UserContext";
+import { NotificationsProvider } from "@/context/NotificationsContext";
 import { BranchProvider } from "@/context/BranchContext";
 import { CartProvider } from "@/context/CartContext";
 import { TableProvider } from "@/context/TableContext";
@@ -87,6 +88,7 @@ export default function RootLayout({
           <BrandProvider>
           <AuthProvider>
             <UserProvider>
+              <NotificationsProvider>
               <GoogleMapsProvider>
                 {/* Wraps BranchProvider: a QR journey pins the branch, so the
                     table context has to be readable before branch/cart state
@@ -110,6 +112,7 @@ export default function RootLayout({
                   </BranchProvider>
                 </TableProvider>
               </GoogleMapsProvider>
+              </NotificationsProvider>
             </UserProvider>
           </AuthProvider>
           </BrandProvider>
