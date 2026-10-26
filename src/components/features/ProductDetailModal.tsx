@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { DEFAULT_PRODUCT_IMAGE } from '@/lib/constants';
 import { useTranslation } from 'react-i18next';
 import { Money } from '@/components/ui/Money';
+import { uniqueTags } from '@/lib/menu-tags';
+import { TagBadgeList } from './tags/TagBadge';
 
 export type SelectedProductOption =
     | { groupId: string; optionId: string; optionIds?: never }
@@ -273,6 +275,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canA
                             {product.discountedPrice && <span className="text-sm text-zinc-400 line-through"><Money value={product.discountedPrice} /></span>}
                         </div>
                         <p className="mt-2 text-zinc-600 text-sm leading-relaxed">{product.description}</p>
+                        <TagBadgeList tags={uniqueTags(product.tags)} className="mt-3" />
                     </div>
 
                     {loadingDetails && (

@@ -993,5 +993,8 @@
       "denied": "Bildirimler bu tarayıcıda engellenmiş. Açmak için tarayıcı ayarlarında bu siteye bildirim izni verin.",
       "failed": "Bildirimler açılamadı. Lütfen tekrar deneyin."
     }
+  },
+  "menu": {
+    "quickFilters": "Yemekleri filtrele"
   }
 }
