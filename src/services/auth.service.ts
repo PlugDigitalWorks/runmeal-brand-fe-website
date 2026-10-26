@@ -14,6 +14,7 @@ import {
 } from '@/types/auth';
 import Cookies from 'js-cookie';
 import { removeWebPushSubscription } from '@/lib/web-push';
+import { signupBranchHeaders } from '@/lib/branch-store';
 
 const unwrapAuthData = <T>(payload: ApiResponse<T> | T): T => {
   if (payload && typeof payload === 'object' && 'data' in payload) {
@@ -63,9 +64,25 @@ const exchangeHandoff = (provider: OAuthProvider, code: string): Promise<AuthRes
   return promise;
 };
 
+/**
+ * The sign-up body the API accepts — anything else is a 400 VALIDATION_FAILED.
+ * The branch goes as a header instead (`signupBranchHeaders`).
+ */
+const toRegisterBody = ({ email, firstName, lastName, password, country }: RegisterDto): RegisterDto => ({
+  email,
+  firstName,
+  lastName,
+  ...(password ? { password } : {}),
+  ...(country ? { country } : {}),
+});
+
+const isOAuthMethod = (method?: string): method is OAuthProvider => method === 'google' || method === 'apple';
+
 export const authService = {
   async register(data: RegisterDto) {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', data);
+    const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', toRegisterBody(data), {
+      headers: signupBranchHeaders(),
+    });
     return response.data.data;
   },
 
@@ -91,7 +108,7 @@ export const authService = {
       ...data,
       method: data.method || 'password',
       client: data.client || AUTH_CLIENT,
-    });
+    }, isOAuthMethod(data.method) ? { headers: signupBranchHeaders() } : undefined);
 
     persistAuthResponse(response.data.data);
 
@@ -110,7 +127,11 @@ export const authService = {
   },
 
   async registerWithOtp(data: Omit<RegisterDto, 'password'>) {
-    const response = await api.post<ApiResponse<OtpRequestResponse> | OtpRequestResponse>('/auth/register', data);
+    const response = await api.post<ApiResponse<OtpRequestResponse> | OtpRequestResponse>(
+      '/auth/register',
+      toRegisterBody(data),
+      { headers: signupBranchHeaders() },
+    );
     return unwrapAuthData(response.data);
   },
 
@@ -152,11 +173,15 @@ export const authService = {
     return data;
   },
 
-  /** Google and Apple start the same way; the response also sets the provider's binding cookie. */
+  /**
+   * Google and Apple start the same way; the response also sets the provider's
+   * binding cookie. A first sign-in opens the account, so the branch goes along.
+   */
   async startOAuthLogin(provider: OAuthProvider) {
     const response = await authApi.post<ApiResponse<OAuthLoginStartResponse>>(
       '/auth/login',
       { method: provider, client: AUTH_CLIENT },
+      { headers: signupBranchHeaders() },
     );
 
     return response.data.data;

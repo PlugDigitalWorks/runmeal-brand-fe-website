@@ -89,10 +89,6 @@ export interface RegisterDto {
   lastName: string;
   password?: string;
   country?: string;
-  role?: string;
-  phoneNumber?: string;
-  latitude?: string;
-  longitude?: string;
 }
 
 export interface ForgotPasswordDto {
