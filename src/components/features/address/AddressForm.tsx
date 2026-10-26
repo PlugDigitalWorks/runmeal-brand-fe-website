@@ -407,62 +407,67 @@ export function AddressForm({ address, onCancel, onSuccess }: AddressFormProps) 
                 <Input label={t('address.district')} {...register('district')} />
                 <Input label={t('address.province')} {...register('province')} />
             </div>
+            {/* Left: where the address is (postcode, lines); right: how to reach the door. */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Controller
-                    name="phoneE164"
-                    control={control}
-                    render={({ field }) => (
-                        <PhoneField
-                            label={t('address.phone')}
-                            value={field.value}
-                            onChange={field.onChange}
-                            onBlur={field.onBlur}
-                            countryCode={watch('countryCode')}
-                            error={errors.phoneE164?.message}
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <Input
+                            label={t('address.postalCode')}
+                            placeholder={POSTAL_CODE_PLACEHOLDERS[watchedCountry] ?? ''}
+                            autoComplete="postal-code"
+                            {...register('postalCode')}
+                            error={errors.postalCode?.message}
                         />
-                    )}
-                />
-                <div className="space-y-1">
+                        {postalLookup === 'loading' && <p className="text-xs text-zinc-500">{t('address.postalCodeLooking')}</p>}
+                        {postalLookup === 'notFound' && <p className="text-xs text-amber-600">{t('address.postalCodeNotFound')}</p>}
+                    </div>
                     <Input
-                        label={t('address.postalCode')}
-                        placeholder={POSTAL_CODE_PLACEHOLDERS[watchedCountry] ?? ''}
-                        autoComplete="postal-code"
-                        {...register('postalCode')}
-                        error={errors.postalCode?.message}
+                        label={t('address.firstLine')}
+                        placeholder={FIRST_LINE_PLACEHOLDERS[watchedCountry] ?? ''}
+                        autoComplete="address-line1"
+                        maxLength={STREET_MAX_LENGTH}
+                        {...register('street')}
+                        error={errors.street?.message}
                     />
-                    {postalLookup === 'loading' && <p className="text-xs text-zinc-500">{t('address.postalCodeLooking')}</p>}
-                    {postalLookup === 'notFound' && <p className="text-xs text-amber-600">{t('address.postalCodeNotFound')}</p>}
+                    <Input
+                        label={`${t('address.secondLine')} (${t('address.optional')})`}
+                        placeholder={SECOND_LINE_PLACEHOLDERS[watchedCountry] ?? ''}
+                        autoComplete="address-line2"
+                        maxLength={SECOND_LINE_MAX_LENGTH}
+                        {...register('line2')}
+                        error={errors.line2?.message}
+                    />
                 </div>
-            </div>
-            <Input
-                label={t('address.firstLine')}
-                placeholder={FIRST_LINE_PLACEHOLDERS[watchedCountry] ?? ''}
-                autoComplete="address-line1"
-                maxLength={STREET_MAX_LENGTH}
-                {...register('street')}
-                error={errors.street?.message}
-            />
-            <Input
-                label={`${t('address.secondLine')} (${t('address.optional')})`}
-                placeholder={SECOND_LINE_PLACEHOLDERS[watchedCountry] ?? ''}
-                autoComplete="address-line2"
-                maxLength={SECOND_LINE_MAX_LENGTH}
-                {...register('line2')}
-                error={errors.line2?.message}
-            />
-            <div className="space-y-2">
-                <label htmlFor="address-note" className="text-sm font-medium leading-none">
-                    {t('address.note')} <span className="font-normal text-zinc-400">({t('address.optional')})</span>
-                </label>
-                <textarea
-                    id="address-note"
-                    rows={3}
-                    maxLength={NOTE_MAX_LENGTH}
-                    placeholder={t('address.notePlaceholder')}
-                    {...register('note')}
-                    className={`flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 ${errors.note ? 'border-red-500 focus-visible:ring-red-500' : 'border-zinc-200 focus-visible:ring-zinc-950'}`}
-                />
-                {errors.note && <p className="text-xs font-medium text-red-500">{errors.note.message}</p>}
+                <div className="space-y-4">
+                    <Controller
+                        name="phoneE164"
+                        control={control}
+                        render={({ field }) => (
+                            <PhoneField
+                                label={t('address.phone')}
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                countryCode={watch('countryCode')}
+                                error={errors.phoneE164?.message}
+                            />
+                        )}
+                    />
+                    <div className="space-y-2">
+                        <label htmlFor="address-note" className="text-sm font-medium leading-none">
+                            {t('address.note')} <span className="font-normal text-zinc-400">({t('address.optional')})</span>
+                        </label>
+                        <textarea
+                            id="address-note"
+                            rows={3}
+                            maxLength={NOTE_MAX_LENGTH}
+                            placeholder={t('address.notePlaceholder')}
+                            {...register('note')}
+                            className={`flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 ${errors.note ? 'border-red-500 focus-visible:ring-red-500' : 'border-zinc-200 focus-visible:ring-zinc-950'}`}
+                        />
+                        {errors.note && <p className="text-xs font-medium text-red-500">{errors.note.message}</p>}
+                    </div>
+                </div>
             </div>
 
             <div className="flex justify-end pt-2 gap-2">
