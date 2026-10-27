@@ -7,7 +7,7 @@ import type { Branch, BranchAvailabilityResponse, BrandBranch } from '@/types/br
 import { useAuth } from './AuthContext';
 import { useTable } from './TableContext';
 import { useUser } from './UserContext';
-import { setSelectedBranchId } from '@/lib/branch-store';
+import { setKnownBranches, setSelectedBranchId } from '@/lib/branch-store';
 
 interface BranchContextType {
     selectedBranch: Branch | BrandBranch | null;
@@ -88,6 +88,9 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         setSelectedBranchId(activeBranchId);
     }, [activeBranchId]);
+    useEffect(() => {
+        setKnownBranches(branches);
+    }, [branches]);
     const hasNoOrderTypes = !isTableMode && selectedBranch !== null && !hasStorefrontOrderType(selectedBranch);
 
     const refreshAvailability = useCallback(async () => {

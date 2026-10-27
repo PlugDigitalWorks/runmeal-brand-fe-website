@@ -60,6 +60,20 @@ export function rememberReturnPath(path: string) {
   }
 }
 
+/** The recorded page without clearing it, or null when none is recorded or it is stale. */
+export function peekReturnPath(): string | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const { path, savedAt } = JSON.parse(raw) as StoredReturnPath;
+    if (typeof path !== 'string' || !isSafeReturnPath(path)) return null;
+    if (typeof savedAt !== 'number' || Date.now() - savedAt > MAX_AGE_MS) return null;
+    return path;
+  } catch {
+    return null;
+  }
+}
+
 /** The page to land on after auth, `/` when none is recorded. Read once, then cleared. */
 export function takeReturnPath(): string {
   try {

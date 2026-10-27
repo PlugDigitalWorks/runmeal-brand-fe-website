@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { api, authApi } from '@/lib/axios';
-import { setSelectedBranchId } from '@/lib/branch-store';
+import { setKnownBranches, setSelectedBranchId } from '@/lib/branch-store';
+import { rememberReturnPath, resolveAuthTarget } from '@/lib/return-path';
 import { authService } from './auth.service';
 
 vi.mock('@/lib/axios', () => ({
@@ -93,5 +94,60 @@ describe('authService sign-up branch', () => {
             password: 'secret1',
             country: 'GB',
         });
+    });
+});
+
+describe('authService sign-up branch from a ?to= link', () => {
+    const RICHMOND = '1f0e2d3c-4b5a-4968-8776-a5b4c3d2e1f0';
+    const headersOf = (call: unknown[]) => (call[2] as { headers?: Record<string, string> } | undefined)?.headers ?? {};
+
+    beforeEach(() => {
+        localStorage.clear();
+        setSelectedBranchId(BRANCH_ID);
+        setKnownBranches([
+            { id: BRANCH_ID, slug: 'kew' },
+            { id: RICHMOND, slug: 'richmond' },
+        ]);
+        mockedApi.post.mockResolvedValue({ data: { status: true, data: {} } });
+        mockedAuthApi.post.mockResolvedValue({ data: { status: true, data: { redirectUrl: 'https://accounts.example' } } });
+    });
+
+    it('records the branch of a /register?to=<slug> QR over the selected one', async () => {
+        // What the login/register pages store for `?to=Richmond`.
+        rememberReturnPath(resolveAuthTarget('Richmond')!);
+
+        await authService.register({ email: 'a@b.co', firstName: 'Ada', lastName: 'Lovelace', password: 'secret1' });
+        await authService.startOAuthLogin('apple');
+
+        expect(headersOf(mockedApi.post.mock.calls[0])).toEqual({ 'x-branch-id': RICHMOND });
+        expect(headersOf(mockedAuthApi.post.mock.calls[0])).toEqual({ 'x-branch-id': RICHMOND });
+    });
+
+    it.each(['/loyalty', '/checkout', '/', '/order?qr=abc', '/unknown-branch'])(
+        'falls back to the selected branch when the return path %s names no branch',
+        async (path) => {
+            rememberReturnPath(path);
+
+            await authService.startOAuthLogin('google');
+
+            expect(headersOf(mockedAuthApi.post.mock.calls[0])).toEqual({ 'x-branch-id': BRANCH_ID });
+        },
+    );
+
+    it('sends nothing when neither the link nor a selection names a branch', async () => {
+        setSelectedBranchId(null);
+        rememberReturnPath('/loyalty');
+
+        await authService.registerWithOtp({ email: 'a@b.co', firstName: 'Ada', lastName: 'Lovelace' });
+
+        expect(headersOf(mockedApi.post.mock.calls[0])).not.toHaveProperty('x-branch-id');
+    });
+
+    it('does not consume the return path the customer lands on afterwards', async () => {
+        rememberReturnPath('/richmond');
+
+        await authService.startOAuthLogin('google');
+
+        expect(JSON.parse(localStorage.getItem('auth_return_path') ?? '{}').path).toBe('/richmond');
     });
 });
