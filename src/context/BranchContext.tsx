@@ -7,6 +7,7 @@ import type { Branch, BranchAvailabilityResponse, BrandBranch } from '@/types/br
 import { useAuth } from './AuthContext';
 import { useTable } from './TableContext';
 import { useUser } from './UserContext';
+import { setKnownBranches, setSelectedBranchId } from '@/lib/branch-store';
 
 interface BranchContextType {
     selectedBranch: Branch | BrandBranch | null;
@@ -82,6 +83,14 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
 
     const tableBranchId = isTableMode ? journey?.branchId ?? null : null;
     const activeBranchId = tableBranchId ?? selectedBranch?.id ?? null;
+
+    // Sign-ups record the branch they came from (see `signupBranchHeaders`).
+    useEffect(() => {
+        setSelectedBranchId(activeBranchId);
+    }, [activeBranchId]);
+    useEffect(() => {
+        setKnownBranches(branches);
+    }, [branches]);
     const hasNoOrderTypes = !isTableMode && selectedBranch !== null && !hasStorefrontOrderType(selectedBranch);
 
     const refreshAvailability = useCallback(async () => {

@@ -21,7 +21,6 @@ export function AuthModal() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
@@ -36,7 +35,6 @@ export function AuthModal() {
     setEmail('');
     setPassword('');
     setName('');
-    setPhone('');
     setSentEmail(null);
     setMethod('otp');
     resetCaptcha();
@@ -90,7 +88,7 @@ export function AuthModal() {
           setSentEmail(email);
           toast.success(t('auth.otp.sent'));
         } else {
-          await register({ email, password, phoneNumber: phone, ...person });
+          await register({ email, password, ...person });
           toast.success(t('auth.register.success'));
           changeTab('LOGIN');
         }
@@ -164,7 +162,6 @@ export function AuthModal() {
                 {activeTab === 'REGISTER' && (
                   <>
                     <div className="space-y-1"><label className="text-xs font-medium text-zinc-700">{t('auth.fullName')}</label><input type="text" required minLength={2} value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder={t('auth.fullNamePlaceholder')} /></div>
-                    {method === 'password' && <div className="space-y-1"><label className="text-xs font-medium text-zinc-700">{t('auth.phone')}</label><input type="tel" required value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="+90 555 123 4567" /></div>}
                   </>
                 )}
                 <div className="space-y-1"><label className="text-xs font-medium text-zinc-700">{t('auth.email')}</label><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder={t('auth.emailPlaceholder')} /></div>

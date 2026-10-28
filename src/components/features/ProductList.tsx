@@ -15,6 +15,11 @@ import { DEFAULT_PRODUCT_IMAGE } from '@/lib/constants';
 import { getBrandId } from '@/lib/brand-store';
 import { ProductDetailModal, type SelectedProductAddon, type SelectedProductOption } from './ProductDetailModal';
 import { Money } from '@/components/ui/Money';
+import { cn } from '@/lib/utils';
+import { collectProductTags, filterMenuByTag, uniqueTags } from '@/lib/menu-tags';
+import type { Tag } from '@/types/tag';
+import { TagBadgeList, useTagName } from './tags/TagBadge';
+import { TagIcon } from './tags/tag-icons';
 
 export function ProductList() {
     // `activeBranchId`, not `selectedBranch`: in a QR journey the branch is
@@ -34,6 +39,9 @@ export function ProductList() {
     const [categories, setCategories] = useState<Category[]>([]);
     // const [products, setProducts] = useState<Product[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    // Quick filter: one product tag; the menu keeps only products carrying it.
+    const [activeTagId, setActiveTagId] = useState<string | null>(null);
+    const nameOfTag = useTagName();
     const [loading, setLoading] = useState(false);
 
     // Modal State
@@ -174,6 +182,10 @@ export function ProductList() {
 
     if (loading) return <div className="text-center py-10">{t('common.loading')}</div>;
 
+    const quickTags = collectProductTags(categories);
+    const visibleCategories = filterMenuByTag(categories, activeTagId);
+    const activeCategory = visibleCategories.find(cat => cat.id === selectedCategory) ?? null;
+
     const canOrder = Boolean(activeBranchId && availability?.canAcceptOrders && !hasNoOrderTypes);
     // No order type is a branch setting, not a passing state: nothing to check again.
     const showAvailabilityRetry = !isAvailabilityLoading && !hasNoOrderTypes;
@@ -210,15 +222,15 @@ export function ProductList() {
                 <div className="flex p-4 gap-4 min-w-max">
                     <button
                         onClick={() => setSelectedCategory(null)}
-                        className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${!selectedCategory ? 'bg-primary text-white' : 'bg-white border border-zinc-200 text-zinc-600 hover:border-primary hover:text-primary'}`}
+                        className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${!activeCategory ? 'bg-primary text-white' : 'bg-white border border-zinc-200 text-zinc-600 hover:border-primary hover:text-primary'}`}
                     >
                         {t('product.all')}
                     </button>
-                    {categories.map(cat => (
+                    {visibleCategories.map(cat => (
                         <button
                             key={cat.id}
                             onClick={() => setSelectedCategory(cat.id)}
-                            className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategory === cat.id ? 'bg-primary text-white' : 'bg-white border border-zinc-200 text-zinc-600 hover:border-primary hover:text-primary'}`}
+                            className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeCategory?.id === cat.id ? 'bg-primary text-white' : 'bg-white border border-zinc-200 text-zinc-600 hover:border-primary hover:text-primary'}`}
                         >
                             {cat.name}
                         </button>
@@ -226,23 +238,54 @@ export function ProductList() {
                 </div>
             </div>
 
+            {quickTags.length > 0 && (
+                <div
+                    role="group"
+                    aria-label={t('menu.quickFilters')}
+                    className="flex gap-2 overflow-x-auto scrollbar-hide px-6 pt-4"
+                >
+                    {quickTags.map(tag => {
+                        const selected = activeTagId === tag.id;
+                        return (
+                            <button
+                                key={tag.id}
+                                type="button"
+                                aria-pressed={selected}
+                                onClick={() => setActiveTagId(selected ? null : tag.id)}
+                                className={cn(
+                                    'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                                    selected
+                                        ? 'bg-primary text-white border-primary'
+                                        : 'bg-white text-zinc-600 border-zinc-200 hover:border-primary hover:text-primary',
+                                )}
+                            >
+                                <TagIcon icon={tag.icon} className="h-4 w-4 shrink-0" />
+                                {nameOfTag(tag)}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             {/* Product List */}
             <div className="p-6 space-y-8">
-                {selectedCategory ? (
+                {activeCategory ? (
                     <ProductSection
-                        title={categories.find(c => c.id === selectedCategory)?.name || t('product.products')}
-                        products={categories.find(c => c.id === selectedCategory)?.products || []}
+                        title={activeCategory.name || t('product.products')}
+                        tags={activeCategory.tags}
+                        products={activeCategory.products || []}
                         onProductClick={handleProductClick}
                         isBranchSelected={canOrder}
                     />
-                ) : categories.length > 0 ? (
-                    categories.map(cat => {
+                ) : visibleCategories.length > 0 ? (
+                    visibleCategories.map(cat => {
                         const catProducts = cat.products || [];
                         if (catProducts.length === 0) return null;
                         return (
                             <ProductSection
                                 key={cat.id}
                                 title={cat.name}
+                                tags={cat.tags}
                                 products={catProducts}
                                 onProductClick={handleProductClick}
                                 isBranchSelected={canOrder}
@@ -265,10 +308,13 @@ export function ProductList() {
     );
 }
 
-function ProductSection({ title, products, onProductClick, isBranchSelected }: { title: string, products: Product[], onProductClick: (p: Product) => void, isBranchSelected: boolean }) {
+function ProductSection({ title, tags, products, onProductClick, isBranchSelected }: { title: string, tags?: Tag[], products: Product[], onProductClick: (p: Product) => void, isBranchSelected: boolean }) {
     return (
-        <div>
-            <h3 className="text-lg font-bold text-zinc-800 mb-4 pb-2 border-b border-zinc-100">{title}</h3>
+        <section aria-label={title}>
+            <div className="mb-4 pb-2 border-b border-zinc-100 flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-bold text-zinc-800">{title}</h3>
+                <TagBadgeList tags={tags} />
+            </div>
             <div className="space-y-4">
                 {products.map(product => (
                     // The whole row opens the product; the + button stays as the
@@ -314,6 +360,7 @@ function ProductSection({ title, products, onProductClick, isBranchSelected }: {
                             <div className="min-w-0">
                                 <h4 className="font-bold text-zinc-800 break-words">{product.name}</h4>
                                 <p className="text-xs text-zinc-500 line-clamp-2 break-words">{product.description}</p>
+                                <TagBadgeList tags={uniqueTags(product.tags)} className="mt-1" />
                             </div>
                         </div>
                         <div className="font-bold text-zinc-800 whitespace-nowrap ml-14 sm:ml-4 text-right sm:text-left">
@@ -322,6 +369,6 @@ function ProductSection({ title, products, onProductClick, isBranchSelected }: {
                     </div>
                 ))}
             </div>
-        </div>
+        </section>
     )
 }

@@ -993,5 +993,8 @@
       "denied": "Notifications are blocked in this browser. To turn them on, allow notifications for this site in your browser settings.",
       "failed": "Notifications could not be turned on. Please try again."
     }
+  },
+  "menu": {
+    "quickFilters": "Filter dishes"
   }
 }
