@@ -22,7 +22,9 @@ export type TableOrderErrorCode =
     | 'TABLE_NOT_FOUND'
     | 'CART_NOT_FOUND'
     | 'PAYMENT_ALREADY_COMPLETED_FOR_CART'
-    | 'ORDER_CART_BRANCH_MISMATCH';
+    | 'ORDER_CART_BRANCH_MISMATCH'
+    | 'PRODUCT_SOLD_OUT'
+    | 'PRODUCT_QUANTITY_UNAVAILABLE';
 
 /** What the UI must do next; nothing here retries a checkout on its own. */
 export type TableOrderErrorAction =
@@ -32,6 +34,8 @@ export type TableOrderErrorAction =
     | 'RESET_CART'
     /** A payment owns this cart; stay on the online-payment journey. */
     | 'KEEP_PAYMENT'
+    /** Not enough stock left: keep the cart, refetch it and the menu. */
+    | 'REFRESH_STOCK'
     /** Nothing to recover automatically, just show the message. */
     | 'SHOW_MESSAGE';
 
@@ -59,6 +63,8 @@ const ACTION_BY_CODE: Record<TableOrderErrorCode, TableOrderErrorAction> = {
     CART_ALREADY_SUBMITTED: 'RESET_CART',
     CART_NOT_FOUND: 'RESET_CART',
     PAYMENT_ALREADY_COMPLETED_FOR_CART: 'RESET_CART',
+    PRODUCT_SOLD_OUT: 'REFRESH_STOCK',
+    PRODUCT_QUANTITY_UNAVAILABLE: 'REFRESH_STOCK',
 };
 
 const isKnownCode = (value: string | undefined): value is TableOrderErrorCode =>

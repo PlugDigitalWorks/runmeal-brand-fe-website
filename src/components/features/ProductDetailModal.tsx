@@ -29,9 +29,11 @@ interface ProductDetailModalProps {
     onClose: () => void;
     onAddToCart: (product: Product, quantity: number, options: SelectedProductOption[], addons: SelectedProductAddon[], note?: string) => void;
     canAddToCart?: boolean;
+    /** Overrides `product.isSoldOut` with the latest menu read. */
+    isSoldOut?: boolean;
 }
 
-export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canAddToCart = true }: ProductDetailModalProps) {
+export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canAddToCart = true, isSoldOut }: ProductDetailModalProps) {
     const { t } = useTranslation();
     const { selectedBranch } = useBranch();
     const [quantity, setQuantity] = useState(1);
@@ -98,6 +100,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canA
 
     if (!isOpen || !product) return null;
 
+    const soldOut = isSoldOut ?? Boolean(product.isSoldOut);
     const basePrice = Number(product.discountedPrice || product.price);
 
     const calculateTotal = () => {
@@ -157,6 +160,7 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canA
     };
 
     const handleAddToCart = () => {
+        if (soldOut) return;
         // Validate Required Groups
         for (const group of optionGroups) {
             const selectedCount = (selections[group.id] || []).length;
@@ -411,10 +415,16 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart, canA
 
                     <button
                         onClick={handleAddToCart}
-                        disabled={loadingDetails || !canAddToCart}
+                        disabled={loadingDetails || !canAddToCart || soldOut}
                         className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary/25 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loadingDetails ? t('common.loading') : canAddToCart ? t('product.addToCart') : t('fulfillment.branchUnavailableShort')}
+                        {loadingDetails
+                            ? t('common.loading')
+                            : !canAddToCart
+                                ? t('fulfillment.branchUnavailableShort')
+                                : soldOut
+                                    ? t('product.soldOut')
+                                    : t('product.addToCart')}
                     </button>
                 </div>
 

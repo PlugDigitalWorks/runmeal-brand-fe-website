@@ -17,6 +17,7 @@ import { CartItem, CartLoyaltyWallet, CartProductReward, CartPromotion, LoyaltyP
 import { sanitizePositiveNumber } from '@/lib/utils';
 import { branchCanDeliver } from '@/lib/branch-details';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
+import { isStockErrorCode } from '@/lib/stock-errors';
 import { isProductRewardCheckoutError, resolveLoyaltyError, resolveUnapplicableReason } from '@/lib/loyalty-errors';
 import {
     getProductReward,
@@ -61,6 +62,7 @@ export function CheckoutPage() {
         isAvailabilityLoading,
         hasAvailabilityError,
         refreshAvailability,
+        invalidateMenu,
     } = useBranch();
 
     const [isProcessing, setIsProcessing] = useState(false);
@@ -412,6 +414,16 @@ export function CheckoutPage() {
             if (apiError.code === 'SCHEDULED_PICKUP_PAYMENT_METHOD_INVALID') {
                 setSelectedPaymentMethod('ONLINE_CARD');
                 toast.error(t('checkout.toast.scheduledPickupCardOnly'));
+                return;
+            }
+            if (isStockErrorCode(apiError.code)) {
+                // Stock ran out after it went into the cart. The cart is kept;
+                // the customer lowers the quantity or removes the item.
+                invalidateMenu();
+                await refreshCart();
+                toast.error(resolveApiErrorMessage(error, t('checkout.toast.failedOrder')), {
+                    description: t('cart.stockAdjustHint'),
+                });
                 return;
             }
             const loyaltyError = resolveLoyaltyError(error);

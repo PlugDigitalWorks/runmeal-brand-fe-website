@@ -189,6 +189,8 @@
     "POS_PROVIDER_REJECTED": "The POS provider rejected this request.",
     "POS_PROVIDER_REQUEST_FAILED": "The POS provider could not complete this request.",
     "PRODUCT_NOT_FOUND": "Product not found.",
+    "PRODUCT_QUANTITY_UNAVAILABLE": "Not enough {{productName}} is left for this order.",
+    "PRODUCT_SOLD_OUT": "{{productName}} is sold out.",
     "SPLIT_PART_ALREADY_PAID": "This part has already been paid.",
     "SPLIT_PART_AMOUNT_TOO_SMALL": "Each split part must be at least 0.01.",
     "SPLIT_PART_NOT_FOUND": "Split part not found.",
@@ -558,6 +560,8 @@
   "cart": {
     "itemAdded": "Item added to cart",
     "itemAddFailed": "Failed to add item to cart",
+    "stockAdjustHint": "Lower the quantity or remove it from your cart to continue.",
+    "qtyUpdateFailed": "The quantity could not be updated.",
     "confirmOrder": "Confirm Order",
     "myCart": "My Cart",
     "yourCart": "Your Cart",
@@ -594,7 +598,8 @@
     "productNote": "Product Note",
     "productNotePlaceholder": "Add a note for this item",
     "totalAmount": "Total Amount",
-    "addToCart": "Add to Cart"
+    "addToCart": "Add to Cart",
+    "soldOut": "Sold out"
   },
   "address": {
     "searchPlaceholder": "Search for an address, postcode or place",
