@@ -159,6 +159,7 @@ export function ProductList() {
             toast.error(t('fulfillment.branchUnavailable'));
             return;
         }
+        if (product.isSoldOut) return;
         setSelectedProduct(product);
         setIsModalOpen(true);
     };
@@ -187,6 +188,15 @@ export function ProductList() {
     const activeCategory = visibleCategories.find(cat => cat.id === selectedCategory) ?? null;
 
     const canOrder = Boolean(activeBranchId && availability?.canAcceptOrders && !hasNoOrderTypes);
+    // Read from the refetched menu, so a product that sold out while its modal
+    // was open (a stock error refetches the menu) shows as sold out there too.
+    // Only the flag: a new product object would reset the customer's choices.
+    const isSelectedSoldOut = selectedProduct
+        ? Boolean(
+            (categories.flatMap(cat => cat.products || []).find(p => p.id === selectedProduct.id) ?? selectedProduct)
+                .isSoldOut,
+        )
+        : false;
     // No order type is a branch setting, not a passing state: nothing to check again.
     const showAvailabilityRetry = !isAvailabilityLoading && !hasNoOrderTypes;
 
@@ -303,12 +313,14 @@ export function ProductList() {
                 onClose={() => setIsModalOpen(false)}
                 onAddToCart={handleAddToCartFromModal}
                 canAddToCart={canOrder}
+                isSoldOut={isSelectedSoldOut}
             />
         </div>
     );
 }
 
 function ProductSection({ title, tags, products, onProductClick, isBranchSelected }: { title: string, tags?: Tag[], products: Product[], onProductClick: (p: Product) => void, isBranchSelected: boolean }) {
+    const { t } = useTranslation();
     return (
         <section aria-label={title}>
             <div className="mb-4 pb-2 border-b border-zinc-100 flex flex-wrap items-center gap-2">
@@ -316,14 +328,19 @@ function ProductSection({ title, tags, products, onProductClick, isBranchSelecte
                 <TagBadgeList tags={tags} />
             </div>
             <div className="space-y-4">
-                {products.map(product => (
+                {products.map(product => {
+                    // Still listed, but it cannot be ordered until staff add stock.
+                    const soldOut = Boolean(product.isSoldOut);
+                    const orderable = isBranchSelected && !soldOut;
+                    return (
                     // The whole row opens the product; the + button stays as the
                     // keyboard-reachable control and stops its click from also
                     // reaching the row, which would open the modal twice.
                     <div
                         key={product.id}
-                        onClick={isBranchSelected ? () => onProductClick(product) : undefined}
-                        className={`flex flex-col sm:flex-row sm:items-center justify-between group hover:bg-zinc-50 p-2 rounded transition-colors gap-4 ${isBranchSelected ? 'cursor-pointer' : ''}`}
+                        onClick={orderable ? () => onProductClick(product) : undefined}
+                        aria-disabled={soldOut || undefined}
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between group p-2 rounded transition-colors gap-4 ${orderable ? 'cursor-pointer hover:bg-zinc-50' : ''} ${soldOut ? 'opacity-60' : ''}`}
                     >
                         <div className="flex items-start gap-4 flex-1">
                             <div className="flex items-center gap-2 shrink-0">
@@ -333,13 +350,14 @@ function ProductSection({ title, tags, products, onProductClick, isBranchSelecte
                                         event.stopPropagation();
                                         onProductClick(product);
                                     }}
-                                    disabled={!isBranchSelected}
-                                    className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${!isBranchSelected ? 'bg-zinc-300 text-zinc-500 cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
+                                    disabled={!orderable}
+                                    aria-label={soldOut ? `${product.name} — ${t('product.soldOut')}` : product.name}
+                                    className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${!orderable ? 'bg-zinc-300 text-zinc-500 cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
                                 >
                                     <Plus size={18} />
                                 </button>
                             </div>
-                            <div className="w-16 h-12 bg-zinc-100 rounded overflow-hidden relative shrink-0">
+                            <div className={`w-16 h-12 bg-zinc-100 rounded overflow-hidden relative shrink-0 ${soldOut ? 'grayscale' : ''}`}>
                                 {(product.imageUrl || product.image) ? (
                                     <Image
                                         src={product.imageUrl || product.image || ''}
@@ -358,7 +376,14 @@ function ProductSection({ title, tags, products, onProductClick, isBranchSelecte
                                 )}
                             </div>
                             <div className="min-w-0">
-                                <h4 className="font-bold text-zinc-800 break-words">{product.name}</h4>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h4 className="font-bold text-zinc-800 break-words">{product.name}</h4>
+                                    {soldOut && (
+                                        <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+                                            {t('product.soldOut')}
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-xs text-zinc-500 line-clamp-2 break-words">{product.description}</p>
                                 <TagBadgeList tags={uniqueTags(product.tags)} className="mt-1" />
                             </div>
@@ -367,7 +392,8 @@ function ProductSection({ title, tags, products, onProductClick, isBranchSelecte
                             <Money value={product.price} />
                         </div>
                     </div>
-                ))}
+                    );
+                })}
             </div>
         </section>
     )

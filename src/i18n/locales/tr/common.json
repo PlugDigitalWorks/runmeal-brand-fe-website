@@ -189,6 +189,8 @@
     "POS_PROVIDER_REJECTED": "POS sağlayıcısı bu isteği reddetti.",
     "POS_PROVIDER_REQUEST_FAILED": "POS sağlayıcısı bu isteği tamamlayamadı.",
     "PRODUCT_NOT_FOUND": "Ürün bulunamadı.",
+    "PRODUCT_QUANTITY_UNAVAILABLE": "Bu sipariş için yeterli {{productName}} kalmadı.",
+    "PRODUCT_SOLD_OUT": "{{productName}} tükendi.",
     "SPLIT_PART_ALREADY_PAID": "Bu parça zaten ödendi.",
     "SPLIT_PART_AMOUNT_TOO_SMALL": "Her ödeme parçası en az 0,01 olmalı.",
     "SPLIT_PART_NOT_FOUND": "Ödeme parçası bulunamadı.",
@@ -558,6 +560,8 @@
   "cart": {
     "itemAdded": "Ürün sepete eklendi",
     "itemAddFailed": "Ürün sepete eklenemedi",
+    "stockAdjustHint": "Devam etmek için adedi azaltın veya ürünü sepetten çıkarın.",
+    "qtyUpdateFailed": "Adet güncellenemedi.",
     "confirmOrder": "Siparişi Onayla",
     "myCart": "Sepetim",
     "yourCart": "Sepetiniz",
@@ -594,7 +598,8 @@
     "productNote": "Ürün Notu",
     "productNotePlaceholder": "Bu ürün için bir not ekleyin",
     "totalAmount": "Toplam Tutar",
-    "addToCart": "Sepete Ekle"
+    "addToCart": "Sepete Ekle",
+    "soldOut": "Tükendi"
   },
   "address": {
     "searchPlaceholder": "Adres, posta kodu veya yer arayın",

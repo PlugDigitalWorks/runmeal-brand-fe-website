@@ -39,7 +39,7 @@ export function TableCheckoutPage() {
     const router = useRouter();
     const { t } = useTranslation();
     const { journey, status, error, refreshOptions } = useTable();
-    const { selectedBranch, availability, isAvailabilityLoading, refreshAvailability } = useBranch();
+    const { selectedBranch, availability, isAvailabilityLoading, refreshAvailability, invalidateMenu } = useBranch();
     const { cart, cartTotal, isLoading: isCartLoading, resetCartState, refreshCart } = useCart();
 
     const [fulfillment, setFulfillment] = React.useState<TableFulfillment>('TABLE');
@@ -82,7 +82,10 @@ export function TableCheckoutPage() {
     /** Applies whatever recovery the backend's error asks for. */
     const handleCheckoutError = async (submitError: unknown, submittedCartId: string) => {
         const resolved = resolveTableOrderError(submitError);
-        toast.error(resolved.message);
+        toast.error(
+            resolved.message,
+            resolved.action === 'REFRESH_STOCK' ? { description: t('cart.stockAdjustHint') } : undefined,
+        );
 
         switch (resolved.action) {
             case 'REFRESH_QR':
@@ -112,6 +115,12 @@ export function TableCheckoutPage() {
                 // A payment already owns this cart. Do not start another one
                 // and do not fall through to pay later — that is how a table
                 // ends up billed twice.
+                await refreshCart();
+                break;
+            case 'REFRESH_STOCK':
+                // The cart stays; back on the menu the customer lowers the
+                // quantity or removes what ran out.
+                invalidateMenu();
                 await refreshCart();
                 break;
             default:

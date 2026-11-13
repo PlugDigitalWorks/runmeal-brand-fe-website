@@ -21,6 +21,7 @@ import { useTable } from './TableContext';
 import { useUser } from './UserContext';
 import { toast } from 'sonner';
 import { getApiErrorDetails, resolveApiErrorMessage } from '@/lib/api-errors';
+import { isStockError } from '@/lib/stock-errors';
 
 // Simplified Cart Item for Guest (Local Storage)
 interface GuestCartItem {
@@ -428,7 +429,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e: unknown) {
         console.error("Add to cart failed", e);
-        toast.error(resolveApiErrorMessage(e, i18n.t('cart.itemAddFailed')));
+        // Some is left but the cart already holds part of it: say how to go on.
+        toast.error(resolveApiErrorMessage(e, i18n.t('cart.itemAddFailed')),
+          getApiErrorDetails(e).code === 'PRODUCT_QUANTITY_UNAVAILABLE'
+            ? { description: i18n.t('cart.stockAdjustHint') }
+            : undefined);
         // The rejection means our view of the product or the cart is stale —
         // resync both so the customer is not staring at what caused it.
         invalidateMenu();
@@ -609,6 +614,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {
         console.error("Update qty failed", e);
+        toast.error(resolveApiErrorMessage(e, i18n.t('cart.qtyUpdateFailed')));
+        // Only raising can be refused for stock; the menu shows what ran out
+        // and the cart keeps the quantity the backend still has.
+        if (isStockError(e)) invalidateMenu();
+        await refreshUserCart(activeBranchId || cart?.branchId).catch(() => undefined);
       } finally {
         setIsLoading(false);
       }
