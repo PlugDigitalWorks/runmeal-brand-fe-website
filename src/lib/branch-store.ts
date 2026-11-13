@@ -4,7 +4,7 @@
  * and the brand's branches; the auth service reads it so a new account
  * records the branch it came from.
  */
-import { peekReturnPath } from '@/lib/return-path';
+import { peekReturnBranchSlug, peekReturnPath } from '@/lib/return-path';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -26,6 +26,22 @@ export function setKnownBranches(branches: KnownBranch[]): void {
   knownBranches = branches;
 }
 
+/** The brand's branch with this slug (case-insensitive, like `BranchSlugSync`). */
+function branchIdForSlug(slug: string): string | null {
+  const branch = knownBranches.find((candidate) => candidate.slug?.toLowerCase() === slug);
+  return branch && UUID.test(branch.id) ? branch.id : null;
+}
+
+/**
+ * The branch a `?branch=<slug>` link names, e.g. a printed QR for
+ * `/register?to=loyalty&branch=richmond`: the customer lands on the loyalty
+ * card, the account records Richmond. Null when absent or not this brand's.
+ */
+function linkBranchId(): string | null {
+  const slug = peekReturnBranchSlug();
+  return slug ? branchIdForSlug(slug) : null;
+}
+
 /**
  * The branch the customer will land on after signing up: a `?to=<slug>` QR
  * link or the storefront they left are stored as the return path, which is a
@@ -44,17 +60,17 @@ function returnPathBranchId(): string | null {
   } catch {
     return null;
   }
-  const branch = knownBranches.find((candidate) => candidate.slug?.toLowerCase() === slug);
-  return branch && UUID.test(branch.id) ? branch.id : null;
+  return branchIdForSlug(slug);
 }
 
 /**
- * `x-branch-id` for a sign-up request: the branch the customer is signing up
- * for (see `returnPathBranchId`), else the selected one, else no header at all
+ * `x-branch-id` for a sign-up request: the branch the link names (see
+ * `linkBranchId`), else the one the customer will land on (see
+ * `returnPathBranchId`), else the selected one, else no header at all
  * — never an empty, "null" or "undefined" one. The backend keeps the branch
  * if it belongs to this site's brand and ignores it otherwise.
  */
 export function signupBranchHeaders(): Record<string, string> {
-  const branchId = returnPathBranchId() ?? currentBranchId;
+  const branchId = linkBranchId() ?? returnPathBranchId() ?? currentBranchId;
   return branchId ? { 'x-branch-id': branchId } : {};
 }

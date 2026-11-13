@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { rememberReturnPath, resolveAuthTarget } from '@/lib/return-path';
+import { peekReturnPath, rememberReturnPath, resolveAuthBranch, resolveAuthTarget } from '@/lib/return-path';
 
 /**
  * Reads `?to=loyalty` or `?to=<branch slug>` (a printed QR) on the login and
@@ -11,6 +11,10 @@ import { rememberReturnPath, resolveAuthTarget } from '@/lib/return-path';
  * the return path, so it holds through OTP, the Google/Apple round trip and
  * a hop between login and register; a customer already signed in is sent
  * there straight away, and the hook returns true while that happens.
+ *
+ * `?branch=<branch slug>` names the branch a new account records when the
+ * target is not that branch's page: `?to=loyalty&branch=richmond`. On its own
+ * it keeps the page the customer was on.
  */
 export function useAuthTargetFromQuery(): boolean {
     const router = useRouter();
@@ -21,15 +25,20 @@ export function useAuthTargetFromQuery(): boolean {
     useEffect(() => {
         if (handledRef.current || isLoading) return;
         handledRef.current = true;
-        const target = resolveAuthTarget(new URLSearchParams(window.location.search).get('to'));
-        if (!target) return;
+        const query = new URLSearchParams(window.location.search);
+        const target = resolveAuthTarget(query.get('to'));
+        const branchSlug = resolveAuthBranch(query.get('branch'));
+        if (!target) {
+            if (branchSlug) rememberReturnPath(peekReturnPath() ?? '/', branchSlug);
+            return;
+        }
         if (isAuthenticated && !isGuest) {
             router.replace(target);
             // Deferred like the profile page's `?action=new`: no setState in the effect body.
             setTimeout(() => setIsLeaving(true), 0);
             return;
         }
-        rememberReturnPath(target);
+        rememberReturnPath(target, branchSlug);
     }, [isLoading, isAuthenticated, isGuest, router]);
 
     return isLeaving;

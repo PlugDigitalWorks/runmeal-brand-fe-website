@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { api, authApi } from '@/lib/axios';
 import { setKnownBranches, setSelectedBranchId } from '@/lib/branch-store';
-import { rememberReturnPath, resolveAuthTarget } from '@/lib/return-path';
+import { peekReturnPath, rememberReturnPath, resolveAuthBranch, resolveAuthTarget } from '@/lib/return-path';
 import { authService } from './auth.service';
 
 vi.mock('@/lib/axios', () => ({
@@ -141,6 +141,40 @@ describe('authService sign-up branch from a ?to= link', () => {
         await authService.registerWithOtp({ email: 'a@b.co', firstName: 'Ada', lastName: 'Lovelace' });
 
         expect(headersOf(mockedApi.post.mock.calls[0])).not.toHaveProperty('x-branch-id');
+    });
+
+    it('records the branch of a /register?to=loyalty&branch=<slug> QR and still lands on loyalty', async () => {
+        // What the login/register pages store for `?to=loyalty&branch=Richmond`.
+        rememberReturnPath(resolveAuthTarget('loyalty')!, resolveAuthBranch('Richmond'));
+
+        await authService.register({ email: 'a@b.co', firstName: 'Ada', lastName: 'Lovelace', password: 'secret1' });
+        await authService.startOAuthLogin('google');
+
+        expect(headersOf(mockedApi.post.mock.calls[0])).toEqual({ 'x-branch-id': RICHMOND });
+        expect(headersOf(mockedAuthApi.post.mock.calls[0])).toEqual({ 'x-branch-id': RICHMOND });
+        expect(peekReturnPath()).toBe('/loyalty');
+    });
+
+    it('falls back to the selected branch when ?branch= is not one of the brand\'s', async () => {
+        rememberReturnPath('/loyalty', resolveAuthBranch('nowhere'));
+
+        await authService.startOAuthLogin('google');
+
+        expect(headersOf(mockedAuthApi.post.mock.calls[0])).toEqual({ 'x-branch-id': BRANCH_ID });
+    });
+
+    it('forgets the ?branch= link once the customer moves on to another page', async () => {
+        rememberReturnPath('/loyalty', resolveAuthBranch('richmond'));
+        // What `ReturnPathTracker` stores on the next page visited.
+        rememberReturnPath('/checkout');
+
+        await authService.startOAuthLogin('google');
+
+        expect(headersOf(mockedAuthApi.post.mock.calls[0])).toEqual({ 'x-branch-id': BRANCH_ID });
+    });
+
+    it.each(['', '  ', 'a/b', '//evil.com', 'x?y', 'x#y'])('ignores the unusable ?branch= value %j', (value) => {
+        expect(resolveAuthBranch(value)).toBeNull();
     });
 
     it('does not consume the return path the customer lands on afterwards', async () => {
